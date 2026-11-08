@@ -16,7 +16,8 @@ import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 public final class HitEffectModule extends Module {
     private final Setting.Mode style;
     private final FxSettings fx;
-    private final Setting.Bool flash, directional;
+    private final Setting.Bool flash, directional, critFx;
+    private final Setting.Col critColor;
 
     public HitEffectModule() {
         super("Hit Effect", "Particle impact where your hits land.", Category.COMBAT, true);
@@ -24,6 +25,8 @@ public final class HitEffectModule extends Module {
         fx = new FxSettings(this, 0xFF4FA3, 0xFFB45C, 16, 1.0, 0.12, 0.55);
         flash = add(new Setting.Bool("Impact flash", true));
         directional = add(new Setting.Bool("Follow hit direction", true));
+        critFx = add(new Setting.Bool("Critical hit burst", true));
+        critColor = add(new Setting.Col("Critical color", 0xFFC857));
         add(new Setting.Action("Preview", new Runnable() {
             @Override
             public void run() {
@@ -38,6 +41,30 @@ public final class HitEffectModule extends Module {
         EntityLivingBase t = e.target;
         play(t.posX - e.dx * t.width * 0.5, t.posY + t.height * 0.65, t.posZ - e.dz * t.width * 0.5,
                 e.dx, e.dy, e.dz, t.posY);
+        if (e.critical && critFx.on()) crit(t.posX, t.posY + t.height * 0.8, t.posZ, e.dx, e.dz);
+    }
+
+    /** Gold star burst plus a bright ring, only for real critical hits (falling, not on ground). */
+    private void crit(double x, double y, double z, float dx, float dz) {
+        ParticleSystem ps = ParticleSystem.INSTANCE;
+        if (!ps.inRange(x, y, z)) return;
+        int c = critColor.rgb();
+        float size = fx.size.f();
+        int n = ps.scale(Math.max(8f, fx.amount.f() * 0.9f));
+        for (int i = 0; i < n; i++) {
+            float a = ps.rand(0f, 6.2831855f), up = ps.rand(0.4f, 1.6f), sp = fx.speed.f() * ps.rand(1.8f, 3.6f);
+            Particle p = ps.glow(x, y, z, (float) Math.cos(a) * sp + dx, up * sp * 0.6f, (float) Math.sin(a) * sp + dz,
+                    fx.duration.f() * ps.rand(0.7f, 1.2f), size * ps.rand(1.0f, 1.8f), size * 0.2f, c, 0xFFFFFF, fx.alpha());
+            if (p == null) continue;
+            p.sprite = Sprite.STAR;
+            p.rot = ps.rand(0f, 6.28f);
+            p.rotVel = ps.rand(-8f, 8f);
+            p.gravity = 4f;
+            p.drag = 2f;
+        }
+        Particle ring = ps.glow(x, y, z, 0f, 0f, 0f, 0.35f, size * 1.5f, size * 11f, 0xFFFFFF, c, fx.alpha());
+        if (ring != null) ring.sprite = Sprite.RING;
+        ps.glow(x, y, z, 0f, 0f, 0f, 0.16f, size * 6f, size * 10f, 0xFFFFFF, c, fx.alpha() * 0.8f);
     }
 
     /** Plays the effect at an impact point. dx/dy/dz is the unit hit direction. */

@@ -15,6 +15,8 @@ public abstract class Module {
     public final boolean defaultEnabled;
     /** Toggle key for this module (0 = none). Handled by InputManager. */
     public int key;
+    /** Starred in the menu (shown in the Favorites list). Not touched by reset. */
+    public boolean favorite;
 
     private boolean enabled;
     private boolean subscribed;

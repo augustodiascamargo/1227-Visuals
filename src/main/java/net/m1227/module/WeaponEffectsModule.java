@@ -66,7 +66,9 @@ public final class WeaponEffectsModule extends Module {
     private final Setting.Mode style;
     private final FxSettings fx;
     private final Setting.Bool customColors, anyItem, others, onHit, comboBoost;
-    private final Setting.Num firstPerson;
+    private final Setting.Num firstPerson, trailLen, bladeStart, bladeEnd, bladeGlowAlpha;
+    private final Setting.Bool swingTrail, bladeGlow;
+    public static WeaponEffectsModule INSTANCE;
     private float acc;
     private float lastSwing;
     private final double[] base = new double[3], tip = new double[3];
@@ -76,7 +78,14 @@ public final class WeaponEffectsModule extends Module {
         style = add(new Setting.Mode("Style", "Celestial Aura", NAMES));
         customColors = add(new Setting.Bool("Use custom colors", false));
         fx = new FxSettings(this, 0x8B5CFF, 0x2DD4FF, 8, 1.0, 0.1, 0.6);
-        firstPerson = add(new Setting.Num("First person strength", 0.5, 0.0, 1.0, 0.05, ""));
+        INSTANCE = this;
+        firstPerson = add(new Setting.Num("First person strength", 0.7, 0.0, 1.0, 0.05, ""));
+        bladeGlow = add(new Setting.Bool("Blade glow (first person)", true));
+        bladeGlowAlpha = add(new Setting.Num("Blade glow intensity", 0.55, 0.05, 1.0, 0.05, ""));
+        swingTrail = add(new Setting.Bool("Swing trail (first person)", true));
+        trailLen = add(new Setting.Num("Swing trail length", 0.18, 0.05, 0.5, 0.01, "s"));
+        bladeStart = add(new Setting.Num("Blade start", 0.28, 0.0, 0.6, 0.01, ""));
+        bladeEnd = add(new Setting.Num("Blade end", 0.97, 0.5, 1.0, 0.01, ""));
         onHit = add(new Setting.Bool("Effect on confirmed hit", true));
         comboBoost = add(new Setting.Bool("Grow with combo", true));
         anyItem = add(new Setting.Bool("Any held item (not just swords)", false));
@@ -114,7 +123,7 @@ public final class WeaponEffectsModule extends Module {
         Minecraft mc = Minecraft.getMinecraft();
         if (mc.theWorld == null || mc.thePlayer == null || ps.dt <= 0f) return;
         boolean fp = mc.gameSettings.thirdPersonView == 0;
-        if (holding(mc.thePlayer)) {
+        if (!fp && holding(mc.thePlayer)) { // first person is drawn on the item itself by HandFx
             float strength = fp ? firstPerson.f() : 1f;
             if (strength > 0f) {
                 blade(mc.thePlayer, e.partialTicks, fp);
@@ -157,21 +166,27 @@ public final class WeaponEffectsModule extends Module {
             tip[1] = base[1] + fy * 0.35 + uy * 0.4 - sw * 0.2;
             tip[2] = base[2] + fz * 0.35 + uz * 0.4 - rz * (0.08 + sw * 0.55);
         } else {
+            // follow the right arm like ModelBiped does: shoulder pivot, arm raised forward
+            // while holding an item, plus the swing; the blade sticks out forward from the hand
             double by = Math.toRadians(p.prevRenderYawOffset + (p.renderYawOffset - p.prevRenderYawOffset) * pt);
             double fx0 = -Math.sin(by), fz = Math.cos(by), rx = -Math.cos(by), rz = -Math.sin(by);
-            double hy = p.isSneaking() ? 0.55 : 0.72;
-            base[0] = x + rx * 0.37 + fx0 * (0.15 + sw * 0.3);
-            base[1] = y + hy;
-            base[2] = z + rz * 0.37 + fz * (0.15 + sw * 0.3);
-            tip[0] = base[0] + fx0 * 0.55 - rx * sw * 0.6;
-            tip[1] = base[1] + 0.45 - sw * 0.3;
-            tip[2] = base[2] + fz * 0.55 - rz * sw * 0.6;
+            double sh = p.isSneaking() ? 1.17 : 1.375;
+            double theta = 0.31 + sw * 1.25 + (p.isBlocking() ? 0.6 : 0.0);
+            double ax = fx0 * Math.sin(theta) * 0.62, ay = -Math.cos(theta) * 0.62, az = fz * Math.sin(theta) * 0.62;
+            double hx = x + rx * 0.33 + ax, hy = y + sh + ay, hz = z + rz * 0.33 + az;
+            double bdx = fx0 * Math.cos(theta), bdy = Math.sin(theta), bdz = fz * Math.cos(theta);
+            if (p.isBlocking()) { // sword turned across the body
+                bdx = -rx * 0.8 + fx0 * 0.3;
+                bdy = 0.45;
+                bdz = -rz * 0.8 + fz * 0.3;
+            }
+            base[0] = hx + bdx * 0.08;
+            base[1] = hy + bdy * 0.08;
+            base[2] = hz + bdz * 0.08;
+            tip[0] = hx + bdx * 0.78;
+            tip[1] = hy + bdy * 0.78;
+            tip[2] = hz + bdz * 0.78;
         }
-    }
-
-    private float boost() {
-        if (!comboBoost.on()) return 1f;
-        return 1f + 0.2f * Math.min(6, CombatTracker.combo());
     }
 
     /** Continuous emission along the blade. */
@@ -308,5 +323,68 @@ public final class WeaponEffectsModule extends Module {
             Particle ring = ps.glow(x, y, z, 0f, 0f, 0f, 0.35f, 0.2f, 0.9f * b, c1, c0, fx.alpha());
             if (ring != null) ring.sprite = Sprite.HALO;
         }
+    }
+
+    // ---- read by the first-person hand effects (HandFx)
+    public boolean firstPersonActive(EntityPlayer p) {
+        return isEnabled() && firstPerson.f() > 0f && holding(p);
+    }
+
+    public int typeIndex() {
+        return type() / 4;
+    }
+
+    public int col0() {
+        return c0();
+    }
+
+    public int col1() {
+        return c1();
+    }
+
+    public float boost() {
+        if (!comboBoost.on()) return 1f;
+        return 1f + 0.2f * Math.min(6, CombatTracker.combo());
+    }
+
+    public float amount() {
+        return fx.amount.f() * firstPerson.f();
+    }
+
+    public float alpha() {
+        return fx.alpha() * firstPerson.f();
+    }
+
+    public float life() {
+        return fx.duration.f();
+    }
+
+    /** Particle size in hand (camera) space units. */
+    public float handSize() {
+        return fx.size.f() * 0.22f;
+    }
+
+    public boolean swingTrail() {
+        return swingTrail.on();
+    }
+
+    public boolean bladeGlow() {
+        return bladeGlow.on();
+    }
+
+    public float bladeGlowAlpha() {
+        return bladeGlowAlpha.f() * firstPerson.f();
+    }
+
+    public float trailLength() {
+        return trailLen.f();
+    }
+
+    public float bladeStart() {
+        return bladeStart.f();
+    }
+
+    public float bladeEnd() {
+        return Math.max(bladeStart.f() + 0.1f, bladeEnd.f());
     }
 }

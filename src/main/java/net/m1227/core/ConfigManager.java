@@ -59,6 +59,47 @@ public final class ConfigManager {
         return true;
     }
 
+    /** Copies the whole config as JSON text to the clipboard. */
+    public static synchronized boolean exportToClipboard() {
+        try {
+            File tmp = File.createTempFile("1227-export", ".json");
+            tmp.deleteOnExit();
+            if (!exportTo(tmp)) return false;
+            String json = new String(Files.readAllBytes(tmp.toPath()), StandardCharsets.UTF_8);
+            tmp.delete();
+            net.minecraft.client.gui.GuiScreen.setClipboardString(json);
+            Notifier.post(Notifier.Kind.SYSTEM, "Config", "Copied to clipboard", Notifier.GOOD, 1800);
+            return true;
+        } catch (Exception ex) {
+            Mod1227.LOGGER.error("Could not export config", ex);
+            Notifier.post(Notifier.Kind.SYSTEM, "Config", "Export failed", Notifier.BAD, 1800);
+            return false;
+        }
+    }
+
+    /** Reads a config exported with {@link #exportToClipboard} from the clipboard. */
+    public static synchronized boolean importFromClipboard() {
+        String text = net.minecraft.client.gui.GuiScreen.getClipboardString();
+        boolean ok = false;
+        try {
+            if (text != null && text.trim().startsWith("{")) {
+                JsonObject root = new JsonParser().parse(text).getAsJsonObject();
+                if (root.has("modules")) {
+                    File tmp = File.createTempFile("1227-import", ".json");
+                    tmp.deleteOnExit();
+                    Files.write(tmp.toPath(), text.getBytes(StandardCharsets.UTF_8));
+                    ok = importFrom(tmp);
+                    tmp.delete();
+                }
+            }
+        } catch (Exception ex) {
+            ok = false;
+        }
+        Notifier.post(Notifier.Kind.SYSTEM, "Config", ok ? "Imported from clipboard" : "Clipboard has no 1227 config",
+                ok ? Notifier.GOOD : Notifier.BAD, 2000);
+        return ok;
+    }
+
     public static void markDirty() {
         dirty = true;
     }
@@ -82,6 +123,7 @@ public final class ConfigManager {
                     o.addProperty("enabled", m.isEnabled());
                     o.addProperty("key", m.key);
                 }
+                if (m.favorite) o.addProperty("favorite", true);
                 JsonObject s = new JsonObject();
                 for (Setting<?> st : m.settings()) {
                     if (st.persistent()) s.add(st.name, st.toJson());
@@ -131,6 +173,7 @@ public final class ConfigManager {
                     JsonElement me = mods.get(m.name);
                     if (me == null || !me.isJsonObject()) continue;
                     JsonObject o = me.getAsJsonObject();
+                    m.favorite = o.has("favorite") && o.get("favorite").getAsBoolean();
                     if (m.toggleable()) {
                         if (o.has("enabled")) m.setEnabled(o.get("enabled").getAsBoolean());
                         if (o.has("key")) m.key = o.get("key").getAsInt();

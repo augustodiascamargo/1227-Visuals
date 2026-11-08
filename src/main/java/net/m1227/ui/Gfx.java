@@ -98,6 +98,29 @@ public final class Gfx {
         end();
     }
 
+    /** Five-point star, filled (triangle fan) or outlined. */
+    public static void star(float cx, float cy, float r, boolean filled, int argb) {
+        if ((argb >>> 24) == 0) return;
+        float[] px = new float[10], py = new float[10];
+        for (int i = 0; i < 10; i++) {
+            double a = -Math.PI / 2 + i * Math.PI / 5;
+            float rr = i % 2 == 0 ? r : r * 0.45f;
+            px[i] = cx + (float) Math.cos(a) * rr;
+            py[i] = cy + (float) Math.sin(a) * rr;
+        }
+        if (filled) {
+            begin();
+            color(argb);
+            GL11.glBegin(GL11.GL_TRIANGLE_FAN);
+            GL11.glVertex2f(cx, cy);
+            for (int i = 0; i <= 10; i++) GL11.glVertex2f(px[i % 10], py[i % 10]);
+            GL11.glEnd();
+            end();
+        } else {
+            for (int i = 0; i < 10; i++) line(px[i], py[i], px[(i + 1) % 10], py[(i + 1) % 10], 1f, argb);
+        }
+    }
+
     public static void circle(float cx, float cy, float r, int argb) {
         roundedRect(cx - r, cy - r, r * 2f, r * 2f, r, argb);
     }

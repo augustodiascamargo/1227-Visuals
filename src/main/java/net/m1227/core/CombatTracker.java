@@ -24,6 +24,7 @@ public final class CombatTracker {
     private static boolean hitConfirmed;
     private static int prevHurt;
     private static int combo;
+    private static boolean crit;
     private static long lastHit;
     private static int selfHurtPrev;
 
@@ -36,9 +37,12 @@ public final class CombatTracker {
         public final EntityLivingBase target;
         /** Unit vector from attacker towards target (horizontal bias). */
         public final float dx, dy, dz;
+        /** The swing met vanilla's critical-hit conditions (falling, not on ground/ladder/water, not blind). */
+        public final boolean critical;
 
-        public HitEvent(EntityLivingBase target, float dx, float dy, float dz) {
+        public HitEvent(EntityLivingBase target, float dx, float dy, float dz, boolean critical) {
             this.target = target;
+            this.critical = critical;
             this.dx = dx;
             this.dy = dy;
             this.dz = dz;
@@ -69,6 +73,9 @@ public final class CombatTracker {
         EntityLivingBase t = (EntityLivingBase) e.target;
         if (t != target) prevHurt = t.hurtTime;
         target = t;
+        net.minecraft.client.entity.EntityPlayerSP p = mc.thePlayer;
+        crit = p.fallDistance > 0.0F && !p.onGround && !p.isOnLadder() && !p.isInWater()
+                && !p.isPotionActive(net.minecraft.potion.Potion.blindness) && p.ridingEntity == null;
         attackTime = System.currentTimeMillis();
         hitConfirmed = false;
     }
@@ -112,7 +119,7 @@ public final class CombatTracker {
             long now = System.currentTimeMillis();
             combo = now - lastHit > 2000L ? 1 : combo + 1;
             lastHit = now;
-            MinecraftForge.EVENT_BUS.post(new HitEvent(t, dx, 0.2f, dz));
+            MinecraftForge.EVENT_BUS.post(new HitEvent(t, dx, 0.2f, dz, crit));
         }
 
         if (hitConfirmed && age < KILL_MS && (t.isDead || t.getHealth() <= 0f)) {

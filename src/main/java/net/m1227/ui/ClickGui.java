@@ -67,6 +67,9 @@ public class ClickGui extends GuiScreen {
     }
 
     private static Category category = Category.SKY;
+    private static boolean favView;
+    private Module tipModule, tipShown;
+    private long tipSince;
     private static final Set<Module> EXPANDED = new HashSet<Module>();
 
     private final Map<Object, float[]> states = new HashMap<Object, float[]>();
@@ -83,6 +86,8 @@ public class ClickGui extends GuiScreen {
     private long lastNanos;
     private int lastMx, lastMy;
     private boolean closing;
+    private boolean blurStarted;
+    private float panelA = 1f, cardA = 1f;
     private Category prevCategory;
     private float catSwitch = 1f;
 
@@ -92,6 +97,32 @@ public class ClickGui extends GuiScreen {
         lastNanos = 0L;
         openAnim[0] = 0f;
         closing = false;
+        startBlur();
+    }
+
+    /** Frosted background: Minecraft's own blur post-shader behind the menu (if the GPU supports shaders). */
+    private void startBlur() {
+        boolean glass = ClientModule.glass();
+        panelA = glass ? 0.8f : 1f;
+        cardA = glass ? 0.82f : 1f;
+        if (!glass || blurStarted) return;
+        try {
+            if (net.minecraft.client.renderer.OpenGlHelper.shadersSupported && !mc.entityRenderer.isShaderActive()) {
+                mc.entityRenderer.loadShader(new net.minecraft.util.ResourceLocation("shaders/post/blur.json"));
+                blurStarted = mc.entityRenderer.isShaderActive();
+            }
+        } catch (Throwable t) {
+            blurStarted = false;
+        }
+        if (!blurStarted) {
+            panelA = 1f;
+            cardA = 1f;
+        }
+    }
+
+    private void stopBlur() {
+        if (blurStarted && mc.entityRenderer.isShaderActive()) mc.entityRenderer.stopUseShader();
+        blurStarted = false;
     }
 
     /** Plays the close animation, then leaves the screen. */
@@ -101,6 +132,7 @@ public class ClickGui extends GuiScreen {
 
     @Override
     public void onGuiClosed() {
+        stopBlur();
         Keyboard.enableRepeatEvents(false);
         ConfigManager.save();
     }
@@ -123,6 +155,7 @@ public class ClickGui extends GuiScreen {
         ease = 1f - (float) Math.exp(-16f * dt);
         ACCENT = 0xFF000000 | ClientModule.accent();
         hits.clear();
+        tipModule = null;
 
         float closeEase = 1f - (float) Math.exp(-22f * dt);
         openAnim[0] += ((closing ? 0f : 1f) - openAnim[0]) * (closing ? closeEase : ease);
@@ -147,7 +180,8 @@ public class ClickGui extends GuiScreen {
         }
         catSwitch += (1f - catSwitch) * ease;
 
-        Gfx.gradient(0, 0, width, height, Gfx.alpha(0xFF000000, 0.35f * o), Gfx.alpha(0xFF000000, 0.65f * o));
+        float dim = blurStarted ? 0.55f : 1f;
+        Gfx.gradient(0, 0, width, height, Gfx.alpha(0xFF000000, 0.35f * o * dim), Gfx.alpha(0xFF000000, 0.65f * o * dim));
         net.minecraft.client.renderer.GlStateManager.pushMatrix();
         net.minecraft.client.renderer.GlStateManager.translate(width / 2f, height / 2f, 0f);
         net.minecraft.client.renderer.GlStateManager.scale(sc, sc, 1f);
@@ -155,12 +189,15 @@ public class ClickGui extends GuiScreen {
         // soft drop shadow + accent rim
         Gfx.roundedRect(wx - 6, wy - 4, W + 12, H + 12, 16, Gfx.alpha(0xFF000000, 0.35f * o));
         Gfx.roundedRect(wx - 1, wy - 1, W + 2, H + 2, 11, Gfx.alpha(ACCENT, 0.45f * o));
-        Gfx.roundedRect(wx, wy, W, H, 10, Gfx.alpha(BG, o));
+        Gfx.roundedRect(wx, wy, W, H, 10, Gfx.alpha(BG, o * panelA));
+        // glass sheen along the top
+        Gfx.gradient(wx + 10, wy + 0.5f, W - 20, 36, Gfx.alpha(0x12FFFFFF, o), 0x00FFFFFF);
 
         drawSidebar(wx, wy, mx, my, o);
         drawHeader(wx, wy, o);
         drawList(wx, wy, mx, my, o * (0.35f + 0.65f * catSwitch));
         drawFooter(wx, wy, o);
+        drawTooltip(mx, my, o);
         net.minecraft.client.renderer.GlStateManager.popMatrix();
         Gfx.clearTransform();
 
@@ -168,14 +205,41 @@ public class ClickGui extends GuiScreen {
     }
 
     private void drawSidebar(float wx, float wy, int mx, int my, float o) {
-        Gfx.roundedRect(wx, wy, SIDE, H, 9, Gfx.alpha(SIDEBG, o));
-        Gfx.rect(wx + SIDE - 10, wy, 10, H, Gfx.alpha(SIDEBG, o));
+        Gfx.roundedRect(wx, wy, SIDE, H, 9, Gfx.alpha(SIDEBG, o * panelA));
+        Gfx.rect(wx + SIDE - 10, wy, 10, H, Gfx.alpha(SIDEBG, o * panelA));
         // 1227 wordmark: quiet, with a small accent mark
         Gfx.textScaled("1227", wx + 16, wy + 16, 1.7f, Gfx.alpha(TEXT, o));
         Gfx.roundedRect(wx + 16, wy + 33, 14, 2, 1, Gfx.alpha(ACCENT, o));
 
+        float cy = wy + 50;
+        {
+            float bx = wx + 8, by = cy, bw = SIDE - 16, bh = 20;
+            boolean sel = search.trim().isEmpty() && favView;
+            boolean hov = in(mx, my, bx, by, bw, bh);
+            float[] a = state("fav");
+            a[0] += ((sel ? 1f : 0f) - a[0]) * ease;
+            a[1] += ((hov ? 1f : 0f) - a[1]) * ease;
+            if (a[1] > 0.01f) Gfx.roundedRect(bx, by, bw, bh, 6, Gfx.alpha(WHITE, 0.05f * a[1] * o));
+            if (a[0] > 0.01f) Gfx.roundedRect(bx, by, bw, bh, 6, Gfx.alpha(WARN, 0.14f * a[0] * o));
+            Gfx.star(bx + 13, by + bh / 2f, 4.5f, true, Gfx.alpha(Gfx.mix(DIM, WARN, Math.max(a[0], 0.5f)), o));
+            Gfx.text("Favorites", bx + 24, by + 6, Gfx.alpha(Gfx.mix(DIM, TEXT, Math.max(a[0], a[1] * 0.6f)), o));
+            int n = favorites().size();
+            if (n > 0) {
+                String ns = String.valueOf(n);
+                Gfx.text(ns, bx + bw - 6 - Gfx.textWidth(ns), by + 6, Gfx.alpha(DIM, o * 0.9f));
+            }
+            hits.add(new Hit(bx, by, bw, bh, false, new Click() {
+                @Override
+                public void on(float x, int b) {
+                    favView = true;
+                    search = "";
+                    scroll = 0f;
+                    scrollTarget = 0f;
+                }
+            }, null));
+            cy += 24;
+        }
         Category[] cats = Category.values();
-        float cy = wy + 56;
         String lastGroup = "";
         for (int i = 0; i < cats.length; i++) {
             final Category c = cats[i];
@@ -186,7 +250,7 @@ public class ClickGui extends GuiScreen {
             }
             float bx = wx + 8, by = cy, bw = SIDE - 16, bh = 20;
             cy += 21;
-            boolean sel = search.trim().isEmpty() && c == category;
+            boolean sel = search.trim().isEmpty() && !favView && c == category;
             boolean hov = in(mx, my, bx, by, bw, bh);
             float[] a = state(c);
             a[0] += ((sel ? 1f : 0f) - a[0]) * ease;
@@ -211,6 +275,7 @@ public class ClickGui extends GuiScreen {
                 @Override
                 public void on(float x, int b) {
                     category = c;
+                    favView = false;
                     search = "";
                     scroll = 0f;
                     scrollTarget = 0f;
@@ -221,9 +286,9 @@ public class ClickGui extends GuiScreen {
 
     private void drawHeader(float wx, float wy, float o) {
         float titleX = wx + SIDE + 14;
-        String title = search.trim().isEmpty() ? category.title : "Search";
+        String title = search.trim().isEmpty() ? (favView ? "Favorites" : category.title) : "Search";
         Gfx.textScaled(title, titleX, wy + 11, 1.3f, Gfx.alpha(TEXT, o));
-        List<Module> here = search.trim().isEmpty() ? ModuleManager.inCategory(category) : ModuleManager.search(search);
+        List<Module> here = currentModules();
         int on = 0, tog = 0;
         for (Module m : here) {
             if (m.toggleable()) {
@@ -255,8 +320,7 @@ public class ClickGui extends GuiScreen {
         listW = W - SIDE - 20;
         listH = H - 68;
 
-        boolean searching = !search.trim().isEmpty();
-        List<Module> mods = searching ? ModuleManager.search(search) : ModuleManager.inCategory(category);
+        List<Module> mods = currentModules();
 
         float maxScroll = Math.max(0f, contentH - listH);
         scrollTarget = Math.max(0f, Math.min(maxScroll, scrollTarget));
@@ -276,7 +340,10 @@ public class ClickGui extends GuiScreen {
             y += cardH + 6f;
         }
         contentH = y + scroll - listY;
-        if (mods.isEmpty()) Gfx.text("No modules found", listX + 6, listY + 8, Gfx.alpha(DIM, o));
+        if (mods.isEmpty()) {
+            String empty = favView && search.trim().isEmpty() ? "No favorites yet - click the star on any module" : "No modules found";
+            Gfx.text(empty, listX + 6, listY + 8, Gfx.alpha(DIM, o));
+        }
         Gfx.scissorOff();
 
         if (contentH > listH && maxScroll > 0f) {
@@ -290,7 +357,7 @@ public class ClickGui extends GuiScreen {
         boolean hover = in(mx, my, x, y, w, HEADER) && inList(mx, my);
         a[2] += ((hover ? 1f : 0f) - a[2]) * ease;
 
-        Gfx.roundedRect(x, y, w, h, 7, Gfx.alpha(Gfx.mix(CARD, CARD_HOVER, a[2]), o));
+        Gfx.roundedRect(x, y, w, h, 7, Gfx.alpha(Gfx.mix(CARD, CARD_HOVER, a[2]), o * cardA));
         if (m.toggleable() && a[1] > 0.01f) {
             Gfx.roundedRect(x, y, w, Math.min(h, HEADER), 7, Gfx.alpha(ACCENT, 0.07f * a[1] * o));
         }
@@ -330,6 +397,28 @@ public class ClickGui extends GuiScreen {
             }, null));
             rightEdge = kx - 8;
         }
+        {
+            float sx = rightEdge - 6;
+            boolean sh = in(lastMx, lastMy, sx - 6, y + 6, 12, 14) && inList(lastMx, lastMy);
+            if (m.favorite) Gfx.star(sx, y + 13.5f, 4.2f, true, Gfx.alpha(WARN, o));
+            else Gfx.star(sx, y + 13.5f, 4.2f, false, Gfx.alpha(sh ? TEXT : Gfx.mix(DIM, CARD, 0.35f), o));
+            hits.add(new Hit(sx - 6, y + 6, 12, 14, true, new Click() {
+                @Override
+                public void on(float cx, int b) {
+                    if (b != 0) return;
+                    m.favorite = !m.favorite;
+                    ConfigManager.markDirty();
+                }
+            }, null));
+            rightEdge = sx - 10;
+        }
+        if (hover) {
+            if (tipShown != m) {
+                tipShown = m;
+                tipSince = System.currentTimeMillis();
+            }
+            tipModule = m;
+        }
         String desc = mc.fontRendererObj.trimStringToWidth(m.description, (int) Math.max(10f, rightEdge - (x + 26)));
         Gfx.text(desc, x + 26, y + 16, Gfx.alpha(DIM, o));
 
@@ -348,6 +437,19 @@ public class ClickGui extends GuiScreen {
     }
 
     private static final float RESET_ROW = 20f;
+
+    private static List<Module> favorites() {
+        List<Module> out = new ArrayList<Module>();
+        for (Module m : ModuleManager.all()) {
+            if (m.favorite) out.add(m);
+        }
+        return out;
+    }
+
+    private List<Module> currentModules() {
+        if (!search.trim().isEmpty()) return ModuleManager.search(search);
+        return favView ? favorites() : ModuleManager.inCategory(category);
+    }
 
     private void drawReset(final Module m, float x, float y, float w, float al) {
         String l = "Reset to defaults";
@@ -606,10 +708,43 @@ public class ClickGui extends GuiScreen {
         }
     }
 
+    /** Full description + hints after hovering a module header for half a second. */
+    private void drawTooltip(int mx, int my, float o) {
+        if (tipModule == null) {
+            tipShown = null;
+            return;
+        }
+        long held = System.currentTimeMillis() - tipSince;
+        if (held < 550L) return;
+        float a = Math.min(1f, (held - 550L) / 150f) * o;
+        Module m = tipModule;
+        List<String> lines = new ArrayList<String>(mc.fontRendererObj.listFormattedStringToWidth(m.description, 200));
+        String hint = (m.toggleable() ? "Right-click: toggle  \u00b7  " : "") + "Click: settings  \u00b7  " + m.category.label;
+        float w = Gfx.textWidth(hint);
+        for (String l : lines) w = Math.max(w, Gfx.textWidth(l));
+        float h = lines.size() * 10 + 16;
+        float tx = mx + 10, ty = my + 12;
+        Gfx.roundedRect(tx - 1, ty - 1, w + 14, h + 2, 6, Gfx.alpha(ACCENT, 0.35f * a));
+        Gfx.roundedRect(tx, ty, w + 12, h, 5, Gfx.alpha(0xFF0A0B10, 0.96f * a));
+        float ly = ty + 5;
+        for (String l : lines) {
+            Gfx.text(l, tx + 6, ly, Gfx.alpha(TEXT, a));
+            ly += 10;
+        }
+        Gfx.text(hint, tx + 6, ly + 1, Gfx.alpha(DIM, a));
+    }
+
     private void drawFooter(float wx, float wy, float o) {
         String l = InputManager.keyName(ClientModule.menuKey()) + " / Esc to close   \u00b7   right-click a module to toggle   \u00b7   /1227   \u00b7   v" + Mod1227.VERSION;
         Gfx.rect(wx + SIDE, wy + H - 18, W - SIDE, 1, Gfx.alpha(0x14FFFFFF, o));
         Gfx.text(l, wx + SIDE + 12, wy + H - 12, Gfx.alpha(DIM, 0.7f * o));
+        int fps = net.minecraft.client.Minecraft.getDebugFPS();
+        int parts = net.m1227.vfx.ParticleSystem.INSTANCE.alive();
+        String perf = fps + " FPS  \u00b7  " + parts + " fx";
+        int pc = fps >= 100 ? ON : fps >= 50 ? WARN : 0xFFFF5A6A;
+        float pw = Gfx.textWidth(perf);
+        Gfx.circle(wx + W - 18 - pw, wy + H - 8.5f, 2f, Gfx.alpha(pc, o));
+        Gfx.text(perf, wx + W - 12 - pw, wy + H - 12, Gfx.alpha(DIM, 0.85f * o));
     }
 
     private float localX(float sx) {

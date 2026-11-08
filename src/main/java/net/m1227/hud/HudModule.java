@@ -1,0 +1,107 @@
+package net.m1227.hud;
+
+import net.m1227.core.Category;
+import net.m1227.core.Module;
+import net.m1227.core.Setting;
+import net.m1227.module.ClientModule;
+import net.m1227.ui.Gfx;
+import net.m1227.ui.Glass;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.ScaledResolution;
+import net.minecraft.client.renderer.GlStateManager;
+import net.minecraftforge.client.event.RenderGameOverlayEvent;
+import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
+
+/**
+ * Base for movable HUD elements. Position is stored as a fraction of the
+ * screen (so it survives resolution and GUI-scale changes) and edited in
+ * the HUD editor (/1227 hud, or Client > Edit HUD layout).
+ */
+public abstract class HudModule extends Module {
+    public final Setting.Num posX, posY, scale;
+    protected final Setting.Mode background;
+    protected final Setting.Num bgOpacity;
+    protected final Setting.Bool accentText;
+    private final double defX, defY;
+
+    protected HudModule(String name, String description, double x, double y) {
+        super(name, description, Category.HUD, false);
+        defX = x;
+        defY = y;
+        posX = add(new Setting.Num("x", x, 0, 1, 0.0001, "")).showIf(() -> false);
+        posY = add(new Setting.Num("y", y, 0, 1, 0.0001, "")).showIf(() -> false);
+        scale = add(new Setting.Num("Scale", 1.0, 0.5, 2.5, 0.05, "x"));
+        background = add(new Setting.Mode("Background", "Glass", "Glass", "Solid", "None"));
+        bgOpacity = add(new Setting.Num("Background opacity", 0.55, 0.0, 1.0, 0.05, "")).showIf(() -> !background.is("None"));
+        accentText = add(new Setting.Bool("Accent colored values", true));
+    }
+
+    /** Unscaled size in GUI pixels. */
+    public abstract float width();
+
+    public abstract float height();
+
+    /** Draws at (x, y) in the already-scaled space. editing = drawn inside the HUD editor (show sample data). */
+    protected abstract void draw(float x, float y, boolean editing);
+
+    /** Hidden when there is nothing to show (e.g. Target HUD without a target), except in the editor. */
+    protected boolean hasContent() {
+        return true;
+    }
+
+    public void resetPosition() {
+        posX.set(defX);
+        posY.set(defY);
+        scale.set(1.0);
+    }
+
+    public float screenX(ScaledResolution sr) {
+        float w = width() * scale.f();
+        return Math.max(0f, Math.min(sr.getScaledWidth() - w, posX.f() * sr.getScaledWidth()));
+    }
+
+    public float screenY(ScaledResolution sr) {
+        float h = height() * scale.f();
+        return Math.max(0f, Math.min(sr.getScaledHeight() - h, posY.f() * sr.getScaledHeight()));
+    }
+
+    public void render(ScaledResolution sr, boolean editing) {
+        if (!editing && !hasContent()) return;
+        float s = scale.f();
+        GlStateManager.pushMatrix();
+        GlStateManager.scale(s, s, 1f);
+        draw(screenX(sr) / s, screenY(sr) / s, editing);
+        GlStateManager.popMatrix();
+        GlStateManager.color(1f, 1f, 1f, 1f);
+    }
+
+    @SubscribeEvent
+    public void onOverlay(RenderGameOverlayEvent.Post e) {
+        if (e.type != RenderGameOverlayEvent.ElementType.ALL) return;
+        Minecraft mc = Minecraft.getMinecraft();
+        if (mc.gameSettings.showDebugInfo || mc.currentScreen instanceof HudEditorScreen) return;
+        render(e.resolution, false);
+    }
+
+    // ------------------------------------------------------------ helpers
+
+    protected void panel(float x, float y, float w, float h) {
+        String b = background.get();
+        if (b.equals("None")) return;
+        if (b.equals("Glass")) {
+            Glass.panel(x, y, w, h, 4f, scale.f(), 0xFF0B0C11, bgOpacity.f(), 6f * scale.f());
+        } else {
+            Gfx.roundedRect(x, y, w, h, 4f, Gfx.alpha(0xFF0B0C11, bgOpacity.f()));
+        }
+    }
+
+    protected int accent() {
+        return 0xFF000000 | ClientModule.accent();
+    }
+
+    protected int value() {
+        return accentText.on() ? accent() : 0xFFFFFFFF;
+    }
+
+    protected static final int LABEL = 0xFFA9ADBA;
+}

@@ -12,12 +12,21 @@ public final class Command1227 extends CommandBase {
 
     @Override
     public String getCommandUsage(ICommandSender sender) {
-        return "/1227 - open the 1227 menu";
+        return "/1227 [hud|export|import] - menu, HUD editor, clipboard config";
     }
 
     @Override
     public void processCommand(ICommandSender sender, String[] args) {
-        InputManager.INSTANCE.requestOpen();
+        String a = args.length > 0 ? args[0].toLowerCase(java.util.Locale.ROOT) : "";
+        if (a.equals("hud")) {
+            InputManager.INSTANCE.requestScreen(new net.m1227.hud.HudEditorScreen());
+        } else if (a.equals("export")) {
+            ConfigManager.exportToClipboard();
+        } else if (a.equals("import")) {
+            ConfigManager.importFromClipboard();
+        } else {
+            InputManager.INSTANCE.requestOpen();
+        }
     }
 
     @Override

@@ -21,6 +21,7 @@ public final class ClientModule extends Module {
     public final Setting.Key menuKey;
     public final Setting.Col accent;
     public final Setting.Num menuScale, animSpeed;
+    public final Setting.Bool glass;
 
     public ClientModule() {
         super("Client", "Menu key, accent colour, menu size and reset.", Category.SETTINGS, true);
@@ -29,6 +30,25 @@ public final class ClientModule extends Module {
         accent = add(new Setting.Col("Accent color", 0x8B5CFF));
         menuScale = add(new Setting.Num("Menu scale", 1.0, 0.75, 1.25, 0.05, "x"));
         animSpeed = add(new Setting.Num("Animation speed", 1.0, 0.5, 2.0, 0.1, "x"));
+        glass = add(new Setting.Bool("Glass effects (blur behind menus)", true));
+        add(new Setting.Action("Edit HUD layout", new Runnable() {
+            @Override
+            public void run() {
+                net.minecraft.client.Minecraft.getMinecraft().displayGuiScreen(new net.m1227.hud.HudEditorScreen());
+            }
+        }));
+        add(new Setting.Action("Copy config to clipboard", new Runnable() {
+            @Override
+            public void run() {
+                net.m1227.core.ConfigManager.exportToClipboard();
+            }
+        }));
+        add(new Setting.Action("Load config from clipboard", new Runnable() {
+            @Override
+            public void run() {
+                net.m1227.core.ConfigManager.importFromClipboard();
+            }
+        }));
         add(new Setting.Action("Reset every module to defaults", new Runnable() {
             @Override
             public void run() {
@@ -53,6 +73,10 @@ public final class ClientModule extends Module {
 
     public static float menuScale() {
         return INSTANCE == null ? 1f : INSTANCE.menuScale.f();
+    }
+
+    public static boolean glass() {
+        return INSTANCE == null || INSTANCE.glass.on();
     }
 
     public static float animSpeed() {

@@ -22,6 +22,7 @@ import org.lwjgl.input.Mouse;
 public final class ToggleSprintModule extends Module {
     private final Setting.Key toggleKey;
     private final Setting.Bool startActive, notify;
+    private static ToggleSprintModule instance;
     private boolean active = true;
     private boolean holding;
 
@@ -30,6 +31,12 @@ public final class ToggleSprintModule extends Module {
         toggleKey = add(new Setting.Key("Toggle key", 0));
         startActive = add(new Setting.Bool("Active when enabled", true));
         notify = add(new Setting.Bool("Show in Dynamic Island", true));
+        instance = this;
+    }
+
+    /** True while Toggle Sprint is holding the sprint key for you. */
+    public static boolean toggled() {
+        return instance != null && instance.isEnabled() && instance.active;
     }
 
     @Override

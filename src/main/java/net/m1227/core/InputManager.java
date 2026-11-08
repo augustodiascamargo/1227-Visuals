@@ -22,6 +22,7 @@ import org.lwjgl.input.Keyboard;
 public final class InputManager {
     public static final InputManager INSTANCE = new InputManager();
     private boolean openNextTick;
+    private net.minecraft.client.gui.GuiScreen pendingScreen;
 
     private InputManager() {}
 
@@ -30,9 +31,21 @@ public final class InputManager {
         openNextTick = true;
     }
 
+    /** Opens any screen on the next client tick (chat closes itself first). */
+    public void requestScreen(net.minecraft.client.gui.GuiScreen s) {
+        pendingScreen = s;
+    }
+
     @SubscribeEvent
     public void onTick(TickEvent.ClientTickEvent e) {
-        if (e.phase != TickEvent.Phase.END || !openNextTick) return;
+        if (e.phase != TickEvent.Phase.END) return;
+        if (pendingScreen != null) {
+            Minecraft.getMinecraft().displayGuiScreen(pendingScreen);
+            pendingScreen = null;
+            openNextTick = false;
+            return;
+        }
+        if (!openNextTick) return;
         openNextTick = false;
         Minecraft.getMinecraft().displayGuiScreen(new ClickGui());
     }
