@@ -124,6 +124,7 @@ public final class ShockwaveSystem {
         GlStateManager.disableBlend();
         GlStateManager.enableTexture2D();
         GlStateManager.color(1f, 1f, 1f, 1f);
+        org.lwjgl.opengl.GL11.glColor4f(1f, 1f, 1f, 1f); // raw glColor calls bypass GlStateManager's cache
     }
 
     private void ensureList() {

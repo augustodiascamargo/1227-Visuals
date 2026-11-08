@@ -41,6 +41,7 @@ public final class Gfx {
         GlStateManager.enableTexture2D();
         GlStateManager.disableBlend();
         GlStateManager.color(1f, 1f, 1f, 1f);
+        org.lwjgl.opengl.GL11.glColor4f(1f, 1f, 1f, 1f); // raw glColor calls bypass GlStateManager's cache
     }
 
     // ----------------------------------------------------------- shapes
@@ -200,6 +201,7 @@ public final class Gfx {
         GlStateManager.tryBlendFuncSeparate(770, 771, 1, 0);
         Minecraft.getMinecraft().fontRendererObj.drawString(s, x, y, argb, false);
         GlStateManager.color(1f, 1f, 1f, 1f);
+        org.lwjgl.opengl.GL11.glColor4f(1f, 1f, 1f, 1f); // raw glColor calls bypass GlStateManager's cache
     }
 
     public static void textScaled(String s, float x, float y, float scale, int argb) {

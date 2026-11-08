@@ -66,7 +66,9 @@ public final class HandFx {
         WeaponEffectsModule w = WeaponEffectsModule.INSTANCE;
         ItemGlowModule g = ItemGlowModule.INSTANCE;
         boolean weapon = w != null && w.firstPersonActive(p);
-        boolean glow = g != null && g.isEnabled() && g.applies(stack);
+        net.m1227.module.WeaponModelsModule wm = net.m1227.module.WeaponModelsModule.INSTANCE;
+        // glow copies redraw the vanilla model, which would show through a custom 3D model
+        boolean glow = g != null && g.isEnabled() && g.applies(stack) && (wm == null || !wm.replaces(stack));
         weaponThisFrame = weapon;
         if (!weapon && !glow) return;
         IBakedModel model = mc.getRenderItem().getItemModelMesher().getItemModel(stack);
@@ -161,6 +163,7 @@ public final class HandFx {
         GlStateManager.enableCull();
         GlStateManager.enableLighting();
         GlStateManager.color(1f, 1f, 1f, 1f);
+        org.lwjgl.opengl.GL11.glColor4f(1f, 1f, 1f, 1f); // raw glColor calls bypass GlStateManager's cache
     }
 
     private static void vtx(int c, float a, float u, float v, float x, float y, float z) {
@@ -304,6 +307,8 @@ public final class HandFx {
         weaponThisFrame = false;
         if (w == null || (count < 2 && pn == 0)) return;
 
+        boolean fog = GL11.glIsEnabled(GL11.GL_FOG);
+        GlStateManager.disableFog();
         GlStateManager.disableLighting();
         GlStateManager.enableBlend();
         GlStateManager.blendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE);
@@ -318,6 +323,7 @@ public final class HandFx {
             GlStateManager.enableTexture2D();
             GL11.glBegin(GL11.GL_QUADS);
             for (int i = 0; i < pn; i++) {
+                if (pz[i] > -0.1f) continue; // at/behind the near plane: would cover the screen
                 float t = age[i] / life[i];
                 float a = w.alpha() * Math.min(1f, t * 6f) * (1f - t) * (spr[i] == Sprite.SMOKE ? 0.35f : 1f);
                 float s = size[i] * (1f - 0.5f * t);
@@ -343,7 +349,34 @@ public final class HandFx {
         GlStateManager.enableCull();
         GlStateManager.enableAlpha();
         GlStateManager.enableTexture2D();
+        if (fog) GlStateManager.enableFog();
         GlStateManager.color(1f, 1f, 1f, 1f);
+        org.lwjgl.opengl.GL11.glColor4f(1f, 1f, 1f, 1f); // raw glColor calls bypass GlStateManager's cache
+    }
+
+    /**
+     * How many trail points can be drawn: stops at the first point that is
+     * too old, at or behind the camera's near plane, or that jumped far from
+     * the previous one (item switch, teleport of the hand). Without this a
+     * single bad point turns the strip into a huge screen-covering quad.
+     */
+    private int usableTrail(float maxAge) {
+        int n = 0;
+        float lx = 0, ly = 0, lz = 0;
+        for (int k = 0; k < count; k++) {
+            int o = ((head - k + TN) % TN) * 7;
+            if (time - tr[o + 6] > maxAge) break;
+            if (tr[o + 2] > -0.1f || tr[o + 5] > -0.1f) break;
+            if (k > 0) {
+                float dx = tr[o + 3] - lx, dy = tr[o + 4] - ly, dz = tr[o + 5] - lz;
+                if (dx * dx + dy * dy + dz * dz > 0.6f * 0.6f) break;
+            }
+            lx = tr[o + 3];
+            ly = tr[o + 4];
+            lz = tr[o + 5];
+            n++;
+        }
+        return n;
     }
 
     /** The swoosh: a strip between recent blade positions, bright at the tip, fading with age. */
@@ -352,11 +385,15 @@ public final class HandFx {
         int c0 = w.col0(), c1 = w.col1();
         float a0 = w.alpha() * w.boost();
         GlStateManager.disableTexture2D();
+        int usable = usableTrail(maxAge);
+        if (usable < 2) {
+            GlStateManager.enableTexture2D();
+            return;
+        }
         GL11.glBegin(GL11.GL_QUAD_STRIP);
-        for (int k = 0; k < count; k++) {
+        for (int k = 0; k < usable; k++) {
             int o = ((head - k + TN) % TN) * 7;
             float ageK = time - tr[o + 6];
-            if (ageK > maxAge) break;
             float f = 1f - ageK / maxAge;
             f = f * f;
             int c = ParticleSystem.mix(c1, c0, 1f - f);
@@ -369,10 +406,9 @@ public final class HandFx {
         GL11.glEnd();
         GL11.glLineWidth(2f);
         GL11.glBegin(GL11.GL_LINE_STRIP);
-        for (int k = 0; k < count; k++) {
+        for (int k = 0; k < usable; k++) {
             int o = ((head - k + TN) % TN) * 7;
             float ageK = time - tr[o + 6];
-            if (ageK > maxAge) break;
             float f = 1f - ageK / maxAge;
             GL11.glColor4f(1f, 1f, 1f, Math.min(1f, a0 * f * f));
             GL11.glVertex3f(tr[o + 3], tr[o + 4], tr[o + 5]);

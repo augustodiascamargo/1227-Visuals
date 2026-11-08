@@ -125,6 +125,35 @@ public final class SkyModule extends Module {
         transition = add(new Setting.Num("Transition time", 1.5, 0.2, 5.0, 0.1, "s"));
         showBody = add(new Setting.Bool("Sun / moon / planet", true));
         fogMatch = add(new Setting.Bool("Fog matches sky", true));
+        shaderStyle = add(new Setting.Mode("Shader layer (GLSL)", "Off", net.m1227.vfx.SkyShader.STYLES));
+        shaderStrength = add(new Setting.Num("Shader strength", 0.8, 0.1, 1.5, 0.05, "x")).showIf(() -> !shaderStyle.is("Off"));
+        shaderPalette = add(new Setting.Mode("Shader colors", "Match sky", "Match sky", "Custom")).showIf(() -> !shaderStyle.is("Off"));
+        shaderA = add(new Setting.Col("Shader color 1", 0x8B5CFF)).showIf(() -> !shaderStyle.is("Off") && shaderPalette.is("Custom"));
+        shaderB = add(new Setting.Col("Shader color 2", 0x2DD4FF)).showIf(() -> !shaderStyle.is("Off") && shaderPalette.is("Custom"));
+        shaderC = add(new Setting.Col("Shader color 3", 0xFF4FD8)).showIf(() -> !shaderStyle.is("Off") && shaderPalette.is("Custom"));
+    }
+
+    private final Setting.Mode shaderStyle, shaderPalette;
+    private final Setting.Num shaderStrength;
+    private final Setting.Col shaderA, shaderB, shaderC;
+
+    /** GLSL layer between the gradient and the geometric layers. */
+    private void shaderLayer(SkyPreset p, float w, double t) {
+        int style = java.util.Arrays.asList(net.m1227.vfx.SkyShader.STYLES).indexOf(shaderStyle.get());
+        if (style <= 0) return;
+        int a, b, c;
+        if (shaderPalette.is("Custom")) {
+            a = shaderA.rgb();
+            b = shaderB.rgb();
+            c = shaderC.rgb();
+        } else {
+            a = tinted(p.aurora > 0 ? p.auroraA : p.nebA);
+            b = tinted(p.aurora > 0 ? p.auroraB : p.nebB);
+            c = tinted(p.lineGlow);
+        }
+        GlStateManager.blendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE);
+        net.m1227.vfx.SkyShader.draw(style, t, a, b, c, w * shaderStrength.f() * Math.min(1.2f, brightness.f()));
+        GlStateManager.blendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
     }
 
     /** Used by colour presets: tints every layer. */
@@ -214,6 +243,7 @@ public final class SkyModule extends Module {
             GlStateManager.disableTexture2D();
             GlStateManager.blendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
             gradient(previous, shown, m);
+            shaderLayer(shown, 1f, t);
 
             if (previous != null) layers(previous, 1f - m, t, sunAngle);
             layers(shown, m, t, sunAngle);
@@ -596,7 +626,8 @@ public final class SkyModule extends Module {
                 double u = i / (double) m;
                 double e = q[E0] + q[A1] * Math.sin(TAU * q[F1] * u + q[P1] + q[S1] * t)
                         + q[A2] * Math.sin(TAU * q[F2] * u + q[P2] + q[S2] * t * 1.7);
-                double phi = q[PHI0] + q[SPAN] * u + q[B] * Math.sin(TAU * q[F3] * u + q[P3] + q[S3] * t);
+                // spread the lines that are drawn evenly around the sky (not just the first few slots)
+                double phi = k * TAU / n + (q[PHI0] - k * TAU / MAXL) + q[SPAN] * u + q[B] * Math.sin(TAU * q[F3] * u + q[P3] + q[S3] * t);
                 e = Math.max(0.012, Math.min(1.45, e));
                 double ce = Math.cos(e);
                 px[i] = (float) (ce * Math.cos(phi));
@@ -643,39 +674,52 @@ public final class SkyModule extends Module {
         }
     }
 
+    /**
+     * Aurora curtains that go all the way around the sky. Every wave along
+     * the ring uses a whole number of cycles, so the last segment meets the
+     * first one without a seam; the bands are spread evenly around you.
+     */
     private void aurora(SkyPreset p, float w, double t) {
         int n = Math.max(3, Math.min(10, p.aurora));
-        int m = Math.max(24, Math.round(64 * PerformanceModule.qualityScale()));
+        int m = Math.max(64, Math.round(160 * PerformanceModule.qualityScale()));
         float r = 80f;
         for (int k = 0; k < n; k++) {
             float[] q = PARAM[k];
             int band = blend(p.auroraA, p.auroraB, k / (float) Math.max(1, n - 1));
-            double base = 0.08 + 0.12 * (k % 3) / 2.0;
+            double base = 0.07 + 0.11 * (k % 3) / 2.0;
             double hgt = 0.22 + 0.18 * q[A2] * 4.0;
-            GL11.glBegin(GL11.GL_QUAD_STRIP);
-            for (int i = 0; i <= m; i++) {
-                double u = i / (double) m;
-                double phi = q[PHI0] + q[SPAN] * 1.4 * u + 0.25 * Math.sin(TAU * q[F3] * u + q[P3] + q[S3] * t * 2.0);
-                double e0 = base + 0.04 * Math.sin(TAU * q[F1] * u + q[P1] + q[S1] * t);
-                double e1 = e0 + hgt * (0.7 + 0.3 * Math.sin(TAU * q[F2] * u + q[P2] + q[S2] * t));
-                float envl = (float) Math.pow(Math.sin(Math.PI * u), 0.6);
-                float wave = 0.65f + 0.35f * (float) Math.sin(u * 40.0 + t * 1.7 + k);
-                color(band, 0.32f * w * envl * wave);
-                GL11.glVertex3f((float) (Math.cos(e0) * Math.cos(phi) * r), (float) (Math.sin(e0) * r), (float) (Math.cos(e0) * Math.sin(phi) * r));
-                color(band, 0f);
-                GL11.glVertex3f((float) (Math.cos(e1) * Math.cos(phi) * r), (float) (Math.sin(e1) * r), (float) (Math.cos(e1) * Math.sin(phi) * r));
+            double off = k * TAU / n + q[P3];
+            int f1 = Math.max(1, Math.round(q[F1] * 2f)), f2 = Math.max(2, Math.round(q[F2] * 1.5f)),
+                    f3 = Math.max(1, Math.round(q[F3])), fe = 2 + k % 3;
+            for (int pass = 0; pass < 2; pass++) {
+                if (pass == 0) GL11.glBegin(GL11.GL_QUAD_STRIP);
+                else {
+                    GL11.glLineWidth(1.5f);
+                    GL11.glBegin(GL11.GL_LINE_STRIP);
+                }
+                for (int i = 0; i <= m; i++) {
+                    double u = (i % m) / (double) m;
+                    double phi = off + TAU * u + 0.18 * Math.sin(TAU * f3 * u + q[P3] + q[S3] * t * 2.0);
+                    double e0 = base + 0.04 * Math.sin(TAU * f1 * u + q[P1] + q[S1] * t);
+                    double e1 = e0 + hgt * (0.7 + 0.3 * Math.sin(TAU * f2 * u + q[P2] + q[S2] * t));
+                    // brightness drifts around the ring instead of fading at the ends
+                    float envl = 0.35f + 0.65f * (float) Math.pow(0.5 + 0.5 * Math.sin(TAU * fe * u + q[P2] + t * 0.12 * (k % 2 == 0 ? 1 : -1)), 1.5);
+                    float wave = 0.65f + 0.35f * (float) Math.sin(TAU * 24 * u + t * 1.7 + k);
+                    float ce0 = (float) Math.cos(e0), se0 = (float) Math.sin(e0);
+                    float cp = (float) Math.cos(phi), sp = (float) Math.sin(phi);
+                    if (pass == 0) {
+                        color(band, 0.32f * w * envl * wave);
+                        GL11.glVertex3f(ce0 * cp * r, se0 * r, ce0 * sp * r);
+                        color(band, 0f);
+                        float ce1 = (float) Math.cos(e1);
+                        GL11.glVertex3f(ce1 * cp * r, (float) Math.sin(e1) * r, ce1 * sp * r);
+                    } else {
+                        color(blend(band, 0xFFFFFF, 0.4f), 0.55f * w * envl);
+                        GL11.glVertex3f(ce0 * cp * r, se0 * r, ce0 * sp * r);
+                    }
+                }
+                GL11.glEnd();
             }
-            GL11.glEnd();
-            GL11.glLineWidth(1.5f);
-            GL11.glBegin(GL11.GL_LINE_STRIP);
-            for (int i = 0; i <= m; i++) {
-                double u = i / (double) m;
-                double phi = q[PHI0] + q[SPAN] * 1.4 * u + 0.25 * Math.sin(TAU * q[F3] * u + q[P3] + q[S3] * t * 2.0);
-                double e0 = base + 0.04 * Math.sin(TAU * q[F1] * u + q[P1] + q[S1] * t);
-                color(blend(band, 0xFFFFFF, 0.4f), 0.55f * w * (float) Math.pow(Math.sin(Math.PI * u), 0.6));
-                GL11.glVertex3f((float) (Math.cos(e0) * Math.cos(phi) * r), (float) (Math.sin(e0) * r), (float) (Math.cos(e0) * Math.sin(phi) * r));
-            }
-            GL11.glEnd();
             GL11.glLineWidth(1f);
         }
     }

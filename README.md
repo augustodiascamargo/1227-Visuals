@@ -1,4 +1,4 @@
-# 1227 — v1.1.0 (Minecraft 1.8.9 · Forge 11.15.1.2318 · Java 8)
+# 1227 — v1.2.0 (Minecraft 1.8.9 · Forge 11.15.1.2318 · Java 8)
 
 Mod client-side e puramente visual. Não envia pacotes, não desenha através de paredes e não muda alcance,
 timing de ataque ou outras mecânicas do servidor.
@@ -26,12 +26,12 @@ O `.jar` vai em `.minecraft/mods` com Forge 1.8.9.
 | Cosmetics | Aura Hat, Halo |
 | Movement | Trails (16), Jump Effects (20), Player FX (aparecer, sumir, teleporte) |
 | Combat | Hit Effect (+ burst de crítico), Kill Effect, Shockwave, Damage Numbers, Victory & Defeat |
-| Weapons | Weapon Effects (40, presos à lâmina em 1ª pessoa), Item Glow |
-| Camera | Motion Blur, View Bobbing, Zoom, Camera FX, Low Fire |
+| Weapons | Weapon Effects (40, presos à lâmina em 1ª pessoa), Item Glow, Weapon Models (6 espadas 3D originais) |
+| Camera | Motion Blur, View Bobbing, Static FOV, Zoom, Camera FX, Low Fire |
 | Animations | 1.7 Animations |
 | Gameplay | Toggle Sprint |
-| Hit Sounds | Hit Sounds |
-| HUD | Dynamic Island, Hit Marker, Crosshair, Info Bar (FPS/ping/CPS/velocidade), Keystrokes, Target HUD, Combo Counter, Armor, Potions, Coordinates, Movement Status |
+| Hit Sounds | Hit Sounds (+ 5 pacotes com som de hit, crítico e kill) |
+| HUD | Dynamic Island, Hit Marker, Crosshair, Nametags, Chat, Watermark, Held Item, Info Bar (FPS/ping/CPS/velocidade), Keystrokes, Target HUD, Combo Counter, Armor, Potions, Coordinates, Movement Status |
 | Settings | Client (tecla, cor, escala, vidro, editor de HUD, copiar/colar config), Presets, Performance |
 
 ## Editor de HUD
@@ -76,3 +76,21 @@ nada depende de Lunar ou de outro launcher.
 - APIs não verificadas contra o código-fonte (sem acesso à rede aqui): `ItemCameraTransforms.applyTransform`,
   `RenderItem.renderItem(ItemStack, IBakedModel)`, `GL14.glBlendColor`, `FontRenderer.getColorCode`, os nomes SRG dos
   campos privados do `ItemRenderer` e `FOVUpdateEvent.newfov`. Se a build do GitHub falhar, o log aponta a linha.
+
+## Mudanças na v1.1.1
+- Weapon Effects: corrigida a faixa escura que aparecia na tela dependendo do ângulo (rastro/partículas que
+  chegavam atrás da câmera viravam um polígono gigante; cor do OpenGL que ficava "presa" após os efeitos).
+- Céus com aurora: as cortinas agora dão a volta completa no céu, sem emenda; as linhas de luz se espalham por todo o horizonte.
+- Novo módulo Static FOV (Camera): o FOV não muda mais com sprint, Speed ou lentidão; dá para manter o zoom do arco e o FOV de voo.
+
+## Mudanças na v1.2.0
+- Dynamic Skies: camada de shader GLSL opcional (Nebula, Aurora Veil, Cosmic Ocean, Plasma Storm, Warp Stars, Sunset Clouds),
+  com cores do céu ou personalizadas. Se a placa de vídeo não compilar o shader, a camada se desliga sozinha (aviso no log).
+- Weapon Models: 6 espadas 3D feitas em código (Katana, Crystal Blade, Energy Saber, Rune Greatsword, Twin Fang, Obsidian Edge),
+  com sombreamento e partes que brilham. Só em 1ª pessoa e só para você; em 3ª pessoa aparece a espada normal (o 1.8.9 não tem
+  como trocar o modelo do item na mão do jogador sem mexer no código do jogo).
+- Nametags: nome com fundo, vida, barra de vida e ping; segue as regras de time do servidor e não aparece através de paredes.
+- Chat: mensagens entram deslizando e somem suavemente; ao abrir o chat volta o chat normal (links e rolagem funcionam).
+- Watermark (5 estilos) e Held Item (cartão do item ao trocar, com encantamentos e durabilidade).
+- Hit Sounds: pacotes Neon, Crystal, Arcade, Heavy e Soft, com 3 variações de hit, som de crítico e de kill; tom que sobe com o combo.
+- Tudo foi feito do zero; nenhum código, textura, shader ou som de outro client foi usado.

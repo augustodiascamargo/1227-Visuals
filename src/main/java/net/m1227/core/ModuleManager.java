@@ -31,8 +31,10 @@ public final class ModuleManager {
         register(new MatchFxModule());
         register(new WeaponEffectsModule());
         register(new ItemGlowModule());
+        register(new WeaponModelsModule());
         register(new MotionBlurModule());
         register(new ViewBobbingModule());
+        register(new FovModule());
         register(new ZoomModule());
         register(new CameraFxModule());
         register(new LowFireModule());
@@ -42,6 +44,10 @@ public final class ModuleManager {
         register(new DynamicIslandModule());
         register(new HitMarkerModule());
         register(new CrosshairModule());
+        register(new NametagsModule());
+        register(new ChatModule());
+        register(new net.m1227.hud.WatermarkHud());
+        register(new net.m1227.hud.HeldItemHud());
         register(new net.m1227.hud.InfoHud());
         register(new net.m1227.hud.KeystrokesHud());
         register(new net.m1227.hud.TargetHud());

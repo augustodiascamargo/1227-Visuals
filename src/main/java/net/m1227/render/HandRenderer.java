@@ -63,7 +63,10 @@ public final class HandRenderer {
 
     private static boolean wanted() {
         AnimationsModule a = AnimationsModule.INSTANCE;
-        return (a != null && a.needsTakeover()) || HandFx.wantsHand();
+        net.m1227.module.WeaponModelsModule wm = net.m1227.module.WeaponModelsModule.INSTANCE;
+        Minecraft mc = Minecraft.getMinecraft();
+        boolean model = wm != null && mc.thePlayer != null && wm.replaces(mc.thePlayer.getHeldItem());
+        return (a != null && a.needsTakeover()) || HandFx.wantsHand() || model;
     }
 
     @SubscribeEvent
@@ -220,7 +223,9 @@ public final class HandRenderer {
                 GlStateManager.rotate(180.0F, 0.0F, 1.0F, 0.0F);
                 ir.renderItem(p, item, ItemCameraTransforms.TransformType.NONE);
             } else {
-                ir.renderItem(p, item, ItemCameraTransforms.TransformType.FIRST_PERSON);
+                net.m1227.module.WeaponModelsModule wm = net.m1227.module.WeaponModelsModule.INSTANCE;
+                if (wm != null && wm.replaces(item)) wm.renderFirstPerson(mc, item);
+                else ir.renderItem(p, item, ItemCameraTransforms.TransformType.FIRST_PERSON);
                 HandFx.INSTANCE.afterItem(mc, p, item);
             }
         } else if (!p.isInvisible()) {

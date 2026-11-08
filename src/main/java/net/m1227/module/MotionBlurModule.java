@@ -132,6 +132,7 @@ public final class MotionBlurModule extends Module {
         GL11.glVertex2f(sw, 0f);
         GL11.glEnd();
         GlStateManager.color(1f, 1f, 1f, 1f);
+        org.lwjgl.opengl.GL11.glColor4f(1f, 1f, 1f, 1f); // raw glColor calls bypass GlStateManager's cache
         GlStateManager.tryBlendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, 1, 0);
         GlStateManager.disableBlend();
         GlStateManager.enableAlpha();

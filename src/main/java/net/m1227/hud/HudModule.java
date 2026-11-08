@@ -73,6 +73,7 @@ public abstract class HudModule extends Module {
         draw(screenX(sr) / s, screenY(sr) / s, editing);
         GlStateManager.popMatrix();
         GlStateManager.color(1f, 1f, 1f, 1f);
+        org.lwjgl.opengl.GL11.glColor4f(1f, 1f, 1f, 1f); // raw glColor calls bypass GlStateManager's cache
     }
 
     @SubscribeEvent

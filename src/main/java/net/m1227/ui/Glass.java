@@ -76,6 +76,7 @@ public final class Glass {
             fan(x, y, w, h, r, k, px0, py0, TAP[i * 2] * blurPx, TAP[i * 2 + 1] * blurPx, mc.displayHeight);
         }
         GlStateManager.color(1f, 1f, 1f, 1f);
+        org.lwjgl.opengl.GL11.glColor4f(1f, 1f, 1f, 1f); // raw glColor calls bypass GlStateManager's cache
         GlStateManager.enableAlpha();
         // tint + light edge
         Gfx.roundedRect(x, y, w, h, r, Gfx.alpha(tint, tintAlpha));

@@ -644,6 +644,7 @@ public final class ParticleSystem {
         GlStateManager.disableAlpha();
         GlStateManager.depthMask(false);
         GlStateManager.color(1f, 1f, 1f, 1f);
+        org.lwjgl.opengl.GL11.glColor4f(1f, 1f, 1f, 1f); // raw glColor calls bypass GlStateManager's cache
 
         GlStateManager.blendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
         // Pull sprites slightly towards the camera so ones near the ground never z-fight or sink into it.
@@ -660,6 +661,7 @@ public final class ParticleSystem {
         GlStateManager.blendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
         GlStateManager.disableBlend();
         GlStateManager.color(1f, 1f, 1f, 1f);
+        org.lwjgl.opengl.GL11.glColor4f(1f, 1f, 1f, 1f); // raw glColor calls bypass GlStateManager's cache
     }
 
     private void drawBatch(boolean alphaPass) {
