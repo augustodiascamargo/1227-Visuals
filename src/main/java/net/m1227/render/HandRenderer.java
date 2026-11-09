@@ -84,10 +84,16 @@ public final class HandRenderer {
         renderHand(mc, e.partialTicks, item);
     }
 
+    private final java.nio.FloatBuffer savedProjection = org.lwjgl.BufferUtils.createFloatBuffer(16);
+
     private void renderHand(Minecraft mc, float pt, ItemStack item) {
         GlStateManager.clear(GL11.GL_DEPTH_BUFFER_BIT);
+        // The projection stack is only guaranteed to be 2 deep; Minecraft, OptiFine and shader
+        // passes already use it, so pushing here could overflow and later pop someone else's
+        // matrix. Save and restore the matrix by value instead.
+        savedProjection.clear();
+        GL11.glGetFloat(GL11.GL_PROJECTION_MATRIX, savedProjection);
         GlStateManager.matrixMode(GL11.GL_PROJECTION);
-        GlStateManager.pushMatrix();
         GlStateManager.loadIdentity();
         Project.gluPerspective(handFov(mc, pt), (float) mc.displayWidth / (float) mc.displayHeight, 0.05F,
                 mc.gameSettings.renderDistanceChunks * 16 * 2.0F);
@@ -118,7 +124,8 @@ public final class HandRenderer {
             fItem = null;
         } finally {
             GlStateManager.matrixMode(GL11.GL_PROJECTION);
-            GlStateManager.popMatrix();
+            savedProjection.rewind();
+            GL11.glLoadMatrix(savedProjection);
             GlStateManager.matrixMode(GL11.GL_MODELVIEW);
             GlStateManager.popMatrix();
         }

@@ -32,6 +32,10 @@ public final class Gfx {
     }
 
     private static void begin() {
+        // Rounded shapes are triangle fans whose winding is clockwise on screen. Minecraft keeps
+        // back-face culling on in the GUI, which silently removed every rounded panel, circle,
+        // switch and slider. Shapes are 2D, so culling is never wanted here.
+        GlStateManager.disableCull();
         GlStateManager.enableBlend();
         GlStateManager.disableTexture2D();
         GlStateManager.tryBlendFuncSeparate(770, 771, 1, 0);

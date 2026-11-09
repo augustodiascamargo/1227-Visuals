@@ -69,6 +69,7 @@ public final class Glass {
         GlStateManager.enableTexture2D();
         GlStateManager.enableBlend();
         GlStateManager.disableAlpha();
+        GlStateManager.disableCull(); // the fans wind clockwise; culling would drop the whole panel
         GlStateManager.tryBlendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, 1, 0);
         int taps = TAP.length / 2;
         for (int i = 0; i < taps; i++) {

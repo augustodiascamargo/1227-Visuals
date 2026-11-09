@@ -735,16 +735,16 @@ public class ClickGui extends GuiScreen {
     }
 
     private void drawFooter(float wx, float wy, float o) {
-        String l = InputManager.keyName(ClientModule.menuKey()) + " / Esc to close   \u00b7   right-click a module to toggle   \u00b7   /1227   \u00b7   v" + Mod1227.VERSION;
+        String l = InputManager.keyName(ClientModule.menuKey()) + " / Esc to close   \u00b7   right-click to toggle   \u00b7   /1227   \u00b7   v" + Mod1227.VERSION;
         Gfx.rect(wx + SIDE, wy + H - 18, W - SIDE, 1, Gfx.alpha(0x14FFFFFF, o));
         Gfx.text(l, wx + SIDE + 12, wy + H - 12, Gfx.alpha(DIM, 0.7f * o));
         int fps = net.minecraft.client.Minecraft.getDebugFPS();
         int parts = net.m1227.vfx.ParticleSystem.INSTANCE.alive();
         String perf = fps + " FPS  \u00b7  " + parts + " fx";
         int pc = fps >= 100 ? ON : fps >= 50 ? WARN : 0xFFFF5A6A;
-        float pw = Gfx.textWidth(perf);
-        Gfx.circle(wx + W - 18 - pw, wy + H - 8.5f, 2f, Gfx.alpha(pc, o));
-        Gfx.text(perf, wx + W - 12 - pw, wy + H - 12, Gfx.alpha(DIM, 0.85f * o));
+        // bottom of the sidebar, so it never collides with the footer text
+        Gfx.circle(wx + 16, wy + H - 8.5f, 2f, Gfx.alpha(pc, o));
+        Gfx.text(perf, wx + 22, wy + H - 12, Gfx.alpha(DIM, 0.85f * o));
     }
 
     private float localX(float sx) {

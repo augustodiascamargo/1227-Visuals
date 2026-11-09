@@ -1,4 +1,4 @@
-# 1227 — v1.2.0 (Minecraft 1.8.9 · Forge 11.15.1.2318 · Java 8)
+# 1227 — v1.2.1 (Minecraft 1.8.9 · Forge 11.15.1.2318 · Java 8)
 
 Mod client-side e puramente visual. Não envia pacotes, não desenha através de paredes e não muda alcance,
 timing de ataque ou outras mecânicas do servidor.
@@ -94,3 +94,15 @@ nada depende de Lunar ou de outro launcher.
 - Watermark (5 estilos) e Held Item (cartão do item ao trocar, com encantamentos e durabilidade).
 - Hit Sounds: pacotes Neon, Crystal, Arcade, Heavy e Soft, com 3 variações de hit, som de crítico e de kill; tom que sobe com o combo.
 - Tudo foi feito do zero; nenhum código, textura, shader ou som de outro client foi usado.
+
+## Mudanças na v1.2.1
+- Menu e HUD: painéis arredondados, vidro (glass), botões, sliders, círculos e estrelas não apareciam porque o
+  Minecraft mantém o descarte de faces (culling) ligado na interface e as formas eram desenhadas no sentido horário.
+  Agora o culling é desligado ao desenhar as formas 2D.
+- Faixa/bloco escuro na tela: partículas (trails, jump, auras, combate) que nasciam colado na câmera viravam um
+  quadrado enorme cortado pelo plano da câmera. Agora toda partícula some suavemente quando a câmera chega perto dela,
+  usando a posição real da câmera (também em 3ª pessoa).
+- Mão em 1ª pessoa: a matriz de projeção é salva e restaurada por valor em vez de usar a pilha do OpenGL (que pode ter
+  só 2 níveis e transbordar com OptiFine/shaders).
+- Rodapé do menu: o indicador de FPS/efeitos foi para a parte de baixo da barra lateral (antes sobrepunha o texto).
+- Movement Status: largura corrigida.

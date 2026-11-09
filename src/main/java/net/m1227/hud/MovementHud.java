@@ -36,7 +36,7 @@ public final class MovementHud extends HudModule {
             else if (InfoHud.speed(p) > 0.5) state = "Walking";
         }
         String sp = p == null ? "0.0" : String.format(Locale.ROOT, "%.1f", InfoHud.speed(p));
-        w = Gfx.textWidth(state) + Gfx.textWidth(sp) + 26;
+        w = Gfx.textWidth(state) + Gfx.textWidth(sp + "b/s") + 18;
         panel(x, y, w, 14);
         Gfx.text(state, x + 5, y + 3.5f, value());
         Gfx.text(sp + "b/s", x + w - 5 - Gfx.textWidth(sp + "b/s"), y + 3.5f, LABEL);

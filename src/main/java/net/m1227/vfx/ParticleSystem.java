@@ -54,6 +54,8 @@ public final class ParticleSystem {
     public double time;
     /** Camera (eye) position, used for distance checks and view vectors. */
     public double camX, camY, camZ;
+    /** Where the camera really is (differs from the eye in third person). */
+    public double viewX, viewY, viewZ;
     /**
      * Origin that world coordinates must be made relative to when drawing in
      * RenderWorldLastEvent: the view entity's interpolated FEET position. Minecraft's
@@ -181,6 +183,16 @@ public final class ParticleSystem {
             rX = lerp(v.lastTickPosX, v.posX, e.partialTicks);
             rY = lerp(v.lastTickPosY, v.posY, e.partialTicks);
             rZ = lerp(v.lastTickPosZ, v.posZ, e.partialTicks);
+            net.minecraft.util.Vec3 off = net.minecraft.client.renderer.ActiveRenderInfo.getPosition();
+            if (off != null) {
+                viewX = rX + off.xCoord;
+                viewY = rY + off.yCoord;
+                viewZ = rZ + off.zCoord;
+            } else {
+                viewX = camX;
+                viewY = camY;
+                viewZ = camZ;
+            }
         }
     }
 
@@ -693,6 +705,15 @@ public final class ParticleSystem {
         if (alpha <= 0.004f) return;
 
         float size = p.size0 + (p.size1 - p.size0) * t;
+        // Near-camera guard: a billboard whose centre is about as close to the eye as its own size
+        // fills (or crosses) the near plane and shows up as a huge flat slab. Fade it out instead.
+        double ex = p.x - viewX, ey = p.y - viewY, ez = p.z - viewZ;
+        float ed = (float) Math.sqrt(ex * ex + ey * ey + ez * ez);
+        float reach = size * (p.stretch > 0f ? 2.5f : 1.2f) + 0.15f;
+        if (ed < reach) return;
+        if (ed < reach * 2.5f) alpha *= (ed - reach) / (reach * 1.5f);
+        if (p.alphaBlend && ed < 1.2f) return;
+        if (alpha <= 0.004f) return;
         int r = c255(p.r0 + (p.r1 - p.r0) * t);
         int g = c255(p.g0 + (p.g1 - p.g0) * t);
         int b = c255(p.b0 + (p.b1 - p.b0) * t);
