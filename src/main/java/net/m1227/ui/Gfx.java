@@ -79,6 +79,38 @@ public final class Gfx {
         end();
     }
 
+    /** Outline whose colour goes from top (at y) to bottom (at y + h). */
+    public static void roundedOutlineGradient(float x, float y, float w, float h, float r, float t, int top, int bottom) {
+        if (w <= 0f || h <= 0f) return;
+        r = Math.max(0f, Math.min(r, Math.min(w, h) * 0.5f));
+        begin();
+        GL11.glShadeModel(GL11.GL_SMOOTH);
+        GL11.glBegin(GL11.GL_QUAD_STRIP);
+        float[][] c = {{x + w - r, y + r, -90}, {x + w - r, y + h - r, 0}, {x + r, y + h - r, 90}, {x + r, y + r, 180}};
+        float ri = Math.max(0f, r - t);
+        for (int k = 0; k <= 4; k++) {
+            float[] q = c[k % 4];
+            int steps = k == 4 ? 0 : 6;
+            for (int i = 0; i <= steps; i++) {
+                double a = Math.toRadians(q[2] + 90.0 * i / 6.0);
+                float cs = (float) Math.cos(a), sn = (float) Math.sin(a);
+                float vy = q[1] + sn * r;
+                color(mixArgb(top, bottom, (vy - y) / h));
+                GL11.glVertex2f(q[0] + cs * r, vy);
+                GL11.glVertex2f(q[0] + cs * ri, q[1] + sn * ri);
+            }
+        }
+        GL11.glEnd();
+        GL11.glShadeModel(GL11.GL_FLAT);
+        end();
+    }
+
+    private static int mixArgb(int a, int b, float t) {
+        t = Math.max(0f, Math.min(1f, t));
+        int aa = (int) ((a >>> 24) + ((b >>> 24) - (a >>> 24)) * t);
+        return (aa << 24) | (mix(a, b, t) & 0xFFFFFF);
+    }
+
     /** Rounded-rectangle outline, thickness in GUI units. */
     public static void roundedOutline(float x, float y, float w, float h, float r, float t, int argb) {
         if (w <= 0f || h <= 0f || (argb >>> 24) == 0) return;
@@ -221,26 +253,99 @@ public final class Gfx {
 
     // ------------------------------------------------------------- text
 
+    // Smooth font mode: while active (the menu turns it on), text goes through TtfFont.
+    private static float smoothPxPerUnit;
+    private static String weight = TtfFont.REGULAR;
+    /** Size of normal text in GUI units when the smooth font is on (Minecraft's font is ~8 tall). */
+    private static final float EM = 8.6f;
+
+    /** Turn the smooth font on; pxPerUnit = screen pixels per GUI unit at the size text is drawn. */
+    public static void smoothFont(float pxPerUnit) {
+        smoothPxPerUnit = pxPerUnit;
+    }
+
+    public static void vanillaFont() {
+        smoothPxPerUnit = 0f;
+        weight = TtfFont.REGULAR;
+    }
+
+    public static boolean smooth() {
+        return smoothPxPerUnit > 0f;
+    }
+
+    /** Regular / Medium / Bold / Light for the following text calls (smooth font only). */
+    public static void weight(String w) {
+        weight = w;
+    }
+
+    private static TtfFont ttf(float scale) {
+        if (smoothPxPerUnit <= 0f) return null;
+        return TtfFont.get(weight, Math.round(EM * scale * smoothPxPerUnit));
+    }
+
     public static void text(String s, float x, float y, int argb) {
-        // FontRenderer treats alpha <= 3 as opaque, so skip near-invisible text.
+        text(s, x, y, 1f, argb);
+    }
+
+    private static void text(String s, float x, float y, float scale, int argb) {
         if ((argb >>> 24) < 8) return;
+        TtfFont f = ttf(scale);
+        if (f != null) {
+            float k = (EM * scale) / Math.max(1f, Math.round(EM * scale * smoothPxPerUnit));
+            // centre the glyphs' cap height in the 8-unit line Minecraft text used, so layouts keep working
+            f.draw(s, x, y - 2.6f * scale, k, argb);
+            return;
+        }
         GlStateManager.enableBlend();
         GlStateManager.tryBlendFuncSeparate(770, 771, 1, 0);
-        Minecraft.getMinecraft().fontRendererObj.drawString(s, x, y, argb, false);
+        GlStateManager.pushMatrix();
+        GlStateManager.translate(x, y, 0f);
+        GlStateManager.scale(scale, scale, 1f);
+        Minecraft.getMinecraft().fontRendererObj.drawString(s, 0f, 0f, argb, false);
+        GlStateManager.popMatrix();
         GlStateManager.color(1f, 1f, 1f, 1f);
         org.lwjgl.opengl.GL11.glColor4f(1f, 1f, 1f, 1f); // raw glColor calls bypass GlStateManager's cache
     }
 
     public static void textScaled(String s, float x, float y, float scale, int argb) {
-        GlStateManager.pushMatrix();
-        GlStateManager.translate(x, y, 0f);
-        GlStateManager.scale(scale, scale, 1f);
-        text(s, 0f, 0f, argb);
-        GlStateManager.popMatrix();
+        text(s, x, y, scale, argb);
     }
 
-    public static int textWidth(String s) {
+    public static float textWidth(String s) {
+        TtfFont f = ttf(1f);
+        if (f != null) return f.widthPx(s) * EM / Math.max(1f, Math.round(EM * smoothPxPerUnit));
         return Minecraft.getMinecraft().fontRendererObj.getStringWidth(s);
+    }
+
+    public static float textWidth(String s, float scale) {
+        TtfFont f = ttf(scale);
+        if (f != null) return f.widthPx(s) * EM * scale / Math.max(1f, Math.round(EM * scale * smoothPxPerUnit));
+        return Minecraft.getMinecraft().fontRendererObj.getStringWidth(s) * scale;
+    }
+
+    /** Cuts the string to fit maxW (adds an ellipsis). */
+    public static String trim(String s, float maxW) {
+        if (textWidth(s) <= maxW) return s;
+        String e = smooth() ? "\u2026" : "..";
+        while (s.length() > 1 && textWidth(s + e) > maxW) s = s.substring(0, s.length() - 1);
+        return s + e;
+    }
+
+    /** Word-wraps to maxW. */
+    public static java.util.List<String> wrap(String s, float maxW) {
+        java.util.List<String> out = new java.util.ArrayList<String>();
+        StringBuilder line = new StringBuilder();
+        for (String word : s.split(" ")) {
+            String t = line.length() == 0 ? word : line + " " + word;
+            if (textWidth(t) > maxW && line.length() > 0) {
+                out.add(line.toString());
+                line = new StringBuilder(word);
+            } else {
+                line = new StringBuilder(t);
+            }
+        }
+        if (line.length() > 0) out.add(line.toString());
+        return out;
     }
 
     // ---------------------------------------------------------- scissor

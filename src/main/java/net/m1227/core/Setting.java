@@ -140,6 +140,11 @@ public abstract class Setting<T> {
             this.options = options;
         }
 
+        /** Changes the value without saving (used by menu previews, always restored right after). */
+        public void setSilently(String v) {
+            value = v;
+        }
+
         public boolean is(String s) {
             return value.equals(s);
         }

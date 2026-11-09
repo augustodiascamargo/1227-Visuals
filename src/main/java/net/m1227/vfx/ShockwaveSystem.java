@@ -10,7 +10,7 @@ import org.lwjgl.opengl.GL11;
  * need a framebuffer shader and is not part of this version.
  */
 public final class ShockwaveSystem {
-    public static final ShockwaveSystem INSTANCE = new ShockwaveSystem();
+    public static ShockwaveSystem INSTANCE = new ShockwaveSystem();
     private static final int MAX = 10;
     private static final int SHELLS = 3;
 
@@ -20,7 +20,12 @@ public final class ShockwaveSystem {
     private int count;
     private int list = -1;
 
-    private ShockwaveSystem() {}
+    ShockwaveSystem() {}
+
+    /** A private instance for menu previews. */
+    public static ShockwaveSystem isolated() {
+        return new ShockwaveSystem();
+    }
 
     public boolean active() {
         return count > 0;

@@ -93,4 +93,15 @@ public final class Icons {
                     cx + (float) Math.cos(a1) * rx, cy + (float) Math.sin(a1) * ry, w, c);
         }
     }
+
+    /** Magnifier for the search field. */
+    public static void search(float cx, float cy, int c) {
+        float r = 3.2f;
+        for (int k = 0; k < 16; k++) {
+            double a0 = k * Math.PI * 2 / 16, a1 = (k + 1) * Math.PI * 2 / 16;
+            Gfx.line(cx - 1f + (float) Math.cos(a0) * r, cy - 1f + (float) Math.sin(a0) * r,
+                    cx - 1f + (float) Math.cos(a1) * r, cy - 1f + (float) Math.sin(a1) * r, 1.1f, c);
+        }
+        Gfx.line(cx + 1.4f, cy + 1.4f, cx + 3.8f, cy + 3.8f, 1.3f, c);
+    }
 }

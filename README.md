@@ -1,4 +1,4 @@
-# 1227 — v1.4.0 (Minecraft 1.8.9 · Forge 11.15.1.2318 · Java 8)
+# 1227 — v1.5.0 (Minecraft 1.8.9 · Forge 11.15.1.2318 · Java 8)
 
 Mod client-side e puramente visual. Não envia pacotes, não desenha através de paredes e não muda alcance,
 timing de ataque ou outras mecânicas do servidor.
@@ -128,3 +128,16 @@ nada depende de Lunar ou de outro launcher.
   existe apenas na sua tela) aparece à sua frente e o efeito toca nele — o Kill Effect faz o boneco sumir, o Hit Effect
   faz ele reagir. Depois o menu volta sozinho (ou clique para voltar). Previews novos: crítico, vitória, derrota,
   teleporte e Damage Numbers.
+
+## Mudanças na v1.5.0
+- Menu repaginado: janela maior, fonte lisa (Poppins, licença SIL OFL, incluída em assets/m1227/fonts com o OFL.txt)
+  desenhada em alta resolução em vez da fonte pixelada do Minecraft, barra lateral com marca, busca, contadores e
+  seu personagem + FPS, cartões com bolinha de status, chave de atalho em "chip", switches e estrelas novos,
+  seletores curtos viram botões segmentados.
+- Galeria de efeitos com preview ao vivo: ao abrir Hit Effect, Kill Effect, Jump Effects, Target Aura ou Player Aura,
+  o seletor de estilo vira uma grade de cartões; cada cartão mostra o efeito tocando em loop num boneco, em 3D,
+  usando o mesmo código do jogo (não é vídeo gravado). Clique no cartão para escolher.
+- Novo estilo de menu Liquid Glass (padrão): fundo bem transparente com efeito de lente, borda com brilho especular.
+- Botão "Menu style" no topo do menu abre direto a página Settings > Menu Style (agora a primeira de Settings).
+- Editor de HUD: botões para ligar/desligar também Dynamic Island, Crosshair, Nametags, Chat e Hit Marker
+  (ex.: para trazer a Dynamic Island de volta depois de desligar).

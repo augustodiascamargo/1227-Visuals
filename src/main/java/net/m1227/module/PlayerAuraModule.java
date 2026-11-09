@@ -30,6 +30,26 @@ public final class PlayerAuraModule extends Module {
         firstPerson = add(new Setting.Bool("Show in first person", false));
     }
 
+    /** Menu gallery: draws one style around a stand-in entity (into the preview stage's systems). */
+    public void drawPreview(String st, net.minecraft.entity.Entity e, AuraLibrary.State s) {
+        fill();
+        AuraLibrary.draw(st, e, 1f, s, params);
+    }
+
+    private void fill() {
+        AuraLibrary.Params p = params;
+        p.c0 = fx.color1.rgb();
+        p.c1 = fx.color2.rgb();
+        p.alpha = fx.alpha();
+        p.size = fx.size.f();
+        p.speed = fx.speed.f();
+        p.amount = fx.amount.f();
+        p.radius = radius.f();
+        p.life = fx.duration.f();
+        p.fade = fx.fade.f();
+        p.rainbow = rainbow.on();
+    }
+
     @SubscribeEvent
     public void onRender(RenderWorldLastEvent e) {
         Minecraft mc = Minecraft.getMinecraft();

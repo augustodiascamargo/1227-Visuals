@@ -11,14 +11,19 @@ import org.lwjgl.opengl.GL11;
  * Fixed preallocated arrays: no allocation per frame.
  */
 public final class Lines {
-    public static final Lines INSTANCE = new Lines();
+    public static Lines INSTANCE = new Lines();
     private static final int MAX = 6000;
 
     private final float[] a = new float[MAX * 6];
     private final float[] col = new float[MAX * 4];
     private int count;
 
-    private Lines() {}
+    Lines() {}
+
+    /** A private instance for menu previews. */
+    public static Lines isolated() {
+        return new Lines();
+    }
 
     /** Adds a segment; positions are world coordinates. */
     public void add(double x1, double y1, double z1, double x2, double y2, double z2, int rgb, float alpha) {

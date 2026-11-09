@@ -21,6 +21,8 @@ import org.lwjgl.input.Mouse;
 public final class HudEditorScreen extends GuiScreen {
     private static final float SNAP = 4f;
     private final List<HudModule> huds = new ArrayList<HudModule>();
+    /** Everything shown as an on/off chip: the movable elements plus HUD modules that draw elsewhere (island, crosshair...). */
+    private final List<Module> chips = new ArrayList<Module>();
     private HudModule dragging;
     private float offX, offY;
     private float guideX = -1, guideY = -1;
@@ -29,6 +31,7 @@ public final class HudEditorScreen extends GuiScreen {
     public HudEditorScreen() {
         for (Module m : ModuleManager.inCategory(Category.HUD)) {
             if (m instanceof HudModule) huds.add((HudModule) m);
+            if (m.toggleable()) chips.add(m);
         }
     }
 
@@ -67,22 +70,30 @@ public final class HudEditorScreen extends GuiScreen {
         return 6;
     }
 
-    /** Returns chip x positions; lays chips out centred on one row. */
-    private float[] chipX() {
-        float total = 0;
-        float[] w = new float[huds.size()];
-        for (int i = 0; i < huds.size(); i++) {
-            w[i] = Gfx.textWidth(huds.get(i).name) + 16;
-            total += w[i] + 4;
+    /** Chip rectangles {x, y, w} laid out in centred rows. */
+    private float[][] chipRects() {
+        float[][] r = new float[chips.size()][];
+        float maxW = width - 40, rowY = 6;
+        int i = 0;
+        while (i < chips.size()) {
+            int j = i;
+            float total = 0;
+            while (j < chips.size()) {
+                float w = Gfx.textWidth(chips.get(j).name) + 16;
+                if (total + w > maxW && j > i) break;
+                total += w + 4;
+                j++;
+            }
+            float cx = (width - total + 4) / 2f;
+            for (int k = i; k < j; k++) {
+                float w = Gfx.textWidth(chips.get(k).name) + 16;
+                r[k] = new float[]{cx, rowY, w};
+                cx += w + 4;
+            }
+            rowY += 18;
+            i = j;
         }
-        float[] x = new float[huds.size() + 1];
-        float cx = (width - total + 4) / 2f;
-        for (int i = 0; i < huds.size(); i++) {
-            x[i] = cx;
-            cx += w[i] + 4;
-        }
-        x[huds.size()] = cx;
-        return x;
+        return r;
     }
 
     @Override
@@ -121,15 +132,14 @@ public final class HudEditorScreen extends GuiScreen {
         }
 
         // chips
-        float[] cx = chipX();
-        float cy = chipsY();
-        for (int i = 0; i < huds.size(); i++) {
-            HudModule h = huds.get(i);
-            float w = cx[i + 1] - cx[i] - 4;
-            boolean over = mx >= cx[i] && mx <= cx[i] + w && my >= cy && my <= cy + 14;
+        float[][] cr = chipRects();
+        for (int i = 0; i < chips.size(); i++) {
+            Module h = chips.get(i);
+            float[] r = cr[i];
+            boolean over = mx >= r[0] && mx <= r[0] + r[2] && my >= r[1] && my <= r[1] + 14;
             int bg = h.isEnabled() ? Gfx.alpha(accent(), over ? 0.95f : 0.8f) : Gfx.alpha(0xFF15171F, over ? 0.95f : 0.85f);
-            Gfx.roundedRect(cx[i], cy, w, 14, 7, bg);
-            Gfx.text(h.name, cx[i] + 8, cy + 3.5f, h.isEnabled() ? 0xFFFFFFFF : 0xFFA9ADBA);
+            Gfx.roundedRect(r[0], r[1], r[2], 14, 7, bg);
+            Gfx.text(h.name, r[0] + 8, r[1] + 3.5f, h.isEnabled() ? 0xFFFFFFFF : 0xFFA9ADBA);
         }
         String help = "Drag to move  ·  Scroll to resize  ·  Right-click to reset  ·  Esc to save";
         float hw = Gfx.textWidth(help);
@@ -140,12 +150,11 @@ public final class HudEditorScreen extends GuiScreen {
 
     @Override
     protected void mouseClicked(int mx, int my, int button) throws IOException {
-        float[] cx = chipX();
-        float cy = chipsY();
-        for (int i = 0; i < huds.size(); i++) {
-            float w = cx[i + 1] - cx[i] - 4;
-            if (mx >= cx[i] && mx <= cx[i] + w && my >= cy && my <= cy + 14) {
-                huds.get(i).toggle();
+        float[][] cr = chipRects();
+        for (int i = 0; i < chips.size(); i++) {
+            float[] r = cr[i];
+            if (mx >= r[0] && mx <= r[0] + r[2] && my >= r[1] && my <= r[1] + 14) {
+                chips.get(i).toggle();
                 return;
             }
         }

@@ -42,7 +42,8 @@ import org.lwjgl.opengl.GL11;
  * Depth test stays on, so effects are hidden by blocks (never see-through).
  */
 public final class ParticleSystem {
-    public static final ParticleSystem INSTANCE = new ParticleSystem();
+    /** The world's particle system. Swapped briefly for an isolated one while the menu draws effect previews. */
+    public static ParticleSystem INSTANCE = new ParticleSystem(6000, 1024);
     private static final int HARD_CAP = 6000;
     private static final int FRAME_CAP = 1024;
     private static final int CELL = 128;
@@ -64,17 +65,63 @@ public final class ParticleSystem {
      */
     public double rX, rY, rZ;
 
-    private final Particle[] pool = new Particle[HARD_CAP];
-    private final Particle[] frameParticles = new Particle[FRAME_CAP];
+    private final Particle[] pool;
+    private final Particle[] frameParticles;
     private int count, frameCount;
     private long lastNanos;
-    private ResourceLocation atlas;
+    private static ResourceLocation atlas;
+    /** Isolated systems (menu previews) ignore the world distance limit. */
+    private boolean stage;
     private float bRx, bRz, bUx, bUy, bUz;
     private double maxD2;
 
-    private ParticleSystem() {
-        for (int i = 0; i < HARD_CAP; i++) pool[i] = new Particle();
-        for (int i = 0; i < FRAME_CAP; i++) frameParticles[i] = new Particle();
+    private ParticleSystem(int cap, int frameCap) {
+        pool = new Particle[cap];
+        frameParticles = new Particle[frameCap];
+        for (int i = 0; i < cap; i++) pool[i] = new Particle();
+        for (int i = 0; i < frameCap; i++) frameParticles[i] = new Particle();
+    }
+
+    /** A small private system for menu previews (not registered for world events). */
+    public static ParticleSystem isolated(int cap) {
+        ParticleSystem p = new ParticleSystem(cap, 128);
+        p.stage = true;
+        return p;
+    }
+
+    /**
+     * Updates and draws an isolated system with the GL matrices already set up by the caller
+     * (a little stage camera at camX..camZ looking with the given yaw / pitch). Shockwaves,
+     * arcs and lines draw from whatever instances are currently installed (the stage swaps them).
+     */
+    public void renderStage(float d, double cx, double cy, double cz, float yaw, float pitch) {
+        dt = d;
+        time += d;
+        camX = viewX = cx;
+        camY = viewY = cy;
+        camZ = viewZ = cz;
+        rX = rY = rZ = 0;
+        Minecraft mc = Minecraft.getMinecraft();
+        ShockwaveSystem sw = ShockwaveSystem.INSTANCE;
+        if (sw.active()) {
+            sw.update(d);
+            sw.emitSprites(this);
+            sw.render(0, 0, 0);
+        }
+        update(d);
+        if (count > 0 || frameCount > 0) render(mc, yaw, pitch);
+        Arcs arcs = Arcs.INSTANCE;
+        if (arcs.active()) {
+            arcs.update(d);
+            arcs.render(this);
+        }
+        Lines.INSTANCE.render();
+        frameCount = 0;
+    }
+
+    public void clearAll() {
+        count = 0;
+        frameCount = 0;
     }
 
     // ------------------------------------------------------------ helpers
@@ -112,6 +159,7 @@ public final class ParticleSystem {
 
     public boolean inRange(double x, double y, double z) {
         double dx = x - camX, dy = y - camY, dz = z - camZ;
+        if (stage) return true;
         double d = PerformanceModule.INSTANCE.distance.get();
         return dx * dx + dy * dy + dz * dz <= d * d;
     }
@@ -120,7 +168,7 @@ public final class ParticleSystem {
 
     /** Returns a reset particle at the position, or null if capped or too far. */
     public Particle spawn(double x, double y, double z) {
-        if (count >= Math.min(HARD_CAP, PerformanceModule.INSTANCE.maxParticles.i())) return null;
+        if (count >= (stage ? pool.length : Math.min(pool.length, PerformanceModule.INSTANCE.maxParticles.i()))) return null;
         if (!inRange(x, y, z)) return null;
         Particle p = pool[count++];
         p.reset();
@@ -150,7 +198,7 @@ public final class ParticleSystem {
      * frame from its own RenderWorldLastEvent handler.
      */
     public Particle frame(double x, double y, double z) {
-        if (frameCount >= FRAME_CAP) return null;
+        if (frameCount >= frameParticles.length) return null;
         if (!inRange(x, y, z)) return null;
         Particle p = frameParticles[frameCount++];
         p.reset();
@@ -210,7 +258,7 @@ public final class ParticleSystem {
             sw.render(rX, rY, rZ);
         }
         update(dt);
-        if (count > 0 || frameCount > 0) render(mc);
+        if (count > 0 || frameCount > 0) render(mc, mc.getRenderManager().playerViewY, mc.getRenderManager().playerViewX);
         Arcs arcs = Arcs.INSTANCE;
         if (arcs.active()) {
             arcs.update(dt);
@@ -633,10 +681,9 @@ public final class ParticleSystem {
         return i < 0 ? 0 : (i > 255 ? 255 : i);
     }
 
-    private void render(Minecraft mc) {
+    private void render(Minecraft mc, float viewYaw, float viewPitch) {
         ensureTexture(mc);
-        RenderManager rm = mc.getRenderManager();
-        double ry = Math.toRadians(rm.playerViewY), rp = Math.toRadians(rm.playerViewX);
+        double ry = Math.toRadians(viewYaw), rp = Math.toRadians(viewPitch);
         float sy = (float) Math.sin(ry), cy = (float) Math.cos(ry);
         float sp = (float) Math.sin(rp), cp = (float) Math.cos(rp);
         // Camera right / up vectors in world space (billboard basis).
@@ -645,7 +692,7 @@ public final class ParticleSystem {
         bUx = -sp * sy;
         bUy = cp;
         bUz = sp * cy;
-        double maxD = PerformanceModule.INSTANCE.distance.get();
+        double maxD = stage ? 1000.0 : PerformanceModule.INSTANCE.distance.get();
         maxD2 = maxD * maxD;
 
         mc.getTextureManager().bindTexture(atlas);

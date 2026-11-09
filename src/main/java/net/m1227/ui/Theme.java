@@ -20,7 +20,12 @@ public final class Theme {
 
     /** Frosted background (Minecraft's blur shader + glass copy behind panels). */
     public static boolean blur() {
-        return (is("Glass") || is("Frosted")) && blurAmount() > 0.01f;
+        return (is("Glass") || is("Frosted") || liquid()) && blurAmount() > 0.01f;
+    }
+
+    /** Apple-style liquid glass: very clear, magnified background, bright specular rim. */
+    public static boolean liquid() {
+        return is("Liquid Glass");
     }
 
     public static float blurAmount() {
@@ -62,6 +67,7 @@ public final class Theme {
     /** Main window fill (drawn over the glass copy when blurred). */
     public static int window() {
         String s = style();
+        if (s.equals("Liquid Glass")) return a(tint(), 0.22f);
         if (s.equals("Glass")) return a(tint(), 0.42f);
         if (s.equals("Frosted")) return a(tint(), 0.72f);
         if (s.equals("Transparent")) return a(tint(), 0.55f);
@@ -71,6 +77,7 @@ public final class Theme {
 
     public static int sidebar() {
         String s = style();
+        if (s.equals("Liquid Glass")) return a(0xFFFFFFFF, 0.05f);
         if (s.equals("Glass")) return a(0xFFFFFFFF, 0.035f);
         if (s.equals("Frosted")) return a(0xFF000000, 0.18f);
         if (s.equals("Transparent")) return a(0xFF000000, 0.22f);
@@ -80,6 +87,7 @@ public final class Theme {
 
     public static int card(float hover) {
         String s = style();
+        if (s.equals("Liquid Glass")) return a(0xFFFFFFFF, 0.07f + 0.05f * hover);
         if (s.equals("Glass")) return a(0xFFFFFFFF, 0.045f + 0.04f * hover);
         if (s.equals("Frosted")) return a(0xFFFFFFFF, 0.035f + 0.035f * hover);
         if (s.equals("Transparent")) return a(Gfx.mix(tint(), 0xFF2A2E3A, 0.5f), 0.45f + 0.15f * hover);
@@ -91,6 +99,7 @@ public final class Theme {
     public static int cardBorder(int accent) {
         String s = style();
         float b = border();
+        if (s.equals("Liquid Glass")) return Gfx.alpha(0xFFFFFFFF, 0.16f * b);
         if (s.equals("Glass")) return Gfx.alpha(0xFFFFFFFF, 0.09f * b);
         if (s.equals("Frosted")) return Gfx.alpha(0xFFFFFFFF, 0.06f * b);
         if (s.equals("Minimal")) return Gfx.alpha(0xFFFFFFFF, 0.12f * b);
@@ -101,6 +110,7 @@ public final class Theme {
     public static int windowBorder(int accent) {
         String s = style();
         float b = border();
+        if (s.equals("Liquid Glass")) return Gfx.alpha(0xFFFFFFFF, 0.30f * b);
         if (s.equals("Glass")) return Gfx.alpha(0xFFFFFFFF, 0.18f * b);
         if (s.equals("Frosted")) return Gfx.alpha(0xFFFFFFFF, 0.12f * b);
         if (s.equals("Neon")) return Gfx.alpha(accent, 0.9f * Math.min(1f, b));

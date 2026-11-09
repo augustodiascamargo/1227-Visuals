@@ -40,6 +40,12 @@ public final class TargetAuraModule extends Module {
         if (preview.on() && mc.gameSettings.thirdPersonView != 0) AuraLibrary.draw(style.get(), mc.thePlayer, e.partialTicks, self, params);
     }
 
+    /** Menu gallery: draws one style around a stand-in entity (into the preview stage's systems). */
+    public void drawPreview(String st, net.minecraft.entity.Entity e, AuraLibrary.State s) {
+        fill();
+        AuraLibrary.draw(st, e, 1f, s, params);
+    }
+
     private void fill() {
         AuraLibrary.Params p = params;
         p.c0 = fx.color1.rgb();

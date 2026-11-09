@@ -41,7 +41,20 @@ public final class Glass {
      * caller (so the copied screen area lines up).
      */
     public static void panel(float x, float y, float w, float h, float r, float outerScale, int tint, float tintAlpha, float blurPx) {
+        panel(x, y, w, h, r, outerScale, tint, tintAlpha, blurPx, 0f);
+    }
+
+    private static float lensCx, lensCy, lensAmt;
+
+    /**
+     * lens > 0 gives the "liquid glass" look: what is behind the panel is drawn slightly
+     * magnified towards the centre, like looking through a thick rounded slab of glass.
+     */
+    public static void panel(float x, float y, float w, float h, float r, float outerScale, int tint, float tintAlpha, float blurPx, float lens) {
         Minecraft mc = Minecraft.getMinecraft();
+        lensCx = x + w * 0.5f;
+        lensCy = y + h * 0.5f;
+        lensAmt = lens;
         int sf = new ScaledResolution(mc).getScaleFactor();
         float k = outerScale * sf;
         int pad = (int) Math.ceil(blurPx) + 2;
@@ -80,9 +93,15 @@ public final class Glass {
         org.lwjgl.opengl.GL11.glColor4f(1f, 1f, 1f, 1f); // raw glColor calls bypass GlStateManager's cache
         GlStateManager.enableAlpha();
         // frosted look: a faint milky layer, then the tint, then a soft light falloff from the top edge
-        Gfx.roundedRect(x, y, w, h, r, 0x0AFFFFFF);
+        Gfx.roundedRect(x, y, w, h, r, lens > 0f ? 0x06FFFFFF : 0x0AFFFFFF);
         Gfx.roundedRect(x, y, w, h, r, Gfx.alpha(tint, tintAlpha));
-        Gfx.gradient(x + r * 0.6f, y + 0.5f, w - r * 1.2f, Math.min(h * 0.5f, 14f), 0x14FFFFFF, 0x00FFFFFF);
+        Gfx.gradient(x + r * 0.6f, y + 0.5f, w - r * 1.2f, Math.min(h * 0.5f, 14f), lens > 0f ? 0x22FFFFFF : 0x14FFFFFF, 0x00FFFFFF);
+        if (lens > 0f) {
+            // specular rim: bright along the top, fading to a faint edge at the bottom
+            Gfx.roundedOutlineGradient(x, y, w, h, r, 1f, 0x66FFFFFF, 0x14FFFFFF);
+            Gfx.roundedOutlineGradient(x + 1f, y + 1f, w - 2f, h - 2f, Math.max(0f, r - 1f), 1f, 0x18FFFFFF, 0x06FFFFFF);
+        }
+        lensAmt = 0f;
     }
 
     private static void fan(float x, float y, float w, float h, float r, float k, int px0, int py0, float ox, float oy, int dispH) {
@@ -105,8 +124,13 @@ public final class Glass {
     }
 
     private static void vertex(float gx, float gy, float k, int px0, int py0, float ox, float oy, int dispH) {
-        float u = (gx * k - px0 + ox) / texW;
-        float v = (dispH - gy * k - py0 + oy) / texH;
+        float sx = gx, sy = gy;
+        if (lensAmt > 0f) {
+            sx = lensCx + (gx - lensCx) * (1f - lensAmt);
+            sy = lensCy + (gy - lensCy) * (1f - lensAmt);
+        }
+        float u = (sx * k - px0 + ox) / texW;
+        float v = (dispH - sy * k - py0 + oy) / texH;
         GL11.glTexCoord2f(u, v);
         GL11.glVertex2f(gx, gy);
     }

@@ -10,7 +10,7 @@ import org.lwjgl.opengl.GL11;
  * wide dim glow pass plus a thin bright core, with optional side branches.
  */
 public final class Arcs {
-    public static final Arcs INSTANCE = new Arcs();
+    public static Arcs INSTANCE = new Arcs();
     private static final int MAX = 48, SEG = 12;
 
     private final double[] x0 = new double[MAX], y0 = new double[MAX], z0 = new double[MAX];
@@ -21,7 +21,12 @@ public final class Arcs {
     private final Random rng = new Random();
     private final float[] px = new float[SEG + 1], py = new float[SEG + 1], pz = new float[SEG + 1];
 
-    private Arcs() {}
+    Arcs() {}
+
+    /** A private instance for menu previews. */
+    public static Arcs isolated() {
+        return new Arcs();
+    }
 
     public boolean active() {
         return count > 0;
