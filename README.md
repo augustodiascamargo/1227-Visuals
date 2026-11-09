@@ -1,4 +1,4 @@
-# 1227 — v1.2.1 (Minecraft 1.8.9 · Forge 11.15.1.2318 · Java 8)
+# 1227 — v1.3.0 (Minecraft 1.8.9 · Forge 11.15.1.2318 · Java 8)
 
 Mod client-side e puramente visual. Não envia pacotes, não desenha através de paredes e não muda alcance,
 timing de ataque ou outras mecânicas do servidor.
@@ -106,3 +106,11 @@ nada depende de Lunar ou de outro launcher.
   só 2 níveis e transbordar com OptiFine/shaders).
 - Rodapé do menu: o indicador de FPS/efeitos foi para a parte de baixo da barra lateral (antes sobrepunha o texto).
 - Movement Status: largura corrigida.
+
+## Mudanças na v1.3.0
+- Weapon Effects e Item Glow não substituem mais o desenho da mão do Minecraft: os efeitos são desenhados logo antes
+  e o próprio jogo desenha a espada por cima. Só 1.7 Animations e Weapon Models ainda assumem o desenho da mão.
+- Settings > Client > "First-person hand": "Compatibility" nunca substitui o desenho da mão (para launchers/mods que
+  também mexem na mão). Nesse modo os efeitos continuam, mas as poses 1.7 e as espadas 3D ficam desligadas.
+- Raios de verdade na lâmina (Weapon Effects > "Lightning arcs on blade": Auto/On/Off; Weapon Models > "Lightning arcs").
+- Weapon Models: novo modelo Storm Blade, controles de espessura, comprimento e posição (X/Y/Z); espessura padrão maior.

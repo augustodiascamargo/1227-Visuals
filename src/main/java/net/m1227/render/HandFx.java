@@ -70,7 +70,8 @@ public final class HandFx {
         // glow copies redraw the vanilla model, which would show through a custom 3D model
         boolean glow = g != null && g.isEnabled() && g.applies(stack) && (wm == null || !wm.replaces(stack));
         weaponThisFrame = weapon;
-        if (!weapon && !glow) return;
+        boolean arcs = (weapon && w.lightningArcs()) || (wm != null && wm.lightning() && wm.replaces(stack));
+        if (!weapon && !glow && !arcs) return;
         IBakedModel model = mc.getRenderItem().getItemModelMesher().getItemModel(stack);
         if (model == null) return;
         GlStateManager.pushMatrix();
@@ -81,6 +82,17 @@ public final class HandFx {
         if (glow) glowCopies(mc, stack, model, g);
         GlStateManager.scale(0.5F, 0.5F, 0.5F);
         GlStateManager.translate(-0.5F, -0.5F, -0.5F);
+        if (arcs) {
+            float b0 = weapon ? w.bladeStart() : 0.3f, b1 = weapon ? w.bladeEnd() : 0.97f;
+            mv.clear();
+            GL11.glGetFloat(GL11.GL_MODELVIEW_MATRIX, mv);
+            float[] b = tf(bx(b0), bx(b0), 0.5f);
+            arcB[0] = b[0]; arcB[1] = b[1]; arcB[2] = b[2];
+            float[] t = tf(bx(b1), bx(b1), 0.5f);
+            arcT[0] = t[0]; arcT[1] = t[1]; arcT[2] = t[2];
+            arcColor = weapon ? w.col0() : wm.glowColor();
+            arcsNow = true;
+        }
         if (weapon) {
             float b0 = w.bladeStart(), b1 = w.bladeEnd();
             if (w.bladeGlow()) bladeAura(w, b0, b1);
@@ -305,7 +317,9 @@ public final class HandFx {
             count = 0;
         }
         weaponThisFrame = false;
-        if (w == null || (count < 2 && pn == 0)) return;
+        boolean arcsFrame = arcsNow;
+        arcsNow = false;
+        if (w == null || (count < 2 && pn == 0 && !arcsFrame)) return;
 
         boolean fog = GL11.glIsEnabled(GL11.GL_FOG);
         GlStateManager.disableFog();
@@ -317,6 +331,7 @@ public final class HandFx {
         GlStateManager.disableAlpha();
 
         if (count >= 2 && w.swingTrail()) trail(w);
+        if (arcsFrame) lightning(dt);
 
         if (pn > 0) {
             ParticleSystem.INSTANCE.bindAtlas();
@@ -352,6 +367,75 @@ public final class HandFx {
         if (fog) GlStateManager.enableFog();
         GlStateManager.color(1f, 1f, 1f, 1f);
         org.lwjgl.opengl.GL11.glColor4f(1f, 1f, 1f, 1f); // raw glColor calls bypass GlStateManager's cache
+    }
+
+    // ------------------------------------------------------ lightning arcs
+
+    private static final int NA = 4, NP = 12;
+    private final float[] arcB = new float[3], arcT = new float[3];
+    private final float[][] arcT01 = new float[NA][NP], arcO1 = new float[NA][NP], arcO2 = new float[NA][NP];
+    private final float[] arcLife = new float[NA];
+    private int arcColor = 0x9AD0FF;
+    private boolean arcsNow;
+    private float arcTimer;
+
+    /**
+     * Jagged electric arcs that jump between points of the blade, re-rolled about 20 times a
+     * second, with the odd branch leaping off the edge. Stored as blade-relative coordinates so
+     * they stay glued to the sword while it swings.
+     */
+    private void lightning(float dt) {
+        if (arcB[2] > -0.1f || arcT[2] > -0.1f) return; // behind the near plane
+        arcTimer -= dt;
+        if (arcTimer <= 0f) {
+            arcTimer = 0.04f + (float) Math.random() * 0.03f;
+            for (int a = 0; a < NA; a++) {
+                if (Math.random() < 0.35) {
+                    arcLife[a] = 0f; // a gap now and then makes it flicker like real sparks
+                    continue;
+                }
+                arcLife[a] = 1f;
+                float t0 = (float) Math.random() * 0.75f, t1 = Math.min(1f, t0 + 0.12f + (float) Math.random() * 0.3f);
+                boolean branch = Math.random() < 0.3;
+                float dir = Math.random() < 0.5 ? -1f : 1f;
+                for (int k = 0; k < NP; k++) {
+                    float u = k / (float) (NP - 1);
+                    float env = (float) Math.sin(Math.PI * u);
+                    arcT01[a][k] = t0 + (t1 - t0) * u;
+                    arcO1[a][k] = ((float) Math.random() - 0.5f) * 0.05f * env + (branch ? dir * 0.12f * u * u : 0f);
+                    arcO2[a][k] = ((float) Math.random() - 0.5f) * 0.05f * env;
+                }
+            }
+        }
+        float dx = arcT[0] - arcB[0], dy = arcT[1] - arcB[1], dz = arcT[2] - arcB[2];
+        // two directions perpendicular to the blade
+        float ax = dy * 1f - dz * 0f, ay = dz * 0f - dx * 1f, az = 0f; // d x (0,0,1)
+        float al = (float) Math.sqrt(ax * ax + ay * ay + az * az);
+        if (al < 1e-5f) return;
+        ax /= al; ay /= al; az /= al;
+        float bxv = dy * az - dz * ay, byv = dz * ax - dx * az, bzv = dx * ay - dy * ax;
+        float bl = (float) Math.sqrt(bxv * bxv + byv * byv + bzv * bzv);
+        if (bl < 1e-5f) return;
+        bxv /= bl; byv /= bl; bzv /= bl;
+        float r = ((arcColor >> 16) & 255) / 255f, g = ((arcColor >> 8) & 255) / 255f, b = (arcColor & 255) / 255f;
+        GlStateManager.disableTexture2D();
+        for (int pass = 0; pass < 2; pass++) {
+            GL11.glLineWidth(pass == 0 ? 4.5f : 1.6f);
+            for (int a = 0; a < NA; a++) {
+                if (arcLife[a] <= 0f) continue;
+                GL11.glBegin(GL11.GL_LINE_STRIP);
+                if (pass == 0) GL11.glColor4f(r, g, b, 0.35f);
+                else GL11.glColor4f(0.85f + r * 0.15f, 0.85f + g * 0.15f, 0.9f + b * 0.1f, 0.95f);
+                for (int k = 0; k < NP; k++) {
+                    float t = arcT01[a][k], o1 = arcO1[a][k], o2 = arcO2[a][k];
+                    GL11.glVertex3f(arcB[0] + dx * t + ax * o1 + bxv * o2, arcB[1] + dy * t + ay * o1 + byv * o2,
+                            arcB[2] + dz * t + az * o1 + bzv * o2);
+                }
+                GL11.glEnd();
+            }
+        }
+        GL11.glLineWidth(1f);
+        GlStateManager.enableTexture2D();
     }
 
     /**

@@ -69,6 +69,7 @@ public final class WeaponEffectsModule extends Module {
     private final Setting.Num firstPerson, trailLen, bladeStart, bladeEnd, bladeGlowAlpha;
     private final Setting.Bool swingTrail, bladeGlow;
     public static WeaponEffectsModule INSTANCE;
+    private Setting.Mode lightning;
     private float acc;
     private float lastSwing;
     private final double[] base = new double[3], tip = new double[3];
@@ -83,6 +84,7 @@ public final class WeaponEffectsModule extends Module {
         bladeGlow = add(new Setting.Bool("Blade glow (first person)", true));
         bladeGlowAlpha = add(new Setting.Num("Blade glow intensity", 0.55, 0.05, 1.0, 0.05, ""));
         swingTrail = add(new Setting.Bool("Swing trail (first person)", true));
+        lightning = add(new Setting.Mode("Lightning arcs on blade", "Auto", "Auto", "On", "Off"));
         trailLen = add(new Setting.Num("Swing trail length", 0.18, 0.05, 0.5, 0.01, "s"));
         bladeStart = add(new Setting.Num("Blade start", 0.28, 0.0, 0.6, 0.01, ""));
         bladeEnd = add(new Setting.Num("Blade end", 0.97, 0.5, 1.0, 0.01, ""));
@@ -366,6 +368,12 @@ public final class WeaponEffectsModule extends Module {
 
     public boolean swingTrail() {
         return swingTrail.on();
+    }
+
+    /** Real electric arcs crawling over the blade in first person (Auto = Lightning effects only). */
+    public boolean lightningArcs() {
+        if (lightning == null || lightning.is("Off")) return false;
+        return lightning.is("On") || TYPES[typeIndex()].equals("Lightning");
     }
 
     public boolean bladeGlow() {

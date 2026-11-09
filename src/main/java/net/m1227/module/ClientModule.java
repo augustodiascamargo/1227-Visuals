@@ -16,6 +16,18 @@ import org.lwjgl.input.Keyboard;
  * leave free; "/1227" in chat always opens the menu, even with no key.
  */
 public final class ClientModule extends Module {
+    private static ClientModule self;
+    private Setting.Mode handMode;
+
+    /**
+     * Compatibility = never replace Minecraft's first-person hand drawing (for clients / mods
+     * that patch the hand themselves). Weapon effects and glow still work; 1.7 poses and the
+     * custom 3D swords are then off.
+     */
+    public static boolean handCompat() {
+        return self != null && self.handMode != null && self.handMode.is("Compatibility");
+    }
+
     public static ClientModule INSTANCE;
 
     public final Setting.Key menuKey;
@@ -26,11 +38,13 @@ public final class ClientModule extends Module {
     public ClientModule() {
         super("Client", "Menu key, accent colour, menu size and reset.", Category.SETTINGS, true);
         INSTANCE = this;
+        self = this;
         menuKey = add(new Setting.Key("Menu key", Keyboard.KEY_RCONTROL));
         accent = add(new Setting.Col("Accent color", 0x8B5CFF));
         menuScale = add(new Setting.Num("Menu scale", 1.0, 0.75, 1.25, 0.05, "x"));
         animSpeed = add(new Setting.Num("Animation speed", 1.0, 0.5, 2.0, 0.1, "x"));
         glass = add(new Setting.Bool("Glass effects (blur behind menus)", true));
+        handMode = add(new Setting.Mode("First-person hand", "1227", "1227", "Compatibility"));
         add(new Setting.Action("Edit HUD layout", new Runnable() {
             @Override
             public void run() {

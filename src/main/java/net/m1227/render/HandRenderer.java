@@ -61,18 +61,22 @@ public final class HandRenderer {
         }
     }
 
-    private static boolean wanted() {
+    /** True when Minecraft's own hand drawing must be replaced (1.7 poses, custom 3D sword). */
+    private static boolean takeover() {
+        if (net.m1227.module.ClientModule.handCompat()) return false;
         AnimationsModule a = AnimationsModule.INSTANCE;
         net.m1227.module.WeaponModelsModule wm = net.m1227.module.WeaponModelsModule.INSTANCE;
         Minecraft mc = Minecraft.getMinecraft();
         boolean model = wm != null && mc.thePlayer != null && wm.replaces(mc.thePlayer.getHeldItem());
-        return (a != null && a.needsTakeover()) || HandFx.wantsHand() || model;
+        return (a != null && a.needsTakeover()) || model;
     }
 
     @SubscribeEvent
     public void onHand(RenderHandEvent e) {
         Minecraft mc = Minecraft.getMinecraft();
-        if (!wanted() || mc.thePlayer == null || mc.gameSettings.anaglyph || !reflect()) return;
+        if (mc.thePlayer == null || mc.gameSettings.anaglyph) return;
+        boolean take = takeover(), fx = HandFx.wantsHand();
+        if ((!take && !fx) || !reflect()) return;
         ItemStack item;
         try {
             item = (ItemStack) fItem.get(mc.getItemRenderer());
@@ -80,14 +84,21 @@ public final class HandRenderer {
             return;
         }
         if (item != null && item.getItem() instanceof ItemMap) return;
-        e.setCanceled(true);
-        renderHand(mc, e.partialTicks, item);
+        if (take) {
+            e.setCanceled(true);
+            renderHand(mc, e.partialTicks, item, true);
+        } else {
+            // Effects only: Minecraft still draws the hand itself, right after this. The glow,
+            // trail and particles are drawn first (no depth writes) so the real item covers them,
+            // and nothing about the vanilla hand pass is replaced.
+            renderHand(mc, e.partialTicks, item, false);
+        }
     }
 
     private final java.nio.FloatBuffer savedProjection = org.lwjgl.BufferUtils.createFloatBuffer(16);
 
-    private void renderHand(Minecraft mc, float pt, ItemStack item) {
-        GlStateManager.clear(GL11.GL_DEPTH_BUFFER_BIT);
+    private void renderHand(Minecraft mc, float pt, ItemStack item, boolean full) {
+        if (full) GlStateManager.clear(GL11.GL_DEPTH_BUFFER_BIT);
         // The projection stack is only guaranteed to be 2 deep; Minecraft, OptiFine and shader
         // passes already use it, so pushing here could overflow and later pop someone else's
         // matrix. Save and restore the matrix by value instead.
@@ -109,12 +120,12 @@ public final class HandRenderer {
             if (mc.gameSettings.viewBobbing) bobbing(mc, pt);
             if (draw) {
                 mc.entityRenderer.enableLightmap();
-                firstPerson(mc, pt, item);
+                firstPerson(mc, pt, item, full);
                 mc.entityRenderer.disableLightmap();
             }
             GlStateManager.popMatrix();
             if (draw) HandFx.INSTANCE.renderCameraSpace(mc);
-            if (mc.gameSettings.thirdPersonView == 0 && !sleeping) mc.getItemRenderer().renderOverlays(pt);
+            if (full && mc.gameSettings.thirdPersonView == 0 && !sleeping) mc.getItemRenderer().renderOverlays(pt);
         } catch (Throwable t) {
             if (!warned) {
                 warned = true;
@@ -173,8 +184,8 @@ public final class HandRenderer {
         GlStateManager.rotate(f3, 1.0F, 0.0F, 0.0F);
     }
 
-    private void firstPerson(Minecraft mc, float pt, ItemStack item) throws IllegalAccessException {
-        AnimationsModule an = AnimationsModule.INSTANCE;
+    private void firstPerson(Minecraft mc, float pt, ItemStack item, boolean full) throws IllegalAccessException {
+        AnimationsModule an = full ? AnimationsModule.INSTANCE : null;
         ItemRenderer ir = mc.getItemRenderer();
         float eq = fEquip.getFloat(ir), prev = fPrevEquip.getFloat(ir);
         float equip = 1.0F - (prev + (eq - prev) * pt);
@@ -228,14 +239,16 @@ public final class HandRenderer {
                 GlStateManager.rotate(25.0F, 0.0F, 0.0F, 1.0F);
                 GlStateManager.scale(1.7F, 1.7F, 1.7F);
                 GlStateManager.rotate(180.0F, 0.0F, 1.0F, 0.0F);
-                ir.renderItem(p, item, ItemCameraTransforms.TransformType.NONE);
+                if (full) ir.renderItem(p, item, ItemCameraTransforms.TransformType.NONE);
             } else {
-                net.m1227.module.WeaponModelsModule wm = net.m1227.module.WeaponModelsModule.INSTANCE;
-                if (wm != null && wm.replaces(item)) wm.renderFirstPerson(mc, item);
-                else ir.renderItem(p, item, ItemCameraTransforms.TransformType.FIRST_PERSON);
+                if (full) {
+                    net.m1227.module.WeaponModelsModule wm = net.m1227.module.WeaponModelsModule.INSTANCE;
+                    if (wm != null && wm.replaces(item)) wm.renderFirstPerson(mc, item);
+                    else ir.renderItem(p, item, ItemCameraTransforms.TransformType.FIRST_PERSON);
+                }
                 HandFx.INSTANCE.afterItem(mc, p, item);
             }
-        } else if (!p.isInvisible()) {
+        } else if (full && !p.isInvisible()) {
             arm(mc, p, equip, swingP);
         }
         GlStateManager.popMatrix();

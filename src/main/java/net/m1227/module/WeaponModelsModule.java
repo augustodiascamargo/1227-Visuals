@@ -23,18 +23,19 @@ import org.lwjgl.opengl.GL11;
  */
 public final class WeaponModelsModule extends Module {
     public static WeaponModelsModule INSTANCE;
-    public static final String[] MODELS = {"Katana", "Crystal Blade", "Energy Saber", "Rune Greatsword", "Twin Fang", "Obsidian Edge"};
+    public static final String[] MODELS = {"Katana", "Crystal Blade", "Energy Saber", "Rune Greatsword", "Twin Fang", "Obsidian Edge", "Storm Blade"};
 
     private final Setting.Mode model;
     private final Setting.Col primary, secondary, glow;
     private final Setting.Bool emissive, matchWeaponFx;
-    private final Setting.Num length;
+    private final Setting.Num length, size, posX, posY, posZ;
+    private final Setting.Bool lightning;
 
     // item-space frame: blade runs along the item's diagonal
     private static final float OX = 0.04f, OY = 0.04f, OZ = 0.5f;
     private static final float AX = 0.70710678f, AY = 0.70710678f; // along
     private static final float NX = -0.70710678f, NY = 0.70710678f; // across (in item plane)
-    private float len = 1.30f;
+    private float len = 1.30f, thick = 1f;
     private final float[] p = new float[3], q = new float[3], r = new float[3], s4 = new float[3];
 
     public WeaponModelsModule() {
@@ -46,7 +47,20 @@ public final class WeaponModelsModule extends Module {
         glow = add(new Setting.Col("Glow color", 0x8B5CFF));
         matchWeaponFx = add(new Setting.Bool("Glow follows Weapon Effects color", true));
         emissive = add(new Setting.Bool("Glowing parts", true));
-        length = add(new Setting.Num("Length", 1.0, 0.8, 1.2, 0.02, "x"));
+        length = add(new Setting.Num("Length", 1.0, 0.8, 1.3, 0.02, "x"));
+        size = add(new Setting.Num("Thickness", 1.35, 0.6, 2.5, 0.05, "x"));
+        posX = add(new Setting.Num("Offset X", 0.0, -0.5, 0.5, 0.01, ""));
+        posY = add(new Setting.Num("Offset Y", 0.0, -0.5, 0.5, 0.01, ""));
+        posZ = add(new Setting.Num("Offset Z", 0.0, -0.5, 0.5, 0.01, ""));
+        lightning = add(new Setting.Bool("Lightning arcs", false));
+    }
+
+    public boolean lightning() {
+        return isEnabled() && lightning.on();
+    }
+
+    public int glowColor() {
+        return glowRgb();
     }
 
     public boolean replaces(ItemStack st) {
@@ -63,6 +77,8 @@ public final class WeaponModelsModule extends Module {
     public void renderFirstPerson(Minecraft mc, ItemStack stack) {
         IBakedModel m = mc.getRenderItem().getItemModelMesher().getItemModel(stack);
         GlStateManager.pushMatrix();
+        GlStateManager.translate(posX.f(), posY.f(), posZ.f());
+        thick = size.f();
         if (m != null) {
             if (!m.isGui3d()) GlStateManager.scale(2.0F, 2.0F, 2.0F);
             m.getItemCameraTransforms().applyTransform(ItemCameraTransforms.TransformType.FIRST_PERSON);
@@ -83,6 +99,7 @@ public final class WeaponModelsModule extends Module {
         else if (md.equals("Rune Greatsword")) rune(b, h, g);
         else if (md.equals("Twin Fang")) twin(b, h, g);
         else if (md.equals("Obsidian Edge")) obsidian(h, g);
+        else if (md.equals("Storm Blade")) storm(b, h, g);
         else katana(b, h, g);
         GlStateManager.shadeModel(GL11.GL_FLAT);
         GlStateManager.enableTexture2D();
@@ -225,10 +242,37 @@ public final class WeaponModelsModule extends Module {
         if (emissive.on()) edgeLine(ss, hw, cv, g, 0.9f, 1f);
     }
 
+    /** Steel blade with a bright energy channel; pairs with the lightning arcs. */
+    private void storm(int blade, int hilt, int g) {
+        grip(0.0f, 0.27f, 0.028f, hilt, true);
+        octa(0.02f, 0.04f, g);
+        box(0.27f, 0.30f, 0.12f, 0.03f, 0x4A5060, -0.05f);
+        float[] ss = {0.30f, 0.45f, 0.75f, 0.9f, 1.0f};
+        float[] hw = {0.06f, 0.07f, 0.06f, 0.04f, 0f};
+        float[] th = {0.018f, 0.018f, 0.015f, 0.012f, 0f};
+        float[] cv = new float[ss.length];
+        extrude(ss, hw, th, cv, ParticleSystem.mix(blade, 0x3A4255, 0.5f), ParticleSystem.mix(blade, 0xFFFFFF, 0.4f), 1f, false);
+        if (emissive.on()) {
+            float[] cs = {0.31f, 0.92f};
+            float[] chw = {0.014f, 0.006f};
+            float[] cth = {0.0195f, 0.013f};
+            float[] ccv = {0f, 0f};
+            float lx = OpenGlHelper.lastBrightnessX, ly = OpenGlHelper.lastBrightnessY;
+            OpenGlHelper.setLightmapTextureCoords(OpenGlHelper.lightmapTexUnit, 240f, 240f);
+            GlStateManager.blendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE);
+            float flick = 0.7f + 0.3f * (float) Math.random();
+            extrude(cs, chw, cth, ccv, g, 0xFFFFFF, flick, true);
+            GlStateManager.tryBlendFuncSeparate(770, 771, 1, 0);
+            OpenGlHelper.setLightmapTextureCoords(OpenGlHelper.lightmapTexUnit, lx, ly);
+        }
+    }
+
     // ------------------------------------------------------- geometry kit
 
     private void pt(float s, float n, float z, float curve, float[] out) {
         float a = s * len;
+        n *= thick;
+        z *= thick;
         out[0] = OX + AX * a + NX * (n + curve);
         out[1] = OY + AY * a + NY * (n + curve);
         out[2] = OZ + z;
