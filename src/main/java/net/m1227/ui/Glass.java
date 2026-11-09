@@ -15,21 +15,21 @@ import org.lwjgl.opengl.GL11;
  */
 public final class Glass {
     private static int tex = -1, texW, texH;
-    private static final float[] TAP = new float[30];
+    /** Blur taps: centre + three rings (6, 9 and 12 taps), radius 1 = full blur width. */
+    private static final float[] TAP = new float[56];
 
     static {
         int i = 0;
         TAP[i++] = 0f;
         TAP[i++] = 0f;
-        for (int k = 0; k < 6; k++) {
-            double a = k * Math.PI / 3;
-            TAP[i++] = (float) Math.cos(a) * 0.5f;
-            TAP[i++] = (float) Math.sin(a) * 0.5f;
-        }
-        for (int k = 0; k < 8; k++) {
-            double a = k * Math.PI / 4 + Math.PI / 8;
-            TAP[i++] = (float) Math.cos(a);
-            TAP[i++] = (float) Math.sin(a);
+        int[] n = {6, 9, 12};
+        float[] rr = {0.34f, 0.67f, 1f};
+        for (int ring = 0; ring < 3; ring++) {
+            for (int k = 0; k < n[ring]; k++) {
+                double a = k * Math.PI * 2 / n[ring] + ring * 0.4;
+                TAP[i++] = (float) Math.cos(a) * rr[ring];
+                TAP[i++] = (float) Math.sin(a) * rr[ring];
+            }
         }
     }
 
@@ -79,9 +79,10 @@ public final class Glass {
         GlStateManager.color(1f, 1f, 1f, 1f);
         org.lwjgl.opengl.GL11.glColor4f(1f, 1f, 1f, 1f); // raw glColor calls bypass GlStateManager's cache
         GlStateManager.enableAlpha();
-        // tint + light edge
+        // frosted look: a faint milky layer, then the tint, then a soft light falloff from the top edge
+        Gfx.roundedRect(x, y, w, h, r, 0x0AFFFFFF);
         Gfx.roundedRect(x, y, w, h, r, Gfx.alpha(tint, tintAlpha));
-        Gfx.roundedRect(x + 1f, y + 0.5f, w - 2f, Math.min(h * 0.45f, 9f), Math.max(0f, r - 1f), 0x0CFFFFFF);
+        Gfx.gradient(x + r * 0.6f, y + 0.5f, w - r * 1.2f, Math.min(h * 0.5f, 14f), 0x14FFFFFF, 0x00FFFFFF);
     }
 
     private static void fan(float x, float y, float w, float h, float r, float k, int px0, int py0, float ox, float oy, int dispH) {

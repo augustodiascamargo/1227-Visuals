@@ -208,7 +208,10 @@ public final class DynamicIslandModule extends Module {
         GlStateManager.scale(sc, sc, 1f);
         Gfx.roundedRect(x - 2f, y - 1f, w + 4f, h + 4f, r + 2f, 0x30000000);
         Gfx.roundedRect(x - 0.5f, y - 0.5f, w + 1f, h + 1f, r + 0.5f, Gfx.alpha(0x22FFFFFF, opacity.f()));
-        if (glass.on()) Glass.panel(x, y, w, h, r, sc, 0xFF0B0C11, opacity.f() * 0.62f, glassBlur.f() * e.resolution.getScaleFactor());
+        if (glass.on()) {
+            Glass.panel(x, y, w, h, r, sc, net.m1227.ui.Theme.hudTint(), opacity.f() * 0.55f, glassBlur.f() * e.resolution.getScaleFactor());
+            net.m1227.ui.Gfx.roundedOutline(x, y, w, h, r, 0.6f, net.m1227.ui.Gfx.alpha(0xFFFFFFFF, 0.14f * net.m1227.ui.Theme.border()));
+        }
         else Gfx.roundedRect(x, y, w, h, r, Gfx.alpha(0xFF0B0C11, opacity.f()));
 
         Gfx.scissorOn(x * sc, y * sc, w * sc, h * sc, e.resolution.getScaleFactor());

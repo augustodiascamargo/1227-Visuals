@@ -90,7 +90,10 @@ public abstract class HudModule extends Module {
         String b = background.get();
         if (b.equals("None")) return;
         if (b.equals("Glass")) {
-            Glass.panel(x, y, w, h, 4f, scale.f(), 0xFF0B0C11, bgOpacity.f(), 6f * scale.f());
+            int sf = new net.minecraft.client.gui.ScaledResolution(net.minecraft.client.Minecraft.getMinecraft()).getScaleFactor();
+            Glass.panel(x, y, w, h, 4f, scale.f(), net.m1227.ui.Theme.hudTint(), bgOpacity.f() * 0.75f,
+                    net.m1227.ui.Theme.hudBlurPx() * scale.f() * sf * 0.5f);
+            Gfx.roundedOutline(x, y, w, h, 4f, 0.6f, Gfx.alpha(0xFFFFFFFF, 0.12f * net.m1227.ui.Theme.border()));
         } else {
             Gfx.roundedRect(x, y, w, h, 4f, Gfx.alpha(0xFF0B0C11, bgOpacity.f()));
         }

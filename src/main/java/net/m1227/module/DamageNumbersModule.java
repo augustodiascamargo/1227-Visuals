@@ -50,6 +50,28 @@ public final class DamageNumbersModule extends Module {
         healColor = add(new Setting.Col("Heal color", 0x3DDC84));
         scale = add(new Setting.Num("Size", 1.0, 0.5, 2.0, 0.05, "x"));
         duration = add(new Setting.Num("Duration", 1.0, 0.4, 2.5, 0.1, "s"));
+        add(new Setting.Action("Preview", new Runnable() {
+            @Override
+            public void run() {
+                double[] a = net.m1227.vfx.Preview.ahead(4.5, 3.0);
+                if (a == null) return;
+                addAt(a[0], a[1] + 2.0, a[2], 3.5f, color.rgb());
+                addAt(a[0], a[1] + 2.1, a[2], 6.0f, critColor.rgb());
+                if (heals.on()) addAt(a[0], a[1] + 1.9, a[2], -2.0f, healColor.rgb());
+            }
+        }));
+    }
+
+    private void addAt(double x, double y, double z, float amount, int c) {
+        if (n >= MAX) return;
+        int i = n++;
+        nx[i] = x + (Math.random() - 0.5) * 0.6;
+        ny[i] = y;
+        nz[i] = z + (Math.random() - 0.5) * 0.6;
+        nAge[i] = 0f;
+        nVal[i] = amount;
+        nDrift[i] = (float) (Math.random() - 0.5) * 0.4f;
+        nCol[i] = c;
     }
 
     @SubscribeEvent

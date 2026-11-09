@@ -102,9 +102,9 @@ public class ClickGui extends GuiScreen {
 
     /** Frosted background: Minecraft's own blur post-shader behind the menu (if the GPU supports shaders). */
     private void startBlur() {
-        boolean glass = ClientModule.glass();
-        panelA = glass ? 0.8f : 1f;
-        cardA = glass ? 0.82f : 1f;
+        boolean glass = ClientModule.glass() && Theme.blur();
+        panelA = 1f;
+        cardA = 1f;
         if (!glass || blurStarted) return;
         try {
             if (net.minecraft.client.renderer.OpenGlHelper.shadersSupported && !mc.entityRenderer.isShaderActive()) {
@@ -113,10 +113,6 @@ public class ClickGui extends GuiScreen {
             }
         } catch (Throwable t) {
             blurStarted = false;
-        }
-        if (!blurStarted) {
-            panelA = 1f;
-            cardA = 1f;
         }
     }
 
@@ -132,6 +128,7 @@ public class ClickGui extends GuiScreen {
 
     @Override
     public void onGuiClosed() {
+        net.m1227.vfx.PreviewMode.stop();
         stopBlur();
         Keyboard.enableRepeatEvents(false);
         ConfigManager.save();
@@ -158,7 +155,14 @@ public class ClickGui extends GuiScreen {
         tipModule = null;
 
         float closeEase = 1f - (float) Math.exp(-22f * dt);
-        openAnim[0] += ((closing ? 0f : 1f) - openAnim[0]) * (closing ? closeEase : ease);
+        net.m1227.vfx.PreviewMode.update();
+        boolean previewing = net.m1227.vfx.PreviewMode.active();
+        if (previewing && blurStarted) stopBlur();
+        openAnim[0] += ((closing || previewing ? 0f : 1f) - openAnim[0]) * (closing || previewing ? closeEase : ease);
+        if (previewing) {
+            drawPreviewPill();
+            if (openAnim[0] < 0.03f) return;
+        }
         if (closing && openAnim[0] < 0.03f) {
             mc.displayGuiScreen(null);
             return;
@@ -180,18 +184,36 @@ public class ClickGui extends GuiScreen {
         }
         catSwitch += (1f - catSwitch) * ease;
 
-        float dim = blurStarted ? 0.55f : 1f;
-        Gfx.gradient(0, 0, width, height, Gfx.alpha(0xFF000000, 0.35f * o * dim), Gfx.alpha(0xFF000000, 0.65f * o * dim));
+        // live style switch: start/stop the background blur when Menu Style changes
+        boolean wantBlur = ClientModule.glass() && Theme.blur();
+        if (wantBlur && !blurStarted) startBlur();
+        else if (!wantBlur && blurStarted) stopBlur();
+        float dim = (blurStarted ? 0.45f : 1f) * Theme.dim();
+        Gfx.gradient(0, 0, width, height, Gfx.alpha(0xFF000000, 0.30f * o * dim), Gfx.alpha(0xFF000000, 0.55f * o * dim));
+        if (Theme.blur()) {
+            // frosted copy of what is behind the window, in real screen coordinates (outside the menu transform)
+            float cx = width / 2f, cy = height / 2f;
+            float gx = cx + ((width - W) / 2f - cx) * sc, gy = cy + ((height - H) / 2f + (1f - o) * 10f - cy) * sc;
+            if (o > 0.6f) {
+                Glass.panel(gx, gy, W * sc, H * sc, Theme.radius() * sc, 1f, Theme.tint(), 0f,
+                        10f * Theme.blurAmount() * new net.minecraft.client.gui.ScaledResolution(mc).getScaleFactor());
+            }
+        }
         net.minecraft.client.renderer.GlStateManager.pushMatrix();
         net.minecraft.client.renderer.GlStateManager.translate(width / 2f, height / 2f, 0f);
         net.minecraft.client.renderer.GlStateManager.scale(sc, sc, 1f);
         net.minecraft.client.renderer.GlStateManager.translate(-width / 2f, -height / 2f, 0f);
-        // soft drop shadow + accent rim
-        Gfx.roundedRect(wx - 6, wy - 4, W + 12, H + 12, 16, Gfx.alpha(0xFF000000, 0.35f * o));
-        Gfx.roundedRect(wx - 1, wy - 1, W + 2, H + 2, 11, Gfx.alpha(ACCENT, 0.45f * o));
-        Gfx.roundedRect(wx, wy, W, H, 10, Gfx.alpha(BG, o * panelA));
-        // glass sheen along the top
-        Gfx.gradient(wx + 10, wy + 0.5f, W - 20, 36, Gfx.alpha(0x12FFFFFF, o), 0x00FFFFFF);
+        float rad = Theme.radius();
+        // soft drop shadow (not for the see-through styles), window fill, border and sheen
+        if (!Theme.is("Minimal") && !Theme.is("Transparent")) {
+            Gfx.roundedRect(wx - 6, wy - 4, W + 12, H + 12, rad + 6, Gfx.alpha(0xFF000000, (Theme.blur() ? 0.18f : 0.35f) * o));
+        }
+        if (Theme.is("Neon")) {
+            for (int i = 3; i >= 1; i--) Gfx.roundedRect(wx - i * 2, wy - i * 2, W + i * 4, H + i * 4, rad + i * 2, Gfx.alpha(ACCENT, 0.06f * o));
+        }
+        Gfx.roundedRect(wx, wy, W, H, rad, Gfx.alpha(Theme.window(), o));
+        Gfx.roundedOutline(wx, wy, W, H, rad, 1f, Gfx.alpha(Theme.windowBorder(ACCENT), o));
+        if (Theme.sheen()) Gfx.gradient(wx + rad, wy + 0.5f, W - rad * 2, 40, Gfx.alpha(Theme.blur() ? 0x1CFFFFFF : 0x10FFFFFF, o), 0x00FFFFFF);
 
         drawSidebar(wx, wy, mx, my, o);
         drawHeader(wx, wy, o);
@@ -205,8 +227,10 @@ public class ClickGui extends GuiScreen {
     }
 
     private void drawSidebar(float wx, float wy, int mx, int my, float o) {
-        Gfx.roundedRect(wx, wy, SIDE, H, 9, Gfx.alpha(SIDEBG, o * panelA));
-        Gfx.rect(wx + SIDE - 10, wy, 10, H, Gfx.alpha(SIDEBG, o * panelA));
+        float rad = Theme.radius();
+        Gfx.roundedRect(wx, wy, SIDE, H, rad - 1, Gfx.alpha(Theme.sidebar(), o));
+        Gfx.rect(wx + SIDE - rad, wy, rad, H, Gfx.alpha(Theme.sidebar(), o));
+        Gfx.rect(wx + SIDE, wy + 10, 1, H - 20, Gfx.alpha(Theme.cardBorder(ACCENT) != 0 ? Theme.cardBorder(ACCENT) : 0x14FFFFFF, o));
         // 1227 wordmark: quiet, with a small accent mark
         Gfx.textScaled("1227", wx + 16, wy + 16, 1.7f, Gfx.alpha(TEXT, o));
         Gfx.roundedRect(wx + 16, wy + 33, 14, 2, 1, Gfx.alpha(ACCENT, o));
@@ -357,7 +381,9 @@ public class ClickGui extends GuiScreen {
         boolean hover = in(mx, my, x, y, w, HEADER) && inList(mx, my);
         a[2] += ((hover ? 1f : 0f) - a[2]) * ease;
 
-        Gfx.roundedRect(x, y, w, h, 7, Gfx.alpha(Gfx.mix(CARD, CARD_HOVER, a[2]), o * cardA));
+        Gfx.roundedRect(x, y, w, h, 7, Gfx.alpha(Theme.card(a[2]), o));
+        int cb = Theme.cardBorder(ACCENT);
+        if (cb != 0) Gfx.roundedOutline(x, y, w, h, 7, 1f, Gfx.alpha(cb, o * (0.7f + 0.3f * a[2])));
         if (m.toggleable() && a[1] > 0.01f) {
             Gfx.roundedRect(x, y, w, Math.min(h, HEADER), 7, Gfx.alpha(ACCENT, 0.07f * a[1] * o));
         }
@@ -429,7 +455,7 @@ public class ClickGui extends GuiScreen {
                 if (!s.visible()) continue;
                 float rh = rowHeight(s);
                 if (ry + rh > limit) break;
-                drawSetting(s, rx, ry, rw, al);
+                drawSetting(m, s, rx, ry, rw, al);
                 ry += rh;
             }
             if (ry + RESET_ROW <= limit + 0.5f) drawReset(m, rx, ry, rw, al);
@@ -467,7 +493,7 @@ public class ClickGui extends GuiScreen {
         }, null));
     }
 
-    private void drawSetting(final Setting<?> s, final float x, float y, final float w, float al) {
+    private void drawSetting(final Module m, final Setting<?> s, final float x, float y, final float w, float al) {
         float[] st = state(s);
         if (s instanceof Setting.Bool) {
             final Setting.Bool b = (Setting.Bool) s;
@@ -551,7 +577,12 @@ public class ClickGui extends GuiScreen {
             hits.add(new Hit(x, y + 1, w, 20, true, new Click() {
                 @Override
                 public void on(float cx, int bt) {
-                    if (bt == 0) ac.run();
+                    if (bt != 0) return;
+                    if (ac.name.startsWith("Preview") && !(m instanceof net.m1227.module.HitSoundsModule)) {
+                        net.m1227.vfx.PreviewMode.begin(m.name + (ac.name.length() > 7 ? " - " + ac.name.substring(7).trim() : ""), ac::run);
+                    } else {
+                        ac.run();
+                    }
                 }
             }, null));
         } else if (s instanceof Setting.Col) {
@@ -641,6 +672,10 @@ public class ClickGui extends GuiScreen {
 
     @Override
     protected void mouseClicked(int rawMx, int rawMy, int button) throws IOException {
+        if (net.m1227.vfx.PreviewMode.active()) {
+            net.m1227.vfx.PreviewMode.stop();
+            return;
+        }
         int mx = (int) localX(rawMx), my = (int) localY(rawMy);
         searchFocus = false;
         binding = null;
@@ -706,6 +741,17 @@ public class ClickGui extends GuiScreen {
         if (key == Keyboard.KEY_ESCAPE || (key != 0 && key == ClientModule.menuKey())) {
             close();
         }
+    }
+
+    /** Small pill shown while the menu steps aside for a live preview. */
+    private void drawPreviewPill() {
+        String t = "Previewing  " + net.m1227.vfx.PreviewMode.label() + "   \u00b7   click to return";
+        float w = Gfx.textWidth(t) + 24, x = (width - w) / 2f, y = height - 46;
+        Gfx.roundedRect(x, y, w, 18, 9, 0xD00B0C11);
+        Gfx.roundedOutline(x, y, w, 18, 9, 0.8f, 0x30FFFFFF);
+        Gfx.roundedRect(x + 4, y + 14.5f, (w - 8) * net.m1227.vfx.PreviewMode.progress(), 1.5f, 0.75f, ACCENT);
+        Gfx.circle(x + 11, y + 9, 2.5f, ACCENT);
+        Gfx.text(t, x + 18, y + 5, 0xFFE6E8EF);
     }
 
     /** Full description + hints after hovering a module header for half a second. */

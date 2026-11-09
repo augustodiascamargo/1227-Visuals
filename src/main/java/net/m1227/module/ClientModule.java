@@ -43,7 +43,7 @@ public final class ClientModule extends Module {
         accent = add(new Setting.Col("Accent color", 0x8B5CFF));
         menuScale = add(new Setting.Num("Menu scale", 1.0, 0.75, 1.25, 0.05, "x"));
         animSpeed = add(new Setting.Num("Animation speed", 1.0, 0.5, 2.0, 0.1, "x"));
-        glass = add(new Setting.Bool("Glass effects (blur behind menus)", true));
+        glass = add(new Setting.Bool("Glass effects (blur behind menus)", true)).showIf(() -> false); // moved to Menu Style
         handMode = add(new Setting.Mode("First-person hand", "1227", "1227", "Compatibility"));
         add(new Setting.Action("Edit HUD layout", new Runnable() {
             @Override

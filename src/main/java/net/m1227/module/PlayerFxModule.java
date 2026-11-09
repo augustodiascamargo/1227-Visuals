@@ -38,6 +38,16 @@ public final class PlayerFxModule extends Module {
         range = add(new Setting.Num("Max distance", 32, 8, 64, 2, "m"));
         minJump = add(new Setting.Num("Teleport distance", 6, 3, 20, 1, "m"));
         fx = new FxSettings(this, 0x8B5CFF, 0x4DE1FF, 22, 1.0, 0.1, 0.9);
+        add(new Setting.Action("Preview teleport", new Runnable() {
+            @Override
+            public void run() {
+                double[] a = net.m1227.vfx.Preview.ahead(4.5, 3.0);
+                if (a == null) return;
+                double sx = -a[4] * 1.6, sz = a[3] * 1.6; // one step to the side
+                burst(a[0] - sx, a[1], a[2] - sz, 1.8f, false);
+                burst(a[0] + sx, a[1], a[2] + sz, 1.8f, true);
+            }
+        }));
     }
 
     @SubscribeEvent

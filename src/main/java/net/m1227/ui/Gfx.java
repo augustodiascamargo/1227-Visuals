@@ -79,6 +79,29 @@ public final class Gfx {
         end();
     }
 
+    /** Rounded-rectangle outline, thickness in GUI units. */
+    public static void roundedOutline(float x, float y, float w, float h, float r, float t, int argb) {
+        if (w <= 0f || h <= 0f || (argb >>> 24) == 0) return;
+        r = Math.max(0f, Math.min(r, Math.min(w, h) * 0.5f));
+        begin();
+        color(argb);
+        GL11.glBegin(GL11.GL_QUAD_STRIP);
+        float[][] c = {{x + w - r, y + r, -90}, {x + w - r, y + h - r, 0}, {x + r, y + h - r, 90}, {x + r, y + r, 180}};
+        float ri = Math.max(0f, r - t);
+        for (int k = 0; k <= 4; k++) {
+            float[] q = c[k % 4];
+            int steps = k == 4 ? 0 : 6;
+            for (int i = 0; i <= steps; i++) {
+                double a = Math.toRadians(q[2] + 90.0 * i / 6.0);
+                float cs = (float) Math.cos(a), sn = (float) Math.sin(a);
+                GL11.glVertex2f(q[0] + cs * r, q[1] + sn * r);
+                GL11.glVertex2f(q[0] + cs * ri, q[1] + sn * ri);
+            }
+        }
+        GL11.glEnd();
+        end();
+    }
+
     private static void arc(float cx, float cy, float r, int from, int to) {
         for (int a = from; a <= to; a += 15) {
             double rad = Math.toRadians(a);

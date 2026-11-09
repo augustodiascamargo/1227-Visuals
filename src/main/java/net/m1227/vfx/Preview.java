@@ -9,6 +9,8 @@ public final class Preview {
 
     /** Returns {x, y(feet), z, forwardX, forwardZ} or null when not in a world. */
     public static double[] ahead(double dist, double side) {
+        double[] s = PreviewMode.spot();
+        if (s != null) return s.clone(); // live preview: centre stage, on the stand-in
         EntityPlayerSP p = Minecraft.getMinecraft().thePlayer;
         if (p == null) return null;
         double yaw = Math.toRadians(p.rotationYaw);

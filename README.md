@@ -1,4 +1,4 @@
-# 1227 — v1.3.0 (Minecraft 1.8.9 · Forge 11.15.1.2318 · Java 8)
+# 1227 — v1.4.0 (Minecraft 1.8.9 · Forge 11.15.1.2318 · Java 8)
 
 Mod client-side e puramente visual. Não envia pacotes, não desenha através de paredes e não muda alcance,
 timing de ataque ou outras mecânicas do servidor.
@@ -114,3 +114,17 @@ nada depende de Lunar ou de outro launcher.
   também mexem na mão). Nesse modo os efeitos continuam, mas as poses 1.7 e as espadas 3D ficam desligadas.
 - Raios de verdade na lâmina (Weapon Effects > "Lightning arcs on blade": Auto/On/Off; Weapon Models > "Lightning arcs").
 - Weapon Models: novo modelo Storm Blade, controles de espessura, comprimento e posição (X/Y/Z); espessura padrão maior.
+
+## Mudanças na v1.4.0
+- Motion Blur reescrito: em vez de copiar a tela e sobrepor a cópia (o que podia escurecer a imagem), um framebuffer
+  separado guarda a média ponderada dos últimos quadros e ela é desenhada opaca por cima do mundo. O brilho fica
+  sempre igual; também desliga neblina e a textura de luz do mundo enquanto desenha. Requer framebuffers (padrão no 1.8.9).
+- Nova página Settings > Menu Style: Glass, Frosted, Solid, Transparent, Minimal e Neon, com tinta, opacidade,
+  força do desfoque, borda, raio dos cantos, escurecimento do fundo e brilho no topo. Muda ao vivo, sem reabrir o menu.
+  Opção para os painéis de vidro do HUD e da Dynamic Island seguirem o mesmo estilo.
+- Glass refeito: o fundo é desfocado duas vezes (shader do Minecraft + cópia com 28 amostras), com camada leitosa,
+  tinta translúcida, borda clara fina e luz descendo da borda de cima.
+- Preview ao vivo dos efeitos: ao clicar em Preview, o menu sai da frente, um boneco só seu (cópia do seu personagem,
+  existe apenas na sua tela) aparece à sua frente e o efeito toca nele — o Kill Effect faz o boneco sumir, o Hit Effect
+  faz ele reagir. Depois o menu volta sozinho (ou clique para voltar). Previews novos: crítico, vitória, derrota,
+  teleporte e Damage Numbers.

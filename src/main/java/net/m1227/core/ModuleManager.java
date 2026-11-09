@@ -57,6 +57,7 @@ public final class ModuleManager {
         register(new net.m1227.hud.CoordsHud());
         register(new net.m1227.hud.MovementHud());
         register(new ClientModule());
+        register(new MenuStyleModule());
         register(new PresetsModule());
         register(PerformanceModule.INSTANCE);
         for (Module m : ALL) {

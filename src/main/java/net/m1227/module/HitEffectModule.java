@@ -31,7 +31,16 @@ public final class HitEffectModule extends Module {
             @Override
             public void run() {
                 double[] a = Preview.ahead(4.5, 3.0);
-                if (a != null) play(a[0], a[1] + 1.1, a[2], (float) a[3], 0.2f, (float) a[4], a[1]);
+                if (a != null) play(a[0] - a[3] * 0.3, a[1] + 1.1, a[2] - a[4] * 0.3, (float) a[3], 0.2f, (float) a[4], a[1]);
+            }
+        }));
+        add(new Setting.Action("Preview critical", new Runnable() {
+            @Override
+            public void run() {
+                double[] a = Preview.ahead(4.5, 3.0);
+                if (a == null) return;
+                play(a[0] - a[3] * 0.3, a[1] + 1.1, a[2] - a[4] * 0.3, (float) a[3], 0.2f, (float) a[4], a[1]);
+                crit(a[0], a[1] + 1.45, a[2], (float) a[3], (float) a[4]);
             }
         }));
     }

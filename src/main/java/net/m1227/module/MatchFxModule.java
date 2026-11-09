@@ -41,6 +41,23 @@ public final class MatchFxModule extends Module {
         screen = add(new Setting.Bool("Screen flash", true));
         winColor = add(new Setting.Col("Victory color", 0xFFC857));
         loseColor = add(new Setting.Col("Defeat color", 0xFF3B4E));
+        add(new Setting.Action("Preview victory", new Runnable() {
+            @Override
+            public void run() {
+                winAt = 0L;
+                win();
+            }
+        }));
+        add(new Setting.Action("Preview defeat", new Runnable() {
+            @Override
+            public void run() {
+                double[] a = net.m1227.vfx.Preview.ahead(4.5, 3.0);
+                if (a == null) return;
+                loseAt = System.currentTimeMillis();
+                ash(a[0], a[1], a[2]);
+                Notifier.post(Notifier.Kind.STATE, "Defeat", "You died", loseColor.rgb(), 2600);
+            }
+        }));
     }
 
     @SubscribeEvent
@@ -82,7 +99,7 @@ public final class MatchFxModule extends Module {
         boolean dead = p.getHealth() <= 0f || p.isDead;
         if (dead && !wasDead && defeat.on()) {
             loseAt = System.currentTimeMillis();
-            ash(p);
+            ash(p.posX, p.posY, p.posZ);
             Notifier.post(Notifier.Kind.STATE, "Defeat", "You died", loseColor.rgb(), 2600);
         }
         wasDead = dead;
@@ -93,11 +110,11 @@ public final class MatchFxModule extends Module {
         }
     }
 
-    private void ash(EntityPlayerSP p) {
+    private void ash(double px, double py, double pz) {
         ParticleSystem ps = ParticleSystem.INSTANCE;
         int n = ps.scale(40f);
         for (int i = 0; i < n; i++) {
-            Particle q = ps.glow(p.posX + ps.rand(-0.6f, 0.6f), p.posY + ps.rand(0f, 1.8f), p.posZ + ps.rand(-0.6f, 0.6f),
+            Particle q = ps.glow(px + ps.rand(-0.6f, 0.6f), py + ps.rand(0f, 1.8f), pz + ps.rand(-0.6f, 0.6f),
                     ps.rand(-0.3f, 0.3f), ps.rand(0.3f, 1.2f), ps.rand(-0.3f, 0.3f), ps.rand(1.5f, 2.6f), ps.rand(0.08f, 0.16f),
                     0.02f, loseColor.rgb(), 0x2A2A2A, 0.85f);
             if (q == null) continue;
