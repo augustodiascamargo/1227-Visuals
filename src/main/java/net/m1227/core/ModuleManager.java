@@ -21,6 +21,7 @@ public final class ModuleManager {
         register(new PlayerGlowModule());
         register(new AuraHatModule());
         register(new HaloModule());
+        register(new WingsModule());
         register(new TrailsModule());
         register(new JumpEffectModule());
         register(new PlayerFxModule());

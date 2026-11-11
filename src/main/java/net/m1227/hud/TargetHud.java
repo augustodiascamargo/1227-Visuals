@@ -74,10 +74,10 @@ public final class TargetHud extends HudModule {
         if (t == null) return;
         if (t.getEntityId() != lastId) {
             lastId = t.getEntityId();
-            shown = trail = t.getHealth();
+            shown = trail = net.m1227.core.Health.of(t);
         }
         float a = editing ? 1f : appear;
-        float max = Math.max(1f, t.getMaxHealth()), hp = Math.min(max, t.getHealth());
+        float max = Math.max(1f, t.getMaxHealth()), hp = Math.min(max, net.m1227.core.Health.of(t));
         shown += (hp - shown) * 0.25f;
         trail += (shown - trail) * (trail > shown ? 0.05f : 1f);
         GlStateManager.pushMatrix();

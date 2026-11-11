@@ -39,7 +39,7 @@ public final class EmoteWheel extends GuiScreen {
         try {
             float cx = width / 2f, cy = height / 2f, r0 = 34f, r1 = 96f * (0.9f + 0.1f * o);
             int acc = 0xFF000000 | ClientModule.accent();
-            Gfx.rect(0, 0, width, height, Gfx.alpha(0xFF05060A, 0.35f * o));
+            Gfx.rect(0, 0, width, height, Gfx.alpha(0xFF05060A, 0.22f * o));
             int first = EmotesModule.pageStart(page), n = EmotesModule.pageSize(page);
             // page tabs above the wheel (scroll or right-click also switches)
             tabHover = -1;
@@ -60,24 +60,22 @@ public final class EmoteWheel extends GuiScreen {
                 double a = (ang + Math.PI / 2 + Math.PI / n + Math.PI * 4) % (Math.PI * 2);
                 hover = (int) (a / (Math.PI * 2 / n)) % n;
             }
-            if (o > 0.6f) {
-                // liquid glass disc behind the slices
-                Glass.panel(cx - r1 - 4, cy - r1 - 4, (r1 + 4) * 2, (r1 + 4) * 2, r1 + 4, 1f, Theme.hudTint(), 0.35f, 6f * sf, 0.035f);
-            } else {
-                Gfx.circle(cx, cy, r1 + 4, Gfx.alpha(0xFF0B0C11, 0.75f * o));
-            }
+            // clean look: one glass disc, hairline dividers, and only the hovered slice filled
+            float R = r1 + 6;
+            if (o > 0.6f) Glass.panel(cx - R, cy - R, R * 2, R * 2, R, 1f, Theme.hudTint(), 0.30f, 6f * sf, 0.035f);
+            else Gfx.circle(cx, cy, R, Gfx.alpha(0xFF0B0C11, 0.6f * o));
+            Gfx.annulus(cx, cy, R - 1f, R, 0, Math.PI * 2, Gfx.alpha(0xFFFFFFFF, 0.22f * o));
+            Gfx.annulus(cx, cy, r0, r0 + 0.8f, 0, Math.PI * 2, Gfx.alpha(0xFFFFFFFF, 0.14f * o));
+            double step = Math.PI * 2 / n;
             for (int i = 0; i < n; i++) {
-                double a0 = -Math.PI / 2 - Math.PI / n + i * Math.PI * 2 / n, a1 = a0 + Math.PI * 2 / n;
+                double a0 = -Math.PI / 2 - step / 2 + i * step, a1 = a0 + step;
                 boolean h = i == hover;
-                // slice as a fan of thin quads
-                for (int k = 0; k < 8; k++) {
-                    double b0 = a0 + (a1 - a0) * k / 8 + 0.01, b1 = a0 + (a1 - a0) * (k + 1) / 8 - (k == 7 ? 0.01 : 0);
-                    float x0 = cx + (float) Math.cos(b0) * r0, y0 = cy + (float) Math.sin(b0) * r0;
-                    float x1 = cx + (float) Math.cos(b0) * r1, y1 = cy + (float) Math.sin(b0) * r1;
-                    float x2 = cx + (float) Math.cos(b1) * r1, y2 = cy + (float) Math.sin(b1) * r1;
-                    float x3 = cx + (float) Math.cos(b1) * r0, y3 = cy + (float) Math.sin(b1) * r0;
-                    Gfx.quad(x0, y0, x1, y1, x2, y2, x3, y3, Gfx.alpha(h ? acc : 0xFF1A1D27, (h ? 0.8f : 0.38f) * o));
+                if (h) {
+                    Gfx.annulus(cx, cy, r0 + 2f, r1 + 2f, a0 + 0.012, a1 - 0.012, Gfx.alpha(acc, 0.42f * o));
+                    Gfx.annulus(cx, cy, r1 + 1f, r1 + 3f, a0 + 0.012, a1 - 0.012, Gfx.alpha(acc, 0.95f * o));
                 }
+                float sx = (float) Math.cos(a0), sy = (float) Math.sin(a0);
+                Gfx.line(cx + sx * (r0 + 6f), cy + sy * (r0 + 6f), cx + sx * (r1 - 2f), cy + sy * (r1 - 2f), 0.6f, Gfx.alpha(0xFFFFFFFF, 0.10f * o));
                 double mid = (a0 + a1) / 2;
                 float tx = cx + (float) Math.cos(mid) * (r0 + r1) / 2, ty = cy + (float) Math.sin(mid) * (r0 + r1) / 2;
                 String s = EmotesModule.EMOTES[first + i];
@@ -85,7 +83,7 @@ public final class EmoteWheel extends GuiScreen {
                 Gfx.textScaled(s, tx - Gfx.textWidth(s, 0.8f) / 2f, ty - 3f, 0.8f, Gfx.alpha(h ? 0xFFFFFFFF : 0xFFC9CCD6, o));
                 Gfx.weight(TtfFont.REGULAR);
             }
-            Gfx.circle(cx, cy, r0 - 4, Gfx.alpha(0xFF0B0C11, 0.9f * o));
+            Gfx.circle(cx, cy, r0 - 3, Gfx.alpha(0xFF0B0C11, 0.55f * o));
             Gfx.logo(cx - 14, cy - 16, 28, Gfx.alpha(acc, o), 0.6f);
             String hint = mod.playing() ? "Click the centre to stop" : "Pick one  \u00b7  scroll to switch page";
             Gfx.textScaled(hint, cx - Gfx.textWidth(hint, 0.75f) / 2f, cy + r1 + 12, 0.75f, Gfx.alpha(0xFFA9ADBA, o));

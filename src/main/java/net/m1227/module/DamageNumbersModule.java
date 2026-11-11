@@ -102,7 +102,7 @@ public final class DamageNumbersModule extends Module {
             EntityLivingBase l = (EntityLivingBase) en;
             boolean wanted = w.equals("All living") || (w.equals("All players") && en instanceof net.minecraft.entity.player.EntityPlayer)
                     || (w.equals("Your targets") && l == target);
-            float hp = l.getHealth();
+            float hp = net.m1227.core.Health.of(l);
             Float before = health.get(en.getEntityId());
             seen.put(en.getEntityId(), hp);
             if (!wanted || before == null) continue;

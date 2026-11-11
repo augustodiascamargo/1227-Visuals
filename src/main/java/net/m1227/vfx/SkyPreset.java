@@ -1,7 +1,7 @@
 package net.m1227.vfx;
 
 /**
- * One of the 30 dynamic skies: a gradient plus a mix of animated layers
+ * One of the 44 dynamic skies: a gradient plus a mix of animated layers
  * (stars, galaxy band, nebula clouds, flowing light lines, aurora, sun or
  * moon, stylised clouds, shooting stars, code rain, retro grid, storm).
  * All layers are drawn procedurally every frame; nothing is a static image.
@@ -89,7 +89,21 @@ public final class SkyPreset {
             p("Emerald Sky", 0x001208, 0x0B3D24, 0x00080A).aurora(6, 0x3DFF6B, 0xB8FF3D).stars(0.5f, 0xE0FFE8),
             p("Ocean Depths", 0x000A1F, 0x00365C, 0x00050F).nebula(0.6f, 0x00B8FF, 0x0B3DFF).lines(10, 0x9AE8FF, 0x2D8CFF),
             p("Candy Clouds", 0xFF9AD6, 0xA6D8FF, 0xFFC2E0).clouds(1f, 0xFFFFFF).glow(0.2f, 0xFFFFFF),
-            p("Thunderstorm", 0x16191F, 0x353A44, 0x0E1014).clouds(1f, 0x4A505C).storm(0.35f)
+            p("Thunderstorm", 0x16191F, 0x353A44, 0x0E1014).clouds(1f, 0x4A505C).storm(0.35f),
+            p("Purple Storm", 0x0A0418, 0x2A1450, 0x05020C).stars(0.5f, 0xE8D8FF).lines(14, 0xE8D8FF, 0x8B5CFF).storm(0.25f),
+            p("Neon City", 0x05000F, 0x3A0A5C, 0x0A0014).stars(0.3f, 0xFFD6F4).grid().glow(0.6f, 0x2DF6FF).nebula(0.4f, 0xFF2DB0, 0x2DF6FF),
+            p("Cyber Grid", 0x000000, 0x00151F, 0x000000).grid().lines(10, 0x2DF6FF, 0x2D8CFF).stars(0.2f, 0x9AF0FF),
+            p("Aurora Storm", 0x01060C, 0x082A2A, 0x000305).aurora(8, 0x3DFFA0, 0xC77DFF).stars(0.6f, 0xFFFFFF).shooting(0.6f),
+            p("Crimson Galaxy", 0x0A0005, 0x2A0410, 0x050002).stars(0.9f, 0xFFD6D6).galaxy(0.9f, 0xFF6B8A).nebula(0.5f, 0xFF2D4F, 0x7A0A2D),
+            p("Ice Galaxy", 0x00040A, 0x0A1E2E, 0x000205).stars(1f, 0xE0F8FF).galaxy(0.9f, 0x9AE8FF).nebula(0.35f, 0x2DD4FF, 0xFFFFFF),
+            p("Solar Flare", 0x1A0500, 0xFF8A00, 0x2E0A00).body(SkyPreset.SUN, 0xFFE08A, false).glow(1f, 0xFF5A00).nebula(0.4f, 0xFF3D00, 0xFFC800),
+            p("Lunar Eclipse", 0x05000A, 0x1A0A24, 0x020005).stars(0.8f, 0xFFFFFF).body(SkyPreset.ECLIPSE, 0xFF6B4A, false).aurora(4, 0xFF6B4A, 0xC77DFF),
+            p("Lavender Dusk", 0x2E1F5C, 0xE0A6FF, 0x3A2A4D).clouds(0.6f, 0xFFE0FF).body(SkyPreset.MOON, 0xFFF4FF, true).stars(0.25f, 0xFFFFFF),
+            p("Golden Galaxy", 0x050300, 0x1F1405, 0x020100).stars(0.9f, 0xFFF1B8).galaxy(1f, 0xFFD36B).nebula(0.3f, 0xFFB347, 0xFF6B3D),
+            p("Matrix Storm", 0x000000, 0x001A08, 0x000000).code().storm(0.2f),
+            p("Starlight Ribbons", 0x02030F, 0x0E1233, 0x01020A).stars(0.9f, 0xFFFFFF).lines(14, 0xFFFFFF, 0x9AE8FF).ribbons().shooting(0.5f),
+            p("Toxic Sky", 0x020A00, 0x1F3D05, 0x010500).nebula(0.8f, 0x8BFF2D, 0x2DFF8A).glow(0.4f, 0xB8FF3D).stars(0.2f, 0xE8FFD6),
+            p("Pastel Dream", 0xB8C8FF, 0xFFD6F0, 0xD6C8FF).clouds(0.9f, 0xFFFFFF).aurora(4, 0xFFB8F0, 0xB8E8FF).glow(0.2f, 0xFFFFFF)
     };
 
     public static String[] names() {

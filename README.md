@@ -1,4 +1,4 @@
-# 1227 — v1.9.0 (Minecraft 1.8.9 · Forge 11.15.1.2318 · Java 8)
+# 1227 — v1.10.0 (Minecraft 1.8.9 · Forge 11.15.1.2318 · Java 8)
 
 Mod client-side e puramente visual. Não envia pacotes, não desenha através de paredes e não muda alcance,
 timing de ataque ou outras mecânicas do servidor.
@@ -174,6 +174,24 @@ nada depende de Lunar ou de outro launcher.
 ### Licença dos modelos enviados
 O modelo do Tung Sahur (ZAHUR.fbx + textura) e a butterfly knife (.blend) foram enviados pelo usuário. Antes de
 publicar o 1227, confira a licença de cada um (por exemplo, se exigem crédito ao autor) e coloque o crédito aqui.
+
+## Mudanças na v1.10.0
+- **Weapon Models:**
+  - **Mãos no cabo:** a mão (com a textura da sua skin) é desenhada presa ao cabo e acompanha o golpe, a rotação e o tamanho; a Katana e a Holy Claymore ganham a segunda mão. Opções: "Show hands on the grip", "Hand angle", "Second hand angle" e "Hand size". A mão esquerda antiga, que ficava fora do lugar, foi removida.
+  - **Golpes:** partem da posição normal da mão, são suaves e voltam ao repouso. Duram 0,42 s só no desenho (o golpe real continua o do Minecraft).
+  - **Correções:**
+    - A Katana estava sendo desenhada com 25% de opacidade (transparente).
+    - Lâminas podiam parecer transparentes por outro efeito deixar a profundidade desligada.
+    - O Cleaver ficou mais fino, e "Blade width" não engrossa mais as lâminas largas.
+    - Dragon Fang não é mais invertida.
+    - Saber e Storm Blade não tremem mais.
+    - "Thickness" agora muda só a espessura, não a largura.
+- **Liquid Glass no HUD e no Dynamic Island:** o vidro copia a imagem do framebuffer principal do Minecraft. Em clients que desenham o HUD num buffer próprio (como o cache de HUD do Lunar), ele aparecia preto.
+- **Vida do alvo:** se o servidor mostra a vida no placar (embaixo do nome ou no tab), o Dynamic Island, o Target HUD e o Damage Numbers usam esse valor.
+- **Roda de emotes:** visual limpo, com um disco de vidro, divisórias finas e só a fatia em foco destacada.
+- **Shockwave:** 8 estilos (Crystal Dome, Frost Nova, Inferno, Thunder, Void Rift, Sakura, Holy Light e Shatter Ring), com galeria de prévia.
+- **Céus:** 14 novos (44 no total).
+- **Novo cosmético Wings:** Angel, Demon, Butterfly, Energy e Crystal, batendo as asas (mais rápido no ar).
 
 ## Mudanças na v1.9.0
 - **Controles do Minecraft:** só a tecla "Open 1227 menu" fica lá; as teclas de cada mod continuam no menu do 1227.

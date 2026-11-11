@@ -244,6 +244,23 @@ public final class Gfx {
         roundedRect(cx - r, cy - r, r * 2f, r * 2f, r, argb);
     }
 
+    /** Ring sector between radii r0..r1 and angles a0..a1 (radians), drawn in one strip (no overlapping seams). */
+    public static void annulus(float cx, float cy, float r0, float r1, double a0, double a1, int argb) {
+        if ((argb >>> 24) == 0 || r1 <= r0) return;
+        begin();
+        color(argb);
+        int n = Math.max(6, (int) Math.ceil(Math.abs(a1 - a0) / (Math.PI / 48)));
+        GL11.glBegin(GL11.GL_TRIANGLE_STRIP);
+        for (int i = 0; i <= n; i++) {
+            double a = a0 + (a1 - a0) * i / n;
+            float c = (float) Math.cos(a), sn = (float) Math.sin(a);
+            GL11.glVertex2f(cx + c * r1, cy + sn * r1);
+            GL11.glVertex2f(cx + c * r0, cy + sn * r0);
+        }
+        GL11.glEnd();
+        end();
+    }
+
     /** Soft radial glow: argb at the centre fading to transparent at radius r. */
     public static void glow(float cx, float cy, float r, int argb) {
         if (r <= 0f || (argb >>> 24) == 0) return;

@@ -77,7 +77,7 @@ public final class Glass {
         }
         ensure(pw, ph);
         GlStateManager.bindTexture(tex);
-        GL11.glCopyTexSubImage2D(GL11.GL_TEXTURE_2D, 0, 0, 0, px0, py0, pw, ph);
+        copyFromMain(mc, px0, py0, pw, ph);
 
         GlStateManager.enableTexture2D();
         GlStateManager.enableBlend();
@@ -102,6 +102,32 @@ public final class Glass {
             Gfx.roundedOutlineGradient(x + 1f, y + 1f, w - 2f, h - 2f, Math.max(0f, r - 1f), 1f, 0x18FFFFFF, 0x06FFFFFF);
         }
         lensAmt = 0f;
+    }
+
+    /**
+     * Copies the screen area from Minecraft's main framebuffer. Some launchers (Lunar's HUD
+     * caching, for example) draw the HUD into their own buffer, which is empty behind the HUD,
+     * so copying from "whatever is bound" gave a black panel. Reading from the main buffer
+     * always gets the world behind the panel.
+     */
+    private static void copyFromMain(Minecraft mc, int x, int y, int w, int h) {
+        net.minecraft.client.shader.Framebuffer main = mc.getFramebuffer();
+        boolean swap = false;
+        int prev = 0;
+        try {
+            if (main != null && net.minecraft.client.renderer.OpenGlHelper.isFramebufferEnabled()
+                    && org.lwjgl.opengl.GLContext.getCapabilities().OpenGL30) {
+                prev = GL11.glGetInteger(org.lwjgl.opengl.GL30.GL_READ_FRAMEBUFFER_BINDING);
+                if (prev != main.framebufferObject) {
+                    org.lwjgl.opengl.GL30.glBindFramebuffer(org.lwjgl.opengl.GL30.GL_READ_FRAMEBUFFER, main.framebufferObject);
+                    swap = true;
+                }
+            }
+        } catch (Throwable ignored) {
+            swap = false;
+        }
+        GL11.glCopyTexSubImage2D(GL11.GL_TEXTURE_2D, 0, 0, 0, x, y, w, h);
+        if (swap) org.lwjgl.opengl.GL30.glBindFramebuffer(org.lwjgl.opengl.GL30.GL_READ_FRAMEBUFFER, prev);
     }
 
     private static void fan(float x, float y, float w, float h, float r, float k, int px0, int py0, float ox, float oy, int dispH) {

@@ -226,7 +226,7 @@ public final class DynamicIslandModule extends Module {
         Gfx.roundedRect(x - 2f, y - 1f, w + 4f, h + 4f, r + 2f, 0x30000000);
         Gfx.roundedRect(x - 0.5f, y - 0.5f, w + 1f, h + 1f, r + 0.5f, Gfx.alpha(0x22FFFFFF, opacity.f()));
         if (glass.is("Liquid Glass")) {
-            Glass.panel(x, y, w, h, r, sc, net.m1227.ui.Theme.hudTint(), opacity.f() * 0.40f, glassBlur.f() * e.resolution.getScaleFactor() * 0.8f, 0.035f);
+            Glass.panel(x, y, w, h, r, sc, net.m1227.ui.Theme.hudTint(), opacity.f() * 0.25f, glassBlur.f() * e.resolution.getScaleFactor() * 0.8f, 0.035f);
         } else if (glass.is("Glass")) {
             Glass.panel(x, y, w, h, r, sc, net.m1227.ui.Theme.hudTint(), opacity.f() * 0.55f, glassBlur.f() * e.resolution.getScaleFactor());
             net.m1227.ui.Gfx.roundedOutline(x, y, w, h, r, 0.6f, net.m1227.ui.Gfx.alpha(0xFFFFFFFF, 0.14f * net.m1227.ui.Theme.border()));
@@ -262,7 +262,7 @@ public final class DynamicIslandModule extends Module {
     }
 
     private void drawCombat(float x, float y, int acc, float a, EntityLivingBase t, float dt) {
-        float hp = t.getHealth(), max = Math.max(1f, t.getMaxHealth());
+        float hp = net.m1227.core.Health.of(t), max = Math.max(1f, t.getMaxHealth());
         if (shownHealth < 0f) shownHealth = hp;
         shownHealth += (hp - shownHealth) * (1f - (float) Math.exp(-10f * dt));
         float cx = x + PAD, cy = y + h / 2f;

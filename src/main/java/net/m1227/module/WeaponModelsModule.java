@@ -30,6 +30,10 @@ public final class WeaponModelsModule extends Module {
     private final Setting.Bool emissive, matchWeaponFx;
     private final Setting.Num length, size, posX, posY, posZ, rotX, rotY, rotZ, scaleAll, bladeWidth;
     private final Setting.Mode holdMode;
+    private final Setting.Bool showHands;
+    private final Setting.Num handAngle, secondAngle, handSize;
+    /** How much "Blade width" applies to the current model (wide blades like the cleaver stay as built). */
+    private float widthBoost = 1f;
     private final Setting.Bool lightning, flipOnEquip;
     private final Setting.Key inspectKey;
     private long animStart = -1L;
@@ -54,7 +58,7 @@ public final class WeaponModelsModule extends Module {
         matchWeaponFx = add(new Setting.Bool("Glow follows Weapon Effects color", true));
         emissive = add(new Setting.Bool("Glowing parts", true));
         length = add(new Setting.Num("Length", 1.0, 0.8, 1.3, 0.02, "x"));
-        size = add(new Setting.Num("Thickness", 1.6, 0.6, 2.5, 0.05, "x"));
+        size = add(new Setting.Num("Thickness", 1.3, 0.6, 2.5, 0.05, "x"));
         posX = add(new Setting.Num("Offset X", 0.0, -0.5, 0.5, 0.01, ""));
         posY = add(new Setting.Num("Offset Y", 0.0, -0.5, 0.5, 0.01, ""));
         posZ = add(new Setting.Num("Offset Z", 0.0, -0.5, 0.5, 0.01, ""));
@@ -64,6 +68,10 @@ public final class WeaponModelsModule extends Module {
         scaleAll = add(new Setting.Num("Model size", 1.15, 0.6, 1.8, 0.05, "x"));
         bladeWidth = add(new Setting.Num("Blade width", 1.6, 0.8, 3.0, 0.05, "x"));
         holdMode = add(new Setting.Mode("Hold & swing", "Per model", "Per model", "Classic"));
+        showHands = add(new Setting.Bool("Show hands on the grip", true));
+        handAngle = add(new Setting.Num("Hand angle", 35, -90, 90, 1, "\u00b0")).showIf(() -> showHands.on());
+        secondAngle = add(new Setting.Num("Second hand angle (two-handed)", -70, -150, 150, 1, "\u00b0")).showIf(() -> showHands.on());
+        handSize = add(new Setting.Num("Hand size", 1.0, 0.6, 1.6, 0.05, "x")).showIf(() -> showHands.on());
         lightning = add(new Setting.Bool("Lightning arcs", false));
         flipOnEquip = add(new Setting.Bool("Butterfly: flip open when drawn", true)).showIf(() -> model.is("Butterfly Knife"));
         inspectKey = add(new Setting.Key("Butterfly: inspect (flip) key", org.lwjgl.input.Keyboard.KEY_V));
@@ -105,7 +113,6 @@ public final class WeaponModelsModule extends Module {
         if (rotX.f() != 0f) GlStateManager.rotate(rotX.f(), 1f, 0f, 0f);
         if (rotY.f() != 0f) GlStateManager.rotate(rotY.f(), 0f, 1f, 0f);
         if (rotZ.f() != 0f) GlStateManager.rotate(rotZ.f(), 0f, 0f, 1f);
-        if (model.is("Dragon Fang") && holdMode.is("Per model")) GlStateManager.rotate(180f, 0f, 0f, 1f); // reverse grip
         float sa = scaleAll.f();
         GlStateManager.scale(sa, sa, sa);
         GlStateManager.translate(-gx, -gy, -OZ);
@@ -113,13 +120,19 @@ public final class WeaponModelsModule extends Module {
         GlStateManager.disableTexture2D();
         GlStateManager.disableLighting();
         GlStateManager.disableCull();
+        // other hand effects can leave depth writes off; solid blades need them or they look see-through
+        GlStateManager.enableDepth();
+        GlStateManager.depthMask(true);
+        GlStateManager.depthFunc(GL11.GL_LEQUAL);
         GlStateManager.enableBlend();
         GlStateManager.tryBlendFuncSeparate(770, 771, 1, 0);
         GlStateManager.shadeModel(GL11.GL_SMOOTH);
         String md = model.get();
         int b = primary.rgb(), h = secondary.rgb(), g = glowRgb();
+        widthBoost = md.equals("Cleaver") ? 0f : (md.equals("Rune Greatsword") || md.equals("Holy Claymore") || md.equals("Obsidian Edge")) ? 0.4f : 1f;
         if (md.equals("Butterfly Knife")) {
             butterfly(mc, stack, b, h, g);
+            hands(mc);
             GlStateManager.shadeModel(GL11.GL_FLAT);
             GlStateManager.enableTexture2D();
             GlStateManager.enableLighting();
@@ -141,6 +154,7 @@ public final class WeaponModelsModule extends Module {
         else if (md.equals("Holy Claymore")) claymore(b, h, g);
         else if (md.equals("Void Rapier")) rapier(b, h, g);
         else katana(b, h, g);
+        hands(mc);
         GlStateManager.shadeModel(GL11.GL_FLAT);
         GlStateManager.enableTexture2D();
         GlStateManager.enableLighting();
@@ -169,7 +183,7 @@ public final class WeaponModelsModule extends Module {
         }
         hw[n - 1] = 0f;
         th[n - 1] = 0f;
-        extrude(ss, hw, th, cv, blade, ParticleSystem.mix(blade, 0xFFFFFF, 0.6f), 0.25f, false);
+        extrude(ss, hw, th, cv, blade, ParticleSystem.mix(blade, 0xFFFFFF, 0.6f), 1f, false);
         if (emissive.on()) edgeLine(ss, hw, cv, g, 0.75f, 0.5f);
     }
 
@@ -204,7 +218,7 @@ public final class WeaponModelsModule extends Module {
         extrude(ss, hw, th, cv, 0xFFFFFF, 0xFFFFFF, 1f, true);
         GlStateManager.blendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE);
         GlStateManager.depthMask(false);
-        float pulse = 0.85f + 0.15f * (float) Math.sin(System.nanoTime() / 1e9 * 9.0);
+        float pulse = 0.9f + 0.1f * (float) Math.sin(System.nanoTime() / 1e9 * 2.5);
         for (int k = 1; k <= 3; k++) {
             float[] hw2 = new float[10], th2 = new float[10];
             for (int i = 0; i < 10; i++) {
@@ -343,7 +357,7 @@ public final class WeaponModelsModule extends Module {
         box(0.3f, 0.33f, 0.07f, 0.03f, 0x3A3F4A, 0f);
         float[] ss = {0.33f, 0.4f, 0.85f, 0.97f, 1.0f};
         float[] hw = {0.08f, 0.12f, 0.12f, 0.11f, 0.06f};
-        float[] th = {0.02f, 0.018f, 0.016f, 0.014f, 0.01f};
+        float[] th = {0.012f, 0.011f, 0.01f, 0.009f, 0.006f};
         float[] cv = {0.03f, 0.05f, 0.05f, 0.045f, 0.03f};
         extrude(ss, hw, th, cv, ParticleSystem.mix(blade, 0x5A606E, 0.35f), ParticleSystem.mix(blade, 0xFFFFFF, 0.5f), 1f, false);
         if (emissive.on()) edgeLine(ss, hw, cv, g, 0.7f, 0.5f);
@@ -413,7 +427,7 @@ public final class WeaponModelsModule extends Module {
             float lx = OpenGlHelper.lastBrightnessX, ly = OpenGlHelper.lastBrightnessY;
             OpenGlHelper.setLightmapTextureCoords(OpenGlHelper.lightmapTexUnit, 240f, 240f);
             GlStateManager.blendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE);
-            float flick = 0.7f + 0.3f * (float) Math.random();
+            float flick = 0.8f + 0.2f * (float) Math.sin(System.nanoTime() / 1e9 * 6.0);
             extrude(cs, chw, cth, ccv, g, 0xFFFFFF, flick, true);
             GlStateManager.tryBlendFuncSeparate(770, 771, 1, 0);
             OpenGlHelper.setLightmapTextureCoords(OpenGlHelper.lightmapTexUnit, lx, ly);
@@ -424,7 +438,6 @@ public final class WeaponModelsModule extends Module {
 
     private void pt(float s, float n, float z, float curve, float[] out) {
         float a = s * len;
-        n *= thick;
         z *= thick;
         out[0] = OX + AX * a + NX * (n + curve);
         out[1] = OY + AY * a + NY * (n + curve);
@@ -433,7 +446,7 @@ public final class WeaponModelsModule extends Module {
 
     /** Diamond cross-section blade through stations (s, half width, half thickness, curve). */
     private void extrude(float[] ss, float[] hw0, float[] th, float[] cv, int c0, int c1, float alpha, boolean flat) {
-        float bw = bladeWidth.f();
+        float bw = 1f + (bladeWidth.f() - 1f) * widthBoost;
         float[] hw = new float[hw0.length];
         for (int i = 0; i < hw.length; i++) hw[i] = hw0[i] * bw;
         float[][] sec = {{1f, 0f}, {0f, 1f}, {-1f, 0f}, {0f, -1f}};
@@ -480,18 +493,15 @@ public final class WeaponModelsModule extends Module {
 
     // ------------------------------------------------------------- hold & swing styles
 
-    /** Classic, Two-handed, Heavy, Thrust, Reverse, Flourish, Twin, Float. */
+    /** Classic, Two-handed, Heavy, Thrust, Flourish, Twin. */
     public String style() {
         if (holdMode.is("Classic")) return "Classic";
         String m = model.get();
         if (m.equals("Katana") || m.equals("Holy Claymore")) return "Two-handed";
         if (m.equals("Cleaver") || m.equals("Obsidian Edge") || m.equals("Rune Greatsword")) return "Heavy";
-        if (m.equals("Void Rapier")) return "Thrust";
-        if (m.equals("Dragon Fang")) return "Reverse";
+        if (m.equals("Void Rapier") || m.equals("Butterfly Knife")) return "Thrust";
         if (m.equals("Energy Saber") || m.equals("Storm Blade")) return "Flourish";
-        if (m.equals("Twin Fang")) return "Twin";
-        if (m.equals("Crystal Blade")) return "Float";
-        if (m.equals("Butterfly Knife")) return "Thrust";
+        if (m.equals("Twin Fang") || m.equals("Dragon Fang")) return "Twin";
         return "Classic";
     }
 
@@ -499,81 +509,142 @@ public final class WeaponModelsModule extends Module {
         return style().equals("Two-handed");
     }
 
-    private static float ease(float t) {
-        t = Math.max(0f, Math.min(1f, t));
-        return t * t * (3f - 2f * t);
-    }
+    // A swing drawn over its own, slightly longer time (0.42 s instead of Minecraft's 0.3 s) so the
+    // motion reads clearly. Only the drawing changes; the real swing and hit timing are vanilla.
+    private static final float SWING_SEC = 0.42f;
+    private long swingStart = -1L;
+    private float lastSwingP;
 
-    /** Translation (x, y, z) and extra yaw the second hand follows during the swing. */
-    public float[] swingOffsets(float swing) {
-        float k = (float) Math.sin(swing * Math.PI);
-        return new float[]{-0.25f * k, 0.05f * k, -0.1f * k, -60f * ease(swing) + 30f * k};
+    private float visualSwing(float swingP) {
+        long now = System.nanoTime();
+        boolean started = swingP > 0f && (lastSwingP == 0f || swingP < lastSwingP - 0.2f);
+        lastSwingP = swingP;
+        float v = swingStart < 0L ? 1f : (now - swingStart) / 1e9f / SWING_SEC;
+        if (started && v > 0.7f) {
+            swingStart = now;
+            v = 0f;
+        }
+        return v >= 1f ? 0f : v;
     }
 
     /**
-     * Replaces the vanilla first-person hold + swing transform (same units: hand space).
-     * Every style keeps the equip motion so drawing the weapon still slides it in.
+     * Replaces the vanilla first-person hold + swing transform for the custom swords. Every
+     * style starts from Minecraft's own hold position (so the sword sits where the hand is)
+     * and adds a smooth, style-specific motion that always returns to rest.
      */
-    public void holdTransform(float equip, float swing) {
+    public void holdTransform(float equip, float swingP) {
         String st = style();
-        double t = System.nanoTime() / 1e9;
-        float k = (float) Math.sin(swing * Math.PI), sq = (float) Math.sin(Math.sqrt(swing) * Math.PI);
+        float sw = visualSwing(swingP);
+        float bell = (float) Math.sin(sw * Math.PI);                 // 0 -> 1 -> 0
+        float lead = (float) Math.sin(Math.sqrt(sw) * Math.PI);      // fast in, slow out (vanilla-like)
+        float x = 0.56F, y = -0.52F, z = -0.72F, yaw = 45F;
         if (st.equals("Two-handed")) {
-            // held across the body with both hands; the swing is a wide horizontal slash
-            GlStateManager.translate(0.28F - 0.25f * k, -0.48F + 0.05f * k, -0.80F - 0.1f * k);
-            GlStateManager.translate(0.0F, equip * -0.6F, 0.0F);
-            GlStateManager.rotate(30F - 60f * ease(swing) + 30f * k, 0F, 1F, 0F);
-            GlStateManager.rotate(-14F + 10f * k, 0F, 0F, 1F);
-            GlStateManager.rotate(-6F - 30f * k, 1F, 0F, 0F);
-            GlStateManager.scale(0.4F, 0.4F, 0.4F);
-        } else if (st.equals("Heavy")) {
-            // raised a little, then a downward chop over the top
-            GlStateManager.translate(0.56F, -0.50F + 0.12f * k, -0.72F - 0.15f * k);
-            GlStateManager.translate(0.0F, equip * -0.6F, 0.0F);
-            GlStateManager.rotate(45F, 0F, 1F, 0F);
-            GlStateManager.rotate(-95f * sq + 25f * k, 1F, 0F, 0F);
-            GlStateManager.rotate(-8f * k, 0F, 0F, 1F);
-            GlStateManager.scale(0.42F, 0.42F, 0.42F);
-        } else if (st.equals("Thrust")) {
-            // pointed forward; the swing is a straight lunge
-            GlStateManager.translate(0.50F - 0.12f * k, -0.50F + 0.04f * k, -0.72F - 0.42f * k);
-            GlStateManager.translate(0.0F, equip * -0.6F, 0.0F);
-            GlStateManager.rotate(35F + 10f * k, 0F, 1F, 0F);
-            GlStateManager.rotate(-28F - 12f * k, 1F, 0F, 0F);
-            GlStateManager.scale(0.4F, 0.4F, 0.4F);
-        } else if (st.equals("Reverse")) {
-            // reverse grip (blade flipped in renderFirstPerson); the swing stabs downward
-            GlStateManager.translate(0.52F - 0.1f * k, -0.48F - 0.18f * k, -0.72F - 0.12f * k);
-            GlStateManager.translate(0.0F, equip * -0.6F, 0.0F);
-            GlStateManager.rotate(55F, 0F, 1F, 0F);
-            GlStateManager.rotate(25f * k, 1F, 0F, 0F);
-            GlStateManager.scale(0.4F, 0.4F, 0.4F);
-        } else if (st.equals("Flourish")) {
-            // a spinning arc; idles with a faint hum
-            float hum = (float) Math.sin(t * 38.0) * 0.004f;
-            GlStateManager.translate(0.56F - 0.3f * k + hum, -0.52F + 0.1f * k, -0.72F);
-            GlStateManager.translate(0.0F, equip * -0.6F, 0.0F);
-            GlStateManager.rotate(45F + 70f * sq, 0F, 1F, 0F);
-            GlStateManager.rotate(-40f * k, 0F, 0F, 1F);
-            GlStateManager.rotate(-60f * sq, 1F, 0F, 0F);
-            GlStateManager.rotate(360f * ease(swing), 0F, 0F, 1F);
-            GlStateManager.scale(0.4F, 0.4F, 0.4F);
-        } else if (st.equals("Twin")) {
-            // two quick slashes per swing (right, then back left)
-            float a = (float) Math.sin(swing * Math.PI * 2);
-            GlStateManager.translate(0.56F - 0.25f * k, -0.52F, -0.72F - 0.1f * k);
-            GlStateManager.translate(0.0F, equip * -0.6F, 0.0F);
-            GlStateManager.rotate(45F + 55f * a, 0F, 1F, 0F);
-            GlStateManager.rotate(-35f * k, 1F, 0F, 0F);
-            GlStateManager.scale(0.4F, 0.4F, 0.4F);
-        } else { // Float
-            float bob = (float) Math.sin(t * 2.2) * 0.02f;
-            GlStateManager.translate(0.56F - 0.3f * sq, -0.52F + bob + 0.15f * k, -0.72F - 0.15f * k);
-            GlStateManager.translate(0.0F, equip * -0.6F, 0.0F);
-            GlStateManager.rotate(45F + 60f * sq, 0F, 1F, 0F);
-            GlStateManager.rotate((float) Math.sin(t * 1.3) * 4f - 70f * sq, 1F, 0F, 0F);
-            GlStateManager.scale(0.4F, 0.4F, 0.4F);
+            x = 0.42F;
+            y = -0.50F;
+            yaw = 38F;
         }
+        GlStateManager.translate(x, y, z);
+        GlStateManager.translate(0.0F, equip * -0.6F, 0.0F);
+        GlStateManager.rotate(yaw, 0.0F, 1.0F, 0.0F);
+        if (st.equals("Two-handed")) {
+            // wide horizontal cut across the screen with both hands
+            GlStateManager.translate(-0.18F * bell, 0.04F * bell, -0.08F * bell);
+            GlStateManager.rotate(-55F * lead, 0.0F, 1.0F, 0.0F);
+            GlStateManager.rotate(-12F - 14F * bell, 0.0F, 0.0F, 1.0F);
+            GlStateManager.rotate(-28F * bell, 1.0F, 0.0F, 0.0F);
+        } else if (st.equals("Heavy")) {
+            // wind up slightly, then a downward chop
+            GlStateManager.translate(0.0F, 0.06F * bell, -0.06F * bell);
+            GlStateManager.rotate(-15F * lead, 0.0F, 1.0F, 0.0F);
+            GlStateManager.rotate(-85F * lead, 1.0F, 0.0F, 0.0F);
+        } else if (st.equals("Thrust")) {
+            // straight stab forward
+            GlStateManager.translate(-0.08F * bell, 0.03F * bell, -0.28F * bell);
+            GlStateManager.rotate(-22F * bell, 1.0F, 0.0F, 0.0F);
+            GlStateManager.rotate(10F * bell, 0.0F, 1.0F, 0.0F);
+        } else if (st.equals("Flourish")) {
+            // sweeping arc with a twist of the wrist
+            GlStateManager.rotate(-40F * lead, 0.0F, 1.0F, 0.0F);
+            GlStateManager.rotate(-30F * lead, 0.0F, 0.0F, 1.0F);
+            GlStateManager.rotate(-55F * lead, 1.0F, 0.0F, 0.0F);
+        } else if (st.equals("Twin")) {
+            // quick out-and-back double cut
+            float two = (float) Math.sin(sw * Math.PI * 2.0);
+            GlStateManager.rotate(30F * two, 0.0F, 1.0F, 0.0F);
+            GlStateManager.rotate(-45F * bell, 1.0F, 0.0F, 0.0F);
+        } else {
+            // classic: the vanilla curve, drawn over the longer visual time
+            float f = (float) Math.sin(sw * sw * Math.PI);
+            GlStateManager.rotate(f * -20.0F, 0.0F, 1.0F, 0.0F);
+            GlStateManager.rotate(lead * -20.0F, 0.0F, 0.0F, 1.0F);
+            GlStateManager.rotate(lead * -80.0F, 1.0F, 0.0F, 0.0F);
+        }
+        GlStateManager.scale(0.4F, 0.4F, 0.4F);
+    }
+
+    // ------------------------------------------------------------- hands
+
+    /**
+     * Draws your hand(s) wrapped around the grip, in the sword's own space, so they always stay
+     * attached to the handle whatever the swing, rotation or size. Uses your skin's arm texture.
+     */
+    private void hands(Minecraft mc) {
+        if (!showHands.on() || mc.thePlayer == null || mc.thePlayer.isInvisible()) return;
+        boolean slim = "slim".equals(mc.thePlayer.getSkinType());
+        mc.getTextureManager().bindTexture(mc.thePlayer.getLocationSkin());
+        GlStateManager.enableTexture2D();
+        GlStateManager.disableBlend();
+        GlStateManager.enableDepth();
+        GlStateManager.depthMask(true);
+        GL11.glBegin(GL11.GL_QUADS);
+        arm(0.17f, handAngle.f(), 40, 16, slim);
+        if (twoHanded()) arm(0.05f, handAngle.f() + secondAngle.f(), 32, 48, slim);
+        GL11.glEnd();
+        GlStateManager.disableTexture2D();
+        GlStateManager.enableBlend();
+    }
+
+    private final float[][] hv = new float[8][3];
+
+    /** One arm: fist on the grip at station s, forearm leaving at angleDeg from the handle's axis. */
+    private void arm(float s, float angleDeg, int u, int v, boolean slim) {
+        float a = s * len;
+        float gx = OX + AX * a, gy = OY + AY * a;
+        double th = Math.toRadians(225.0 + angleDeg);              // 225 deg = pointing down the handle
+        float dx = (float) Math.cos(th), dy = (float) Math.sin(th); // forearm direction (item plane)
+        float px = -dy, py = dx;                                    // across the arm
+        float w = 0.075f * handSize.f(), d = 0.075f * handSize.f();
+        float y0 = -w, y1 = 1.1f * handSize.f();
+        float aw = slim ? 3f : 4f;
+        // corners: i bit0 = across(-/+), bit1 = depth(-/+), bit2 = along(start/end)
+        for (int i = 0; i < 8; i++) {
+            float sx = (i & 1) == 0 ? -w : w, sz = (i & 2) == 0 ? -d : d, sy = (i & 4) == 0 ? y0 : y1;
+            hv[i][0] = gx + px * sx + dx * sy;
+            hv[i][1] = gy + py * sx + dy * sy;
+            hv[i][2] = OZ + sz;
+        }
+        // Minecraft skin box layout for an arm (aw x 12 x 4) at (u, v): hand end is the "bottom" face
+        float D = 4f, H = 12f;
+        // long faces: front (u+D), back (u+D+aw+D), sides (u) and (u+D+aw)
+        skinFace(hv[0], hv[1], hv[5], hv[4], u + D, v + D, aw, H, 0.85f);           // depth -
+        skinFace(hv[3], hv[2], hv[6], hv[7], u + D + aw + D, v + D, aw, H, 0.85f);  // depth +
+        skinFace(hv[2], hv[0], hv[4], hv[6], u, v + D, D, H, 0.7f);                 // across -
+        skinFace(hv[1], hv[3], hv[7], hv[5], u + D + aw, v + D, D, H, 1.0f);        // across +
+        skinFace(hv[0], hv[2], hv[3], hv[1], u + D + aw, v, aw, D, 0.9f);           // hand end
+    }
+
+    /** Quad a-b-c-d where a-b is the hand end (texture bottom) and c-d the far end (texture top). */
+    private static void skinFace(float[] a, float[] b, float[] c, float[] d, float u, float v, float w, float h, float shade) {
+        GL11.glColor4f(shade, shade, shade, 1f);
+        float u0 = u / 64f, u1 = (u + w) / 64f, v0 = v / 64f, v1 = (v + h) / 64f;
+        GL11.glTexCoord2f(u0, v1);
+        GL11.glVertex3f(a[0], a[1], a[2]);
+        GL11.glTexCoord2f(u1, v1);
+        GL11.glVertex3f(b[0], b[1], b[2]);
+        GL11.glTexCoord2f(u1, v0);
+        GL11.glVertex3f(c[0], c[1], c[2]);
+        GL11.glTexCoord2f(u0, v0);
+        GL11.glVertex3f(d[0], d[1], d[2]);
     }
 
     /** Additive translucent shell around a blade. */
