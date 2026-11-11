@@ -22,7 +22,8 @@ public final class CrosshairModule extends Module {
 
     public CrosshairModule() {
         super("Crosshair", "Custom crosshair: style, size, gap, colours, dynamic spread.", Category.HUD, false);
-        style = add(new Setting.Mode("Style", "Cross", "Cross", "T-Cross", "Circle", "Dot", "Chevron", "Square"));
+        style = add(new Setting.Mode("Style", "Cross", "Cross", "T-Cross", "X", "Circle", "Dot", "Chevron", "Square",
+                "Triangle", "Brackets", "Diamond"));
         color = add(new Setting.Col("Color", 0xFFFFFF));
         size = add(new Setting.Num("Size", 4, 1, 12, 0.5, "px"));
         gap = add(new Setting.Num("Gap", 2, 0, 8, 0.5, "px"));
@@ -95,6 +96,35 @@ public final class CrosshairModule extends Module {
         } else if (st.equals("Chevron")) {
             Gfx.line(cx - s - g, cy + s * 0.6f + g, cx, cy + g * 0.3f, tt, c);
             Gfx.line(cx, cy + g * 0.3f, cx + s + g, cy + s * 0.6f + g, tt, c);
+        } else if (st.equals("X")) {
+            float d = 0.7071f, a0 = g, a1 = g + s;
+            for (int sx = -1; sx <= 1; sx += 2) {
+                for (int sy = -1; sy <= 1; sy += 2) {
+                    Gfx.line(cx + sx * a0 * d, cy + sy * a0 * d, cx + sx * (a1 + grow) * d, cy + sy * (a1 + grow) * d, tt, c);
+                }
+            }
+        } else if (st.equals("Triangle")) {
+            float r = g + s * 0.6f;
+            float[] px = new float[3], py = new float[3];
+            for (int i = 0; i < 3; i++) {
+                double a = -Math.PI / 2 + i * Math.PI * 2 / 3;
+                px[i] = cx + (float) Math.cos(a) * r;
+                py[i] = cy + (float) Math.sin(a) * r;
+            }
+            for (int i = 0; i < 3; i++) Gfx.line(px[i], py[i], px[(i + 1) % 3], py[(i + 1) % 3], tt, c);
+        } else if (st.equals("Brackets")) {
+            float h = g + s * 0.5f, arm = Math.max(1.5f, s * 0.45f);
+            for (int sx = -1; sx <= 1; sx += 2) {
+                Gfx.line(cx + sx * h, cy - h, cx + sx * h, cy + h, tt, c);
+                Gfx.line(cx + sx * h, cy - h, cx + sx * (h - arm), cy - h, tt, c);
+                Gfx.line(cx + sx * h, cy + h, cx + sx * (h - arm), cy + h, tt, c);
+            }
+        } else if (st.equals("Diamond")) {
+            float h = g + s * 0.6f;
+            Gfx.line(cx, cy - h, cx + h, cy, tt, c);
+            Gfx.line(cx + h, cy, cx, cy + h, tt, c);
+            Gfx.line(cx, cy + h, cx - h, cy, tt, c);
+            Gfx.line(cx - h, cy, cx, cy - h, tt, c);
         } else if (st.equals("Square")) {
             float h = g + s * 0.5f;
             Gfx.line(cx - h, cy - h, cx + h, cy - h, tt, c);

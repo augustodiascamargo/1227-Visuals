@@ -20,12 +20,16 @@ public final class Theme {
 
     /** Frosted background (Minecraft's blur shader + glass copy behind panels). */
     public static boolean blur() {
-        return (is("Glass") || is("Frosted") || liquid()) && blurAmount() > 0.01f;
+        return (is("Glass") || is("Frosted") || is("Aurora") || is("Gradient") || liquid()) && blurAmount() > 0.01f;
     }
 
     /** Apple-style liquid glass: very clear, magnified background, bright specular rim. */
     public static boolean liquid() {
         return is("Liquid Glass");
+    }
+
+    public static boolean motion() {
+        return m() == null || m().motion.on();
     }
 
     public static float blurAmount() {
@@ -70,6 +74,10 @@ public final class Theme {
         if (s.equals("Liquid Glass")) return a(tint(), 0.22f);
         if (s.equals("Glass")) return a(tint(), 0.42f);
         if (s.equals("Frosted")) return a(tint(), 0.72f);
+        if (s.equals("Aurora")) return a(tint(), 0.50f);
+        if (s.equals("Gradient")) return a(tint(), 0.55f);
+        if (s.equals("Midnight")) return a(Gfx.mix(tint(), 0xFF070B1C, 0.75f), 0.97f);
+        if (s.equals("OLED")) return a(0xFF000000, 0.98f);
         if (s.equals("Transparent")) return a(tint(), 0.55f);
         if (s.equals("Minimal")) return a(tint(), 0.0f);
         return a(tint(), 0.97f); // Solid, Neon
@@ -80,6 +88,9 @@ public final class Theme {
         if (s.equals("Liquid Glass")) return a(0xFFFFFFFF, 0.05f);
         if (s.equals("Glass")) return a(0xFFFFFFFF, 0.035f);
         if (s.equals("Frosted")) return a(0xFF000000, 0.18f);
+        if (s.equals("Aurora") || s.equals("Gradient")) return a(0xFF000000, 0.20f);
+        if (s.equals("Midnight")) return a(0xFF050816, 0.70f);
+        if (s.equals("OLED")) return a(0xFF000000, 1f);
         if (s.equals("Transparent")) return a(0xFF000000, 0.22f);
         if (s.equals("Minimal")) return a(tint(), 0.55f);
         return a(Gfx.mix(tint(), 0xFF000000, 0.35f), 1f);
@@ -90,6 +101,9 @@ public final class Theme {
         if (s.equals("Liquid Glass")) return a(0xFFFFFFFF, 0.07f + 0.05f * hover);
         if (s.equals("Glass")) return a(0xFFFFFFFF, 0.045f + 0.04f * hover);
         if (s.equals("Frosted")) return a(0xFFFFFFFF, 0.035f + 0.035f * hover);
+        if (s.equals("Aurora") || s.equals("Gradient")) return a(0xFFFFFFFF, 0.05f + 0.05f * hover);
+        if (s.equals("Midnight")) return a(Gfx.mix(0xFF101633, 0xFF18204A, hover), 0.85f);
+        if (s.equals("OLED")) return a(Gfx.mix(0xFF07070A, 0xFF121218, hover), 1f);
         if (s.equals("Transparent")) return a(Gfx.mix(tint(), 0xFF2A2E3A, 0.5f), 0.45f + 0.15f * hover);
         if (s.equals("Minimal")) return a(0xFFFFFFFF, 0.02f + 0.05f * hover);
         return a(Gfx.mix(Gfx.mix(tint(), 0xFF1E2230, 0.6f), 0xFF262A38, hover), 1f);
@@ -102,6 +116,10 @@ public final class Theme {
         if (s.equals("Liquid Glass")) return Gfx.alpha(0xFFFFFFFF, 0.16f * b);
         if (s.equals("Glass")) return Gfx.alpha(0xFFFFFFFF, 0.09f * b);
         if (s.equals("Frosted")) return Gfx.alpha(0xFFFFFFFF, 0.06f * b);
+        if (s.equals("Aurora")) return Gfx.alpha(0xFFFFFFFF, 0.10f * b);
+        if (s.equals("Gradient")) return Gfx.alpha(accent, 0.22f * b);
+        if (s.equals("Midnight")) return Gfx.alpha(0xFF6B7BFF, 0.12f * b);
+        if (s.equals("OLED")) return Gfx.alpha(0xFFFFFFFF, 0.07f * b);
         if (s.equals("Minimal")) return Gfx.alpha(0xFFFFFFFF, 0.12f * b);
         if (s.equals("Neon")) return Gfx.alpha(accent, 0.35f * b);
         return 0;
@@ -113,6 +131,9 @@ public final class Theme {
         if (s.equals("Liquid Glass")) return Gfx.alpha(0xFFFFFFFF, 0.30f * b);
         if (s.equals("Glass")) return Gfx.alpha(0xFFFFFFFF, 0.18f * b);
         if (s.equals("Frosted")) return Gfx.alpha(0xFFFFFFFF, 0.12f * b);
+        if (s.equals("Aurora")) return Gfx.alpha(0xFFFFFFFF, 0.22f * b);
+        if (s.equals("Midnight")) return Gfx.alpha(0xFF8090FF, 0.25f * b);
+        if (s.equals("OLED")) return Gfx.alpha(accent, 0.55f * Math.min(1f, b));
         if (s.equals("Neon")) return Gfx.alpha(accent, 0.9f * Math.min(1f, b));
         if (s.equals("Minimal")) return Gfx.alpha(0xFFFFFFFF, 0.10f * b);
         return Gfx.alpha(accent, 0.45f * Math.min(1f, b));

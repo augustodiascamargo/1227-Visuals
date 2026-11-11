@@ -31,7 +31,7 @@ public abstract class HudModule extends Module {
         posX = add(new Setting.Num("x", x, 0, 1, 0.0001, "")).showIf(() -> false);
         posY = add(new Setting.Num("y", y, 0, 1, 0.0001, "")).showIf(() -> false);
         scale = add(new Setting.Num("Scale", 1.0, 0.5, 2.5, 0.05, "x"));
-        background = add(new Setting.Mode("Background", "Glass", "Glass", "Solid", "None"));
+        background = add(new Setting.Mode("Background", "Liquid Glass", "Liquid Glass", "Glass", "Solid", "Accent bar", "Outline", "Gradient", "None"));
         bgOpacity = add(new Setting.Num("Background opacity", 0.55, 0.0, 1.0, 0.05, "")).showIf(() -> !background.is("None"));
         accentText = add(new Setting.Bool("Accent colored values", true));
     }
@@ -89,11 +89,27 @@ public abstract class HudModule extends Module {
     protected void panel(float x, float y, float w, float h) {
         String b = background.get();
         if (b.equals("None")) return;
-        if (b.equals("Glass")) {
+        if (b.equals("Liquid Glass")) {
+            // clear, slightly magnifying glass with a bright rim (same look as the Liquid Glass menu)
+            int sf = new net.minecraft.client.gui.ScaledResolution(net.minecraft.client.Minecraft.getMinecraft()).getScaleFactor();
+            Glass.panel(x, y, w, h, 5f, scale.f(), net.m1227.ui.Theme.hudTint(), bgOpacity.f() * 0.38f,
+                    net.m1227.ui.Theme.hudBlurPx() * scale.f() * sf * 0.4f, 0.03f);
+        } else if (b.equals("Glass")) {
             int sf = new net.minecraft.client.gui.ScaledResolution(net.minecraft.client.Minecraft.getMinecraft()).getScaleFactor();
             Glass.panel(x, y, w, h, 4f, scale.f(), net.m1227.ui.Theme.hudTint(), bgOpacity.f() * 0.75f,
                     net.m1227.ui.Theme.hudBlurPx() * scale.f() * sf * 0.5f);
             Gfx.roundedOutline(x, y, w, h, 4f, 0.6f, Gfx.alpha(0xFFFFFFFF, 0.12f * net.m1227.ui.Theme.border()));
+        } else if (b.equals("Accent bar")) {
+            Gfx.roundedRect(x, y, w, h, 4f, Gfx.alpha(0xFF0B0C11, bgOpacity.f()));
+            Gfx.roundedRect(x, y + 2f, 1.6f, h - 4f, 0.8f, accent());
+        } else if (b.equals("Outline")) {
+            Gfx.roundedRect(x, y, w, h, 4f, Gfx.alpha(0xFF0B0C11, bgOpacity.f() * 0.45f));
+            Gfx.roundedOutline(x, y, w, h, 4f, 0.8f, Gfx.alpha(accent(), 0.85f));
+        } else if (b.equals("Gradient")) {
+            int alt = 0xFF000000 | ClientModule.accentAlt();
+            Gfx.roundedRect(x, y, w, h, 4f, Gfx.alpha(0xFF0B0C11, bgOpacity.f()));
+            Gfx.gradientH(x + 2f, y + 0.5f, w - 4f, 1f, accent(), alt);
+            Gfx.roundedOutline(x, y, w, h, 4f, 0.5f, Gfx.alpha(0xFFFFFFFF, 0.08f));
         } else {
             Gfx.roundedRect(x, y, w, h, 4f, Gfx.alpha(0xFF0B0C11, bgOpacity.f()));
         }

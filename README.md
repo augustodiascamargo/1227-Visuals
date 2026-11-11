@@ -1,4 +1,4 @@
-# 1227 — v1.8.1 (Minecraft 1.8.9 · Forge 11.15.1.2318 · Java 8)
+# 1227 — v1.9.0 (Minecraft 1.8.9 · Forge 11.15.1.2318 · Java 8)
 
 Mod client-side e puramente visual. Não envia pacotes, não desenha através de paredes e não muda alcance,
 timing de ataque ou outras mecânicas do servidor.
@@ -175,8 +175,28 @@ nada depende de Lunar ou de outro launcher.
 O modelo do Tung Sahur (ZAHUR.fbx + textura) e a butterfly knife (.blend) foram enviados pelo usuário. Antes de
 publicar o 1227, confira a licença de cada um (por exemplo, se exigem crédito ao autor) e coloque o crédito aqui.
 
+## Mudanças na v1.9.0
+- **Controles do Minecraft:** só a tecla "Open 1227 menu" fica lá; as teclas de cada mod continuam no menu do 1227.
+- **Liquid Glass fora do menu:**
+  - Todos os HUDs (Keystrokes, Armor, Coords, Info, Potions, Target, Watermark, Held Item, Combo, Movement): fundo "Liquid Glass" (novo padrão).
+  - Dynamic Island: "Background style" Liquid Glass / Glass / Solid.
+  - Janela de configurações dos mods e roda de emotes.
+- **4 estilos de menu novos (11 no total):**
+  - Aurora: vidro com luzes de cor se movendo.
+  - Gradient: borda com gradiente que corre em volta da janela.
+  - Midnight: azul escuro com estrelas piscando.
+  - OLED: preto puro com linha de destaque.
+- **Accent mode:**
+  - Static.
+  - Two-tone: alterna entre duas cores.
+  - Rainbow.
+  - Pulse.
+  - Tem velocidade ajustável e vale para menu, HUD e efeitos.
+- **HUD:** fundos novos Accent bar, Outline e Gradient.
+- **Crosshair:** estilos novos X, Triangle, Brackets e Diamond.
+
 ## Mudanças na v1.8.1
-- **Teclas nas Configurações do Minecraft:** todas as teclas do 1227 aparecem em Opções > Controles, na categoria "1227": a tecla do menu, zoom, emotes, toggle sprint, inspect da butterfly e a tecla de ligar/desligar de cada mod. Dá para mudar lá ou no menu do 1227; as duas ficam sincronizadas (config do 1227 e options.txt).
+- **Teclas nas Configurações do Minecraft:** a tecla de abrir o menu aparece em Opções > Controles, na categoria "1227" (sincronizada com o menu do 1227). As outras teclas ficam só no menu do 1227.
 - **Botões do mouse:** o botão do meio e os laterais podem ser usados como tecla (no menu do 1227: clique no campo de tecla e aperte o botão do mouse; ou pelos Controles).
 - Botão "Open Minecraft Controls (1227 keys)" no módulo Client; o "Done" volta para o menu do 1227.
 - A lista de conflitos de tecla não acusa mais as próprias teclas do 1227 duas vezes.

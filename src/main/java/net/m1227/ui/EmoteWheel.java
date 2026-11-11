@@ -60,7 +60,12 @@ public final class EmoteWheel extends GuiScreen {
                 double a = (ang + Math.PI / 2 + Math.PI / n + Math.PI * 4) % (Math.PI * 2);
                 hover = (int) (a / (Math.PI * 2 / n)) % n;
             }
-            Gfx.circle(cx, cy, r1 + 4, Gfx.alpha(0xFF0B0C11, 0.75f * o));
+            if (o > 0.6f) {
+                // liquid glass disc behind the slices
+                Glass.panel(cx - r1 - 4, cy - r1 - 4, (r1 + 4) * 2, (r1 + 4) * 2, r1 + 4, 1f, Theme.hudTint(), 0.35f, 6f * sf, 0.035f);
+            } else {
+                Gfx.circle(cx, cy, r1 + 4, Gfx.alpha(0xFF0B0C11, 0.75f * o));
+            }
             for (int i = 0; i < n; i++) {
                 double a0 = -Math.PI / 2 - Math.PI / n + i * Math.PI * 2 / n, a1 = a0 + Math.PI * 2 / n;
                 boolean h = i == hover;
@@ -71,7 +76,7 @@ public final class EmoteWheel extends GuiScreen {
                     float x1 = cx + (float) Math.cos(b0) * r1, y1 = cy + (float) Math.sin(b0) * r1;
                     float x2 = cx + (float) Math.cos(b1) * r1, y2 = cy + (float) Math.sin(b1) * r1;
                     float x3 = cx + (float) Math.cos(b1) * r0, y3 = cy + (float) Math.sin(b1) * r0;
-                    Gfx.quad(x0, y0, x1, y1, x2, y2, x3, y3, Gfx.alpha(h ? acc : 0xFF1A1D27, (h ? 0.85f : 0.7f) * o));
+                    Gfx.quad(x0, y0, x1, y1, x2, y2, x3, y3, Gfx.alpha(h ? acc : 0xFF1A1D27, (h ? 0.8f : 0.38f) * o));
                 }
                 double mid = (a0 + a1) / 2;
                 float tx = cx + (float) Math.cos(mid) * (r0 + r1) / 2, ty = cy + (float) Math.sin(mid) * (r0 + r1) / 2;

@@ -9,10 +9,10 @@ import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import net.minecraftforge.fml.common.gameevent.TickEvent;
 
 /**
- * Mirrors every 1227 key into Minecraft's Options > Controls, under its own "1227" category:
- * the menu key, each key setting (zoom, emotes, sprint toggle, inspect...) and every module's
- * on/off key. Either side can be edited: a change made in Controls is copied into 1227's
+ * Puts the key that opens the 1227 menu into Minecraft's Options > Controls, under its own
+ * "1227" category. Either side can be edited: a change made in Controls is copied into 1227's
  * config, and a change made in the 1227 menu is copied into Controls (and options.txt).
+ * Every other 1227 key (zoom, emotes, module toggles...) is set only in the 1227 menu.
  *
  * The bindings only carry the key; 1227 still reads the keys itself, so nothing is
  * pressed twice and Minecraft's own "conflict" red text works as usual.
@@ -46,41 +46,22 @@ public final class Keybinds {
     public void register() {
         if (registered) return;
         registered = true;
-        for (final Module m : ModuleManager.all()) {
-            for (Setting<?> s : m.settings()) {
-                if (!(s instanceof Setting.Key)) continue;
-                final Setting.Key k = (Setting.Key) s;
-                String desc = clean(k.name.toLowerCase().contains(m.name.toLowerCase()) ? k.name : m.name + " - " + k.name);
-                KeyBinding kb = new KeyBinding(desc, k.def, CATEGORY);
-                kb.setKeyCode(k.code());
-                ClientRegistry.registerKeyBinding(kb);
-                links.add(new Link(kb, k.code()) {
-                    int get() {
-                        return k.code();
-                    }
-
-                    void set(int v) {
-                        k.set(v);
-                    }
-                });
+        // Only the menu key goes into Controls; module and feature keys stay in the 1227 menu.
+        final net.m1227.module.ClientModule c = net.m1227.module.ClientModule.INSTANCE;
+        if (c == null) return;
+        final Setting.Key k = c.menuKeySetting();
+        KeyBinding kb = new KeyBinding("Open 1227 menu", k.def, CATEGORY);
+        kb.setKeyCode(k.code());
+        ClientRegistry.registerKeyBinding(kb);
+        links.add(new Link(kb, k.code()) {
+            int get() {
+                return k.code();
             }
-        }
-        for (final Module m : ModuleManager.all()) {
-            if (!m.toggleable()) continue;
-            KeyBinding kb = new KeyBinding(clean("Toggle " + m.name), 0, CATEGORY);
-            kb.setKeyCode(m.key);
-            ClientRegistry.registerKeyBinding(kb);
-            links.add(new Link(kb, m.key) {
-                int get() {
-                    return m.key;
-                }
 
-                void set(int v) {
-                    m.key = v;
-                    ConfigManager.markDirty();
-                }
-            });
-        }
+            void set(int v) {
+                k.set(v);
+            }
+        });
         KeyBinding.resetKeyBindingArrayAndHash();
     }
 

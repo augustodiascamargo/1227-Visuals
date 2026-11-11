@@ -41,7 +41,7 @@ public final class DynamicIslandModule extends Module {
     private final Setting.Mode anchor, shape;
     private final Setting.Num scale, offsetY, opacity, noteTime, springSpeed;
     private final Setting.Col accent;
-    private final Setting.Bool glass;
+    private final Setting.Mode glass;
     private final Setting.Num glassBlur;
     private final Setting.Bool showName, showFps, showPing, showCoords, showBps, showTime, showServer, autoHide, combatCard;
     private final Setting.Bool nToggles, nCombat, nState, nSystem;
@@ -68,8 +68,8 @@ public final class DynamicIslandModule extends Module {
         offsetY = add(new Setting.Num("Offset Y", 5, 0, 120, 1, "px"));
         opacity = add(new Setting.Num("Background", 0.92, 0.4, 1.0, 0.02, ""));
         accent = add(new Setting.Col("Accent", 0x8B5CFF));
-        glass = add(new Setting.Bool("Glass background", true));
-        glassBlur = add(new Setting.Num("Glass blur", 6, 1, 14, 1, "px"));
+        glass = add(new Setting.Mode("Background style", "Liquid Glass", "Liquid Glass", "Glass", "Solid"));
+        glassBlur = add(new Setting.Num("Glass blur", 6, 1, 14, 1, "px")).showIf(() -> !glass.is("Solid"));
         springSpeed = add(new Setting.Num("Morph speed", 1.0, 0.4, 2.0, 0.1, "x"));
         autoHide = add(new Setting.Bool("Collapse when idle", false));
         combatCard = add(new Setting.Bool("Combat card", true));
@@ -225,7 +225,9 @@ public final class DynamicIslandModule extends Module {
         GlStateManager.scale(sc, sc, 1f);
         Gfx.roundedRect(x - 2f, y - 1f, w + 4f, h + 4f, r + 2f, 0x30000000);
         Gfx.roundedRect(x - 0.5f, y - 0.5f, w + 1f, h + 1f, r + 0.5f, Gfx.alpha(0x22FFFFFF, opacity.f()));
-        if (glass.on()) {
+        if (glass.is("Liquid Glass")) {
+            Glass.panel(x, y, w, h, r, sc, net.m1227.ui.Theme.hudTint(), opacity.f() * 0.40f, glassBlur.f() * e.resolution.getScaleFactor() * 0.8f, 0.035f);
+        } else if (glass.is("Glass")) {
             Glass.panel(x, y, w, h, r, sc, net.m1227.ui.Theme.hudTint(), opacity.f() * 0.55f, glassBlur.f() * e.resolution.getScaleFactor());
             net.m1227.ui.Gfx.roundedOutline(x, y, w, h, r, 0.6f, net.m1227.ui.Gfx.alpha(0xFFFFFFFF, 0.14f * net.m1227.ui.Theme.border()));
         }

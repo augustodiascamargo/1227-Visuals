@@ -225,9 +225,20 @@ public class ClickGui extends GuiScreen {
         if (Theme.is("Neon")) {
             for (int i = 3; i >= 1; i--) Gfx.roundedRect(wx - i * 2, wy - i * 2, W + i * 4, H + i * 4, rad + i * 2, Gfx.alpha(ACCENT, 0.06f * o));
         }
+        int alt = 0xFF000000 | ClientModule.accentAlt();
+        double tt = Theme.motion() ? System.nanoTime() / 1e9 : 0.0;
+        if (Theme.is("Gradient")) {
+            // soft coloured halo around the window, following the border sweep
+            for (int i = 3; i >= 1; i--) Gfx.roundedRect(wx - i * 2, wy - i * 2, W + i * 4, H + i * 4, rad + i * 2, Gfx.alpha(Gfx.mix(ACCENT, alt, 0.5f), 0.045f * o));
+        }
         Gfx.roundedRect(wx, wy, W, H, rad, Gfx.alpha(Theme.window(), o));
+        if (Theme.is("Aurora") || Theme.is("Midnight") || Theme.is("Gradient")) drawBackdrop(wx, wy, rad, alt, tt, o);
         if (Theme.liquid()) Gfx.roundedOutlineGradient(wx, wy, W, H, rad, 1f, Gfx.alpha(0x8CFFFFFF, o), Gfx.alpha(0x1EFFFFFF, o));
-        else Gfx.roundedOutline(wx, wy, W, H, rad, 1f, Gfx.alpha(Theme.windowBorder(ACCENT), o));
+        else if (Theme.is("Gradient")) Gfx.roundedOutlineSweep(wx, wy, W, H, rad, 1.2f, Gfx.alpha(ACCENT, 0.95f * o), Gfx.alpha(alt, 0.95f * o), (float) (tt * 1.2));
+        else if (Theme.is("OLED")) {
+            Gfx.roundedOutline(wx, wy, W, H, rad, 1f, Gfx.alpha(0xFFFFFFFF, 0.08f * o));
+            Gfx.gradientH(wx + rad, wy, W - rad * 2, 1f, Gfx.alpha(ACCENT, 0f), Gfx.alpha(ACCENT, 0.9f * o));
+        } else Gfx.roundedOutline(wx, wy, W, H, rad, 1f, Gfx.alpha(Theme.windowBorder(ACCENT), o));
         if (Theme.sheen()) Gfx.gradient(wx + rad, wy + 0.5f, W - rad * 2, 40, Gfx.alpha(Theme.blur() ? 0x1CFFFFFF : 0x10FFFFFF, o), 0x00FFFFFF);
 
         drawSidebar(wx, wy, mx, my, o);
@@ -240,6 +251,34 @@ public class ClickGui extends GuiScreen {
         Gfx.clearTransform();
 
         if (drag != null && !Mouse.isButtonDown(0)) drag = null;
+    }
+
+    /** Animated layer inside the window for Aurora (drifting colour), Midnight (stars) and Gradient (wash). */
+    private void drawBackdrop(float wx, float wy, float rad, int alt, double t, float o) {
+        Gfx.scissorOn(wx + 1, wy + 1, W - 2, H - 2);
+        if (Theme.is("Aurora")) {
+            float[][] blobs = {{0.18f, 0.25f, 0.21f, 0.0f}, {0.72f, 0.18f, 0.17f, 1.7f}, {0.55f, 0.85f, 0.19f, 3.1f}, {0.9f, 0.7f, 0.13f, 4.4f}};
+            for (int i = 0; i < blobs.length; i++) {
+                float[] b = blobs[i];
+                float bx = wx + W * (b[0] + 0.08f * (float) Math.sin(t * 0.35 + b[3]));
+                float by = wy + H * (b[1] + 0.10f * (float) Math.cos(t * 0.28 + b[3] * 1.3));
+                int c = i % 2 == 0 ? ACCENT : alt;
+                Gfx.glow(bx, by, W * b[2] * 1.6f, Gfx.alpha(c, 0.30f * o));
+            }
+        } else if (Theme.is("Midnight")) {
+            Gfx.gradient(wx, wy, W, H * 0.6f, Gfx.alpha(Gfx.mix(ACCENT, 0xFF1A2260, 0.6f), 0.22f * o), 0x00000000);
+            // a fixed field of twinkling stars
+            for (int i = 0; i < 70; i++) {
+                float sx = (float) (((i * 73856093L) & 0xFFFF) / 65535.0), sy = (float) (((i * 19349663L) & 0xFFFF) / 65535.0);
+                float tw = 0.35f + 0.65f * (0.5f + 0.5f * (float) Math.sin(t * (0.8 + (i % 7) * 0.3) + i));
+                float sz = i % 9 == 0 ? 1.2f : 0.7f;
+                Gfx.rect(wx + SIDE + sx * (W - SIDE), wy + sy * H, sz, sz, Gfx.alpha(0xFFFFFFFF, 0.55f * tw * o));
+            }
+        } else { // Gradient
+            Gfx.gradientH(wx, wy, W, H, Gfx.alpha(ACCENT, 0.10f * o), Gfx.alpha(alt, 0.10f * o));
+            Gfx.gradient(wx, wy + H * 0.45f, W, H * 0.55f, 0x00000000, Gfx.alpha(0xFF000000, 0.25f * o));
+        }
+        Gfx.scissorOff();
     }
 
     private void drawSidebar(float wx, float wy, int mx, int my, float o) {
@@ -599,7 +638,20 @@ public class ClickGui extends GuiScreen {
         }, null));
         Gfx.roundedRect(wx + SIDE, wy, W - SIDE, H, Theme.radius(), Gfx.alpha(0xFF05060A, 0.45f * a));
         Gfx.roundedRect(x - 8, y - 6, ww + 16, wh + 16, 18, Gfx.alpha(0xFF000000, 0.35f * a));
-        Gfx.roundedRect(x, y, ww, wh, 14, Gfx.alpha(Gfx.mix(0xFF101219, Theme.tint(), 0.4f), 0.97f * a));
+        if (Theme.blur() && a > 0.6f) {
+            // liquid glass over the menu: undo the menu transform so the copied screen area lines up
+            float sc = curScale;
+            int sf = new net.minecraft.client.gui.ScaledResolution(mc).getScaleFactor();
+            net.minecraft.client.renderer.GlStateManager.pushMatrix();
+            net.minecraft.client.renderer.GlStateManager.translate(width / 2f, height / 2f, 0f);
+            net.minecraft.client.renderer.GlStateManager.scale(1f / sc, 1f / sc, 1f);
+            net.minecraft.client.renderer.GlStateManager.translate(-width / 2f, -height / 2f, 0f);
+            float gx = (x - width / 2f) * sc + width / 2f, gy = (y - height / 2f) * sc + height / 2f;
+            Glass.panel(gx, gy, ww * sc, wh * sc, 14f * sc, 1f, Theme.tint(), 0.55f * Theme.opacity(), 6f * sf * Theme.blurAmount(), Theme.liquid() ? 0.03f : 0f);
+            net.minecraft.client.renderer.GlStateManager.popMatrix();
+        } else {
+            Gfx.roundedRect(x, y, ww, wh, 14, Gfx.alpha(Gfx.mix(0xFF101219, Theme.tint(), 0.4f), 0.97f * a));
+        }
         Gfx.roundedOutlineGradient(x, y, ww, wh, 14, 1f, Gfx.alpha(0x50FFFFFF, a), Gfx.alpha(0x10FFFFFF, a));
         // header
         Gfx.circle(x + 20, y + 21, 4f, Gfx.alpha(m.isEnabled() || !m.toggleable() ? ACCENT : 0xFF3A3E4D, a));

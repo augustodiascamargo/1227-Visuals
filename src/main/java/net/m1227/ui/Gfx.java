@@ -244,6 +244,72 @@ public final class Gfx {
         roundedRect(cx - r, cy - r, r * 2f, r * 2f, r, argb);
     }
 
+    /** Soft radial glow: argb at the centre fading to transparent at radius r. */
+    public static void glow(float cx, float cy, float r, int argb) {
+        if (r <= 0f || (argb >>> 24) == 0) return;
+        begin();
+        GL11.glShadeModel(GL11.GL_SMOOTH);
+        GL11.glBegin(GL11.GL_TRIANGLE_FAN);
+        color(argb);
+        GL11.glVertex2f(cx, cy);
+        color(argb & 0x00FFFFFF);
+        for (int i = 0; i <= 32; i++) {
+            double a = Math.PI * 2 * i / 32;
+            GL11.glVertex2f(cx + (float) Math.cos(a) * r, cy + (float) Math.sin(a) * r);
+        }
+        GL11.glEnd();
+        GL11.glShadeModel(GL11.GL_FLAT);
+        end();
+    }
+
+    /** Horizontal gradient (left colour to right colour). */
+    public static void gradientH(float x, float y, float w, float h, int left, int right) {
+        if (w <= 0f || h <= 0f) return;
+        begin();
+        GL11.glShadeModel(GL11.GL_SMOOTH);
+        GL11.glBegin(GL11.GL_QUADS);
+        color(left);
+        GL11.glVertex2f(x, y);
+        GL11.glVertex2f(x, y + h);
+        color(right);
+        GL11.glVertex2f(x + w, y + h);
+        GL11.glVertex2f(x + w, y);
+        GL11.glEnd();
+        GL11.glShadeModel(GL11.GL_FLAT);
+        end();
+    }
+
+    /**
+     * Rounded outline whose colour sweeps around the shape between c0 and c1; phase (radians)
+     * turns the sweep, so animating it makes the light run along the border.
+     */
+    public static void roundedOutlineSweep(float x, float y, float w, float h, float r, float t, int c0, int c1, float phase) {
+        if (w <= 0f || h <= 0f) return;
+        r = Math.max(0f, Math.min(r, Math.min(w, h) * 0.5f));
+        float mx = x + w / 2f, my = y + h / 2f;
+        begin();
+        GL11.glShadeModel(GL11.GL_SMOOTH);
+        GL11.glBegin(GL11.GL_QUAD_STRIP);
+        float[][] c = {{x + w - r, y + r, -90}, {x + w - r, y + h - r, 0}, {x + r, y + h - r, 90}, {x + r, y + r, 180}};
+        float ri = Math.max(0f, r - t);
+        for (int k = 0; k <= 4; k++) {
+            float[] q = c[k % 4];
+            int steps = k == 4 ? 0 : 6;
+            for (int i = 0; i <= steps; i++) {
+                double a = Math.toRadians(q[2] + 90.0 * i / 6.0);
+                float cs = (float) Math.cos(a), sn = (float) Math.sin(a);
+                float vx = q[0] + cs * r, vy = q[1] + sn * r;
+                double ang = Math.atan2((vy - my) / h, (vx - mx) / w);
+                color(mixArgb(c0, c1, 0.5f + 0.5f * (float) Math.sin(ang + phase)));
+                GL11.glVertex2f(vx, vy);
+                GL11.glVertex2f(q[0] + cs * ri, q[1] + sn * ri);
+            }
+        }
+        GL11.glEnd();
+        GL11.glShadeModel(GL11.GL_FLAT);
+        end();
+    }
+
     /** Vertical gradient (top colour to bottom colour). */
     public static void gradient(float x, float y, float w, float h, int top, int bottom) {
         begin();

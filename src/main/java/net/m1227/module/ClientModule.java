@@ -32,6 +32,9 @@ public final class ClientModule extends Module {
 
     public final Setting.Key menuKey;
     public final Setting.Col accent;
+    public final Setting.Mode accentMode;
+    public final Setting.Col accent2;
+    public final Setting.Num accentSpeed;
     public final Setting.Num menuScale, animSpeed;
     public final Setting.Bool glass;
 
@@ -40,15 +43,18 @@ public final class ClientModule extends Module {
         INSTANCE = this;
         self = this;
         menuKey = add(new Setting.Key("Menu key", Keyboard.KEY_RCONTROL));
-        add(new Setting.Action("Open Minecraft Controls (1227 keys)", new Runnable() {
+        add(new Setting.Action("Open Minecraft Controls", new Runnable() {
             @Override
             public void run() {
-                // every 1227 key is also listed under the "1227" category there; Done returns to this menu
+                // the menu key is also listed under the "1227" category there; Done returns to this menu
                 net.minecraft.client.Minecraft mc = net.minecraft.client.Minecraft.getMinecraft();
                 mc.displayGuiScreen(new net.minecraft.client.gui.GuiControls(mc.currentScreen, mc.gameSettings));
             }
         }));
         accent = add(new Setting.Col("Accent color", 0x8B5CFF));
+        accentMode = add(new Setting.Mode("Accent mode", "Static", "Static", "Two-tone", "Rainbow", "Pulse"));
+        accent2 = add(new Setting.Col("Second accent", 0x38BDF8)).showIf(() -> accentMode.is("Two-tone"));
+        accentSpeed = add(new Setting.Num("Accent animation speed", 1.0, 0.2, 3.0, 0.1, "x")).showIf(() -> !accentMode.is("Static"));
         menuScale = add(new Setting.Num("Menu scale", 1.0, 0.75, 1.25, 0.05, "x"));
         animSpeed = add(new Setting.Num("Animation speed", 1.0, 0.5, 2.0, 0.1, "x"));
         glass = add(new Setting.Bool("Glass effects (blur behind menus)", true)).showIf(() -> false); // moved to Menu Style
@@ -85,12 +91,50 @@ public final class ClientModule extends Module {
         return false;
     }
 
+    public Setting.Key menuKeySetting() {
+        return menuKey;
+    }
+
     public static int menuKey() {
         return INSTANCE == null ? Keyboard.KEY_RCONTROL : INSTANCE.menuKey.code();
     }
 
+    /**
+     * The accent colour used by the menu, HUD and effects. Static returns the picked colour;
+     * Two-tone drifts between the two accents, Rainbow cycles the hue (keeping the picked
+     * saturation and brightness) and Pulse breathes the brightness.
+     */
     public static int accent() {
-        return INSTANCE == null ? 0x8B5CFF : INSTANCE.accent.rgb();
+        if (INSTANCE == null) return 0x8B5CFF;
+        ClientModule c = INSTANCE;
+        String m = c.accentMode.get();
+        if (m.equals("Static")) return c.accent.rgb();
+        double t = System.nanoTime() / 1e9 * c.accentSpeed.f();
+        if (m.equals("Two-tone")) {
+            float k = 0.5f + 0.5f * (float) Math.sin(t * 1.4);
+            return net.m1227.ui.Gfx.mix(0xFF000000 | c.accent.rgb(), 0xFF000000 | c.accent2.rgb(), k) & 0xFFFFFF;
+        }
+        if (m.equals("Rainbow")) {
+            float h = (float) ((c.accent.hue + t * 0.12) % 1.0);
+            return java.awt.Color.HSBtoRGB(h, Math.max(0.45f, c.accent.sat), Math.max(0.6f, c.accent.bri)) & 0xFFFFFF;
+        }
+        // Pulse
+        float b = c.accent.bri * (0.72f + 0.28f * (0.5f + 0.5f * (float) Math.sin(t * 3.0)));
+        return java.awt.Color.HSBtoRGB(c.accent.hue, c.accent.sat, b) & 0xFFFFFF;
+    }
+
+    /** Second colour for gradients: the second accent in Two-tone, otherwise a hue-shifted accent. */
+    public static int accentAlt() {
+        if (INSTANCE == null) return 0x38BDF8;
+        ClientModule c = INSTANCE;
+        if (c.accentMode.is("Two-tone")) {
+            double t = System.nanoTime() / 1e9 * c.accentSpeed.f();
+            float k = 0.5f + 0.5f * (float) Math.sin(t * 1.4);
+            return net.m1227.ui.Gfx.mix(0xFF000000 | c.accent2.rgb(), 0xFF000000 | c.accent.rgb(), k) & 0xFFFFFF;
+        }
+        int a = accent();
+        float[] hsb = java.awt.Color.RGBtoHSB((a >> 16) & 255, (a >> 8) & 255, a & 255, null);
+        return java.awt.Color.HSBtoRGB((hsb[0] + 0.14f) % 1f, hsb[1], hsb[2]) & 0xFFFFFF;
     }
 
     public static float menuScale() {
