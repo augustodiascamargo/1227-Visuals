@@ -1,4 +1,4 @@
-# 1227 — v1.8.0 (Minecraft 1.8.9 · Forge 11.15.1.2318 · Java 8)
+# 1227 — v1.8.1 (Minecraft 1.8.9 · Forge 11.15.1.2318 · Java 8)
 
 Mod client-side e puramente visual. Não envia pacotes, não desenha através de paredes e não muda alcance,
 timing de ataque ou outras mecânicas do servidor.
@@ -174,6 +174,12 @@ nada depende de Lunar ou de outro launcher.
 ### Licença dos modelos enviados
 O modelo do Tung Sahur (ZAHUR.fbx + textura) e a butterfly knife (.blend) foram enviados pelo usuário. Antes de
 publicar o 1227, confira a licença de cada um (por exemplo, se exigem crédito ao autor) e coloque o crédito aqui.
+
+## Mudanças na v1.8.1
+- **Teclas nas Configurações do Minecraft:** todas as teclas do 1227 aparecem em Opções > Controles, na categoria "1227": a tecla do menu, zoom, emotes, toggle sprint, inspect da butterfly e a tecla de ligar/desligar de cada mod. Dá para mudar lá ou no menu do 1227; as duas ficam sincronizadas (config do 1227 e options.txt).
+- **Botões do mouse:** o botão do meio e os laterais podem ser usados como tecla (no menu do 1227: clique no campo de tecla e aperte o botão do mouse; ou pelos Controles).
+- Botão "Open Minecraft Controls (1227 keys)" no módulo Client; o "Done" volta para o menu do 1227.
+- A lista de conflitos de tecla não acusa mais as próprias teclas do 1227 duas vezes.
 
 ## Mudanças na v1.8.0
 - **Configurações em janela:** clique na engrenagem do card (ou botão direito) para abrir as opções do mod numa janela; clique esquerdo no card liga/desliga. Esc, o X ou clicar fora fecham.

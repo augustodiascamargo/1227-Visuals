@@ -97,7 +97,7 @@ public final class EmotesModule extends Module {
             return;
         }
         int k = wheelKey.code();
-        if (k > 0 && mc.currentScreen == null && Keyboard.isKeyDown(k)) {
+        if (k != 0 && mc.currentScreen == null && net.m1227.core.InputManager.isDown(k)) {
             mc.displayGuiScreen(new net.m1227.ui.EmoteWheel(this, k));
         }
         if (current < 0) {

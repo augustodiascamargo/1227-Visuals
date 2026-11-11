@@ -305,7 +305,8 @@ public abstract class Setting<T> {
 
         @Override
         public void fromJson(JsonElement e) {
-            if (e.isJsonPrimitive()) value = Math.max(0, Math.min(255, e.getAsInt()));
+            // -100..-85 are mouse buttons (Minecraft's own convention), 1..255 keyboard keys
+            if (e.isJsonPrimitive()) value = Math.max(-100, Math.min(255, e.getAsInt()));
         }
     }
 }

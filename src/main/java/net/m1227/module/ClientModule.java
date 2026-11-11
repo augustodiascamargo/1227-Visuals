@@ -40,6 +40,14 @@ public final class ClientModule extends Module {
         INSTANCE = this;
         self = this;
         menuKey = add(new Setting.Key("Menu key", Keyboard.KEY_RCONTROL));
+        add(new Setting.Action("Open Minecraft Controls (1227 keys)", new Runnable() {
+            @Override
+            public void run() {
+                // every 1227 key is also listed under the "1227" category there; Done returns to this menu
+                net.minecraft.client.Minecraft mc = net.minecraft.client.Minecraft.getMinecraft();
+                mc.displayGuiScreen(new net.minecraft.client.gui.GuiControls(mc.currentScreen, mc.gameSettings));
+            }
+        }));
         accent = add(new Setting.Col("Accent color", 0x8B5CFF));
         menuScale = add(new Setting.Num("Menu scale", 1.0, 0.75, 1.25, 0.05, "x"));
         animSpeed = add(new Setting.Num("Animation speed", 1.0, 0.5, 2.0, 0.1, "x"));

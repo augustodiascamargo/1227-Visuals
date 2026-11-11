@@ -50,9 +50,18 @@ public final class ToggleSprintModule extends Module {
     }
 
     @SubscribeEvent
+    public void onMouse(InputEvent.MouseInputEvent e) {
+        int k = net.m1227.core.InputManager.pressedCode(true);
+        if (k != -100 && k != -99) pressed(k);
+    }
+
+    @SubscribeEvent
     public void onKey(InputEvent.KeyInputEvent e) {
-        if (!Keyboard.getEventKeyState() || Minecraft.getMinecraft().currentScreen != null) return;
-        int k = Keyboard.getEventKey();
+        pressed(net.m1227.core.InputManager.pressedCode(false));
+    }
+
+    private void pressed(int k) {
+        if (Minecraft.getMinecraft().currentScreen != null) return;
         if (k != 0 && k == toggleKey.code()) {
             active = !active;
             if (!active) release();

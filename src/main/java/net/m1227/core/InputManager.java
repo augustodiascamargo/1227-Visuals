@@ -15,9 +15,9 @@ import org.lwjgl.input.Keyboard;
 /**
  * All keyboard handling lives here, separate from the menu code: the menu
  * key, module toggle keys and other key settings. Keys are stored in 1227's
- * own config (not in Minecraft's Controls), so they never clash with a
- * launcher's or another mod's binding unless the user picks the same key,
- * and {@link #conflicts} reports that case in the menu.
+ * config and mirrored into Options > Controls (category "1227", see
+ * {@link Keybinds}), so they can be changed in either place. Codes below 0
+ * are mouse buttons, as in Minecraft ({@code -100 + button}).
  */
 public final class InputManager {
     public static final InputManager INSTANCE = new InputManager();
@@ -50,12 +50,41 @@ public final class InputManager {
         Minecraft.getMinecraft().displayGuiScreen(new ClickGui());
     }
 
+    /** Is this key (or mouse button, for codes below 0) held right now? */
+    public static boolean isDown(int code) {
+        if (code == 0) return false;
+        if (code < 0) {
+            int b = code + 100;
+            return b >= 0 && b < org.lwjgl.input.Mouse.getButtonCount() && org.lwjgl.input.Mouse.isButtonDown(b);
+        }
+        return code < 256 && Keyboard.isKeyDown(code);
+    }
+
+    /** Key code of the current input event: the keyboard key, or -100 + button for a mouse press (0 = release / none). */
+    public static int pressedCode(boolean mouse) {
+        if (mouse) {
+            int b = org.lwjgl.input.Mouse.getEventButton();
+            return b >= 0 && org.lwjgl.input.Mouse.getEventButtonState() ? b - 100 : 0;
+        }
+        return Keyboard.getEventKeyState() ? Keyboard.getEventKey() : 0;
+    }
+
+    @SubscribeEvent
+    public void onMouse(InputEvent.MouseInputEvent e) {
+        int k = pressedCode(true);
+        // left / right click stay with the game; only extra buttons can be bound
+        if (k == -100 || k == -99) return;
+        press(k);
+    }
+
     @SubscribeEvent
     public void onKey(InputEvent.KeyInputEvent e) {
+        press(pressedCode(false));
+    }
+
+    private void press(int k) {
         Minecraft mc = Minecraft.getMinecraft();
-        if (mc.currentScreen != null || !Keyboard.getEventKeyState()) return;
-        int k = Keyboard.getEventKey();
-        if (k == 0) return;
+        if (mc.currentScreen != null || k == 0) return;
         if (k == ClientModule.menuKey()) {
             mc.displayGuiScreen(new ClickGui());
             return;
@@ -76,7 +105,7 @@ public final class InputManager {
         Minecraft mc = Minecraft.getMinecraft();
         if (mc.gameSettings != null) {
             for (KeyBinding kb : mc.gameSettings.keyBindings) {
-                if (kb.getKeyCode() == key) out.add(I18n.format(kb.getKeyDescription()));
+                if (kb.getKeyCode() == key && !Keybinds.ours(kb)) out.add(I18n.format(kb.getKeyDescription()));
             }
         }
         for (Module m : ModuleManager.all()) {
@@ -89,7 +118,8 @@ public final class InputManager {
     }
 
     public static String keyName(int key) {
-        if (key <= 0) return "NONE";
+        if (key == 0) return "NONE";
+        if (key < 0) return "MOUSE " + (key + 101);
         String n = Keyboard.getKeyName(key);
         return n == null ? "?" : n;
     }

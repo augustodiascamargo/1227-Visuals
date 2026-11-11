@@ -302,7 +302,7 @@ public final class WeaponModelsModule extends Module {
         }
         lastHeld = stack;
         int key = inspectKey.code();
-        boolean down = key > 0 && mc.currentScreen == null && org.lwjgl.input.Keyboard.isKeyDown(key);
+        boolean down = key != 0 && mc.currentScreen == null && net.m1227.core.InputManager.isDown(key);
         if (down && !inspectWasDown && (animKind == 0 || now - animStart > 1100L)) {
             animStart = now;
             animKind = 2;

@@ -132,6 +132,7 @@ public class ClickGui extends GuiScreen {
         disposeStages();
         stopBlur();
         Keyboard.enableRepeatEvents(false);
+        net.m1227.core.Keybinds.INSTANCE.sync();
         ConfigManager.save();
     }
 
@@ -1117,9 +1118,7 @@ public class ClickGui extends GuiScreen {
     }
 
     private static String keyName(int key) {
-        if (key == 0) return "NONE";
-        String n = Keyboard.getKeyName(key);
-        return n == null ? "?" : n;
+        return InputManager.keyName(key);
     }
 
     // =================================================================
@@ -1133,6 +1132,22 @@ public class ClickGui extends GuiScreen {
             return;
         }
         int mx = (int) localX(rawMx), my = (int) localY(rawMy);
+        // while waiting for a key, the middle / side mouse buttons can be bound too
+        if (button >= 2 && (binding != null || bindingKey != null)) {
+            int code = button - 100;
+            if (bindingKey != null) {
+                bindingKey.set(code);
+                java.util.List<String> clashes = InputManager.conflicts(code, bindingKey);
+                if (!clashes.isEmpty()) Notifier.post(Notifier.Kind.SYSTEM, "Key conflict", clashes.get(0), Notifier.WARN, 2200);
+            } else {
+                binding.key = code;
+                ConfigManager.markDirty();
+            }
+            binding = null;
+            bindingKey = null;
+            net.m1227.core.Keybinds.INSTANCE.sync();
+            return;
+        }
         searchFocus = false;
         binding = null;
         bindingKey = null;

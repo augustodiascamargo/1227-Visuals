@@ -30,7 +30,7 @@ public final class ZoomModule extends Module {
     private boolean held() {
         Minecraft mc = Minecraft.getMinecraft();
         int k = key.code();
-        return k > 0 && mc.currentScreen == null && Keyboard.isKeyDown(k);
+        return k != 0 && mc.currentScreen == null && net.m1227.core.InputManager.isDown(k);
     }
 
     /**
