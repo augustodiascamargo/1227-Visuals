@@ -233,7 +233,8 @@ public class ClickGui extends GuiScreen {
         drawHeader(wx, wy, o);
         drawList(wx, wy, mx, my, o * (0.35f + 0.65f * catSwitch));
         drawFooter(wx, wy, o);
-        drawTooltip(mx, my, o);
+        if (settingsFor != null) drawSettingsWindow(wx, wy, mx, my, o);
+        else drawTooltip(mx, my, o);
         net.minecraft.client.renderer.GlStateManager.popMatrix();
         Gfx.clearTransform();
 
@@ -395,10 +396,7 @@ public class ClickGui extends GuiScreen {
                     search = "";
                     scroll = 0f;
                     scrollTarget = 0f;
-                    if (net.m1227.module.MenuStyleModule.INSTANCE != null) EXPANDED.add(net.m1227.module.MenuStyleModule.INSTANCE);
-                    for (Module mm : ModuleManager.inCategory(Category.SETTINGS)) {
-                        if (mm != net.m1227.module.MenuStyleModule.INSTANCE) EXPANDED.remove(mm);
-                    }
+                    if (net.m1227.module.MenuStyleModule.INSTANCE != null) openSettings(net.m1227.module.MenuStyleModule.INSTANCE);
                 }
             }, null));
             wx -= bw + 6; // the "active" pill sits to its left
@@ -431,7 +429,7 @@ public class ClickGui extends GuiScreen {
         for (int i = 0; i < mods.size(); i++) {
             Module m = mods.get(i);
             float[] a = modState(m);
-            a[0] += ((EXPANDED.contains(m) ? 1f : 0f) - a[0]) * ease;
+            a[0] = 0f; // settings open in their own window (gear), cards stay compact
             a[1] += (((m.isEnabled() || !m.toggleable()) ? 1f : 0f) - a[1]) * ease;
             float full = settingsHeight(m);
             float cardH = HEADER + (full > 0f ? (full + 8f) * a[0] : 0f);
@@ -469,13 +467,13 @@ public class ClickGui extends GuiScreen {
         Gfx.weight(TtfFont.MEDIUM);
         Gfx.text(m.name, x + 28, y + 7.5f, Gfx.alpha(TEXT, o));
         Gfx.weight(TtfFont.REGULAR);
-        Gfx.chevron(x + 34 + Gfx.textWidth(m.name), y + 11.5f, a[0] * 90f, Gfx.alpha(DIM, 0.8f * o));
 
+        // left-click toggles, right-click (or the gear) opens the settings window
         hits.add(new Hit(x, y, w, HEADER, true, new Click() {
             @Override
             public void on(float cx, int b) {
-                if (b == 1 && m.toggleable()) m.toggle();
-                else if (b == 0 && !EXPANDED.remove(m)) EXPANDED.add(m);
+                if (b == 0 && m.toggleable()) m.toggle();
+                else if (b == 1 || (b == 0 && !m.toggleable())) openSettings(m);
             }
         }, null));
 
@@ -505,6 +503,19 @@ public class ClickGui extends GuiScreen {
                 }
             }, null));
             rightEdge = kx - 8;
+        }
+        if (!m.settings().isEmpty()) {
+            float gx = rightEdge - 8;
+            boolean gh = in(lastMx, lastMy, gx - 8, y + 5, 16, HEADER - 10) && inList(lastMx, lastMy);
+            if (gh) Gfx.circle(gx, y + HEADER / 2f, 9f, Gfx.alpha(0x22FFFFFF, o));
+            Icons.gear(gx, y + HEADER / 2f, Gfx.alpha(gh ? WHITE : TEXT, o));
+            hits.add(new Hit(gx - 8, y + 5, 16, HEADER - 10, true, new Click() {
+                @Override
+                public void on(float cx, int b) {
+                    openSettings(m);
+                }
+            }, null));
+            rightEdge = gx - 14;
         }
         {
             float sx = rightEdge - 6;
@@ -546,6 +557,111 @@ public class ClickGui extends GuiScreen {
     }
 
     private static final float RESET_ROW = 20f;
+
+    // ------------------------------------------------------------ settings window
+
+    private Module settingsFor;
+    private float winAnim, winScroll, winScrollTarget, winContentH;
+    private static float rowWidthOverride = -1f;
+
+    private void openSettings(Module m) {
+        settingsFor = m;
+        winAnim = 0f;
+        winScroll = 0f;
+        winScrollTarget = 0f;
+    }
+
+    private void closeSettings() {
+        settingsFor = null;
+        rowWidthOverride = -1f;
+    }
+
+    /** The settings of one module in a floating window over the list (opened with the gear). */
+    private void drawSettingsWindow(float wx, float wy, int mx, int my, float o) {
+        final Module m = settingsFor;
+        winAnim += (1f - winAnim) * ease;
+        float a = winAnim * o;
+        float ww = Math.min(W - SIDE - 40, 470), wh = H - 70;
+        float x = wx + SIDE + (W - SIDE - ww) / 2f, y = wy + 36 + (1f - winAnim) * 14f;
+        // click-outside blocker (closes), drawn first so the window's own hits win
+        hits.add(new Hit(wx, wy, W, H, false, new Click() {
+            @Override
+            public void on(float cx, int b) {
+                closeSettings();
+            }
+        }, null));
+        // clicks on empty parts of the window must not fall through to the blocker
+        hits.add(new Hit(x, y, ww, wh, false, new Click() {
+            @Override
+            public void on(float cx, int b) {
+            }
+        }, null));
+        Gfx.roundedRect(wx + SIDE, wy, W - SIDE, H, Theme.radius(), Gfx.alpha(0xFF05060A, 0.45f * a));
+        Gfx.roundedRect(x - 8, y - 6, ww + 16, wh + 16, 18, Gfx.alpha(0xFF000000, 0.35f * a));
+        Gfx.roundedRect(x, y, ww, wh, 14, Gfx.alpha(Gfx.mix(0xFF101219, Theme.tint(), 0.4f), 0.97f * a));
+        Gfx.roundedOutlineGradient(x, y, ww, wh, 14, 1f, Gfx.alpha(0x50FFFFFF, a), Gfx.alpha(0x10FFFFFF, a));
+        // header
+        Gfx.circle(x + 20, y + 21, 4f, Gfx.alpha(m.isEnabled() || !m.toggleable() ? ACCENT : 0xFF3A3E4D, a));
+        Gfx.weight(TtfFont.BOLD);
+        Gfx.textScaled(m.name, x + 32, y + 13, 1.25f, Gfx.alpha(TEXT, a));
+        Gfx.weight(TtfFont.REGULAR);
+        Gfx.textScaled(Gfx.trim(m.description, (ww - 120) / 0.82f), x + 32, y + 28, 0.82f, Gfx.alpha(DIM, a));
+        // close button
+        float cx0 = x + ww - 26, cy0 = y + 12;
+        boolean ch = in(mx, my, cx0, cy0, 16, 16);
+        Gfx.circle(cx0 + 8, cy0 + 8, 8, Gfx.alpha(ch ? 0x40FFFFFF : 0x1CFFFFFF, a));
+        Gfx.line(cx0 + 5, cy0 + 5, cx0 + 11, cy0 + 11, 1.3f, Gfx.alpha(WHITE, a));
+        Gfx.line(cx0 + 11, cy0 + 5, cx0 + 5, cy0 + 11, 1.3f, Gfx.alpha(WHITE, a));
+        hits.add(new Hit(cx0, cy0, 16, 16, false, new Click() {
+            @Override
+            public void on(float c, int b) {
+                closeSettings();
+            }
+        }, null));
+        // on/off switch in the header
+        if (m.toggleable()) {
+            float[] st = modState(m);
+            float swW = 30, swH = 16, swX = cx0 - swW - 12, swY = y + 13;
+            Gfx.roundedRect(swX, swY, swW, swH, 8, Gfx.alpha(Gfx.mix(TRACK, ACCENT, st[1]), a));
+            Gfx.circle(swX + 8 + st[1] * 14, swY + 8, 6f, Gfx.alpha(WHITE, a));
+            hits.add(new Hit(swX, swY, swW, swH, false, new Click() {
+                @Override
+                public void on(float c, int b) {
+                    if (b == 0) m.toggle();
+                }
+            }, null));
+        }
+        // window body: same controls as before, with its own scroll
+        Gfx.rect(x + 14, y + 42, ww - 28, 1, Gfx.alpha(0x14FFFFFF, a));
+        float bx = x + 18, by = y + 50, bw = ww - 36, bh = wh - 58;
+        listX = bx;
+        listY = by;
+        listW = bw;
+        listH = bh;
+        rowWidthOverride = bw;
+        float maxScroll = Math.max(0f, winContentH - bh);
+        winScrollTarget = Math.max(0f, Math.min(maxScroll, winScrollTarget));
+        winScroll += (winScrollTarget - winScroll) * (1f - (float) Math.exp(-18f * dt));
+        Gfx.scissorOn(bx - 4, by, bw + 8, bh);
+        float ry = by - winScroll;
+        for (Setting<?> st : m.settings()) {
+            if (!st.visible()) continue;
+            float rh = rowHeight(m, st);
+            if (ry + rh >= by - 4 && ry <= by + bh) drawSetting(m, st, bx, ry, bw, a);
+            ry += rh;
+        }
+        if (!m.settings().isEmpty()) {
+            drawReset(m, bx, ry, bw, a);
+            ry += RESET_ROW;
+        }
+        winContentH = ry + winScroll - by;
+        Gfx.scissorOff();
+        if (winContentH > bh && maxScroll > 0f) {
+            float sbh = Math.max(20f, bh * bh / winContentH);
+            float sby = by + (bh - sbh) * (winScroll / maxScroll);
+            Gfx.roundedRect(x + ww - 7, sby, 3, sbh, 1.5f, Gfx.alpha(WHITE, 0.2f * a));
+        }
+    }
 
     private static List<Module> favorites() {
         List<Module> out = new ArrayList<Module>();
@@ -839,6 +955,7 @@ public class ClickGui extends GuiScreen {
 
     /** Settings row width inside an expanded card (same math as drawList / drawCard). */
     private static float rowWidth() {
+        if (rowWidthOverride > 0f) return rowWidthOverride;
         return (W - SIDE - 26) - 8 - 28;
     }
 
@@ -1048,7 +1165,10 @@ public class ClickGui extends GuiScreen {
     public void handleMouseInput() throws IOException {
         super.handleMouseInput();
         int d = Mouse.getEventDWheel();
-        if (d != 0) scrollTarget -= Math.signum((float) d) * 36f;
+        if (d != 0) {
+            if (settingsFor != null) winScrollTarget -= Math.signum((float) d) * 36f;
+            else scrollTarget -= Math.signum((float) d) * 36f;
+        }
     }
 
     @Override
@@ -1065,6 +1185,10 @@ public class ClickGui extends GuiScreen {
             binding.key = key == Keyboard.KEY_ESCAPE ? 0 : key;
             ConfigManager.markDirty();
             binding = null;
+            return;
+        }
+        if (settingsFor != null && key == Keyboard.KEY_ESCAPE) {
+            closeSettings();
             return;
         }
         if (searchFocus) {
@@ -1106,7 +1230,7 @@ public class ClickGui extends GuiScreen {
         float a = Math.min(1f, (held - 550L) / 150f) * o;
         Module m = tipModule;
         List<String> lines = new ArrayList<String>(Gfx.wrap(m.description, 200));
-        String hint = (m.toggleable() ? "Right-click: toggle  \u00b7  " : "") + "Click: settings  \u00b7  " + m.category.label;
+        String hint = (m.toggleable() ? "Click: on/off  \u00b7  " : "") + "Gear: settings  \u00b7  " + m.category.label;
         float w = Gfx.textWidth(hint);
         for (String l : lines) w = Math.max(w, Gfx.textWidth(l));
         float h = lines.size() * 10 + 16;
@@ -1122,7 +1246,7 @@ public class ClickGui extends GuiScreen {
     }
 
     private void drawFooter(float wx, float wy, float o) {
-        String l = InputManager.keyName(ClientModule.menuKey()) + " / Esc  \u00b7  right-click a module to toggle  \u00b7  /1227  \u00b7  v" + Mod1227.VERSION;
+        String l = InputManager.keyName(ClientModule.menuKey()) + " / Esc  \u00b7  click: on/off  \u00b7  gear or right-click: settings  \u00b7  /1227  \u00b7  v" + Mod1227.VERSION;
         Gfx.textScaled(l, wx + SIDE + 20, wy + H - 14, 0.75f, Gfx.alpha(DIM, 0.6f * o));
     }
 

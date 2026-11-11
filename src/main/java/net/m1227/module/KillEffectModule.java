@@ -18,6 +18,7 @@ public final class KillEffectModule extends Module {
     private final Setting.Mode style;
     private final FxSettings fx;
     private final Setting.Bool red;
+    private final Setting.Num sahurSize;
 
     public KillEffectModule() {
         super("Kill Effect", "Effect when you finish off a target.", Category.COMBAT, true);
@@ -25,6 +26,7 @@ public final class KillEffectModule extends Module {
                 "Ragdoll", "Decapitation", "Shatter", "Ice Shatter", "Executioner", "Tung Sahur"));
         fx = new FxSettings(this, 0x8B5CFF, 0x2DD4FF, 26, 1.0, 0.14, 1.0);
         red = add(new Setting.Bool("Red particles (Decapitation)", false)).showIf(() -> style.is("Decapitation"));
+        sahurSize = add(new Setting.Num("Tung Sahur size", 2.1, 1.0, 3.0, 0.05, "x")).showIf(() -> style.is("Tung Sahur"));
         add(new Setting.Action("Preview", new Runnable() {
             @Override
             public void run() {
@@ -80,6 +82,7 @@ public final class KillEffectModule extends Module {
             return;
         }
         if (s.equals("Tung Sahur")) {
+            net.m1227.vfx.BodyFx.sahurScale = sahurSize.f();
             bf.sahur(victim, x, feetY, z, yaw, height, dirX, dirZ, c0, c1);
             return;
         }

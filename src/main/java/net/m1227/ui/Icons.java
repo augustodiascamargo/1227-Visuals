@@ -104,4 +104,15 @@ public final class Icons {
         }
         Gfx.line(cx + 1.4f, cy + 1.4f, cx + 3.8f, cy + 3.8f, 1.3f, c);
     }
+
+    /** Settings gear. */
+    public static void gear(float cx, float cy, int c) {
+        for (int k = 0; k < 8; k++) {
+            double a = k * Math.PI / 4;
+            float ca = (float) Math.cos(a), sa = (float) Math.sin(a);
+            Gfx.line(cx + ca * 3.6f, cy + sa * 3.6f, cx + ca * 5.6f, cy + sa * 5.6f, 1.9f, c);
+        }
+        Gfx.circle(cx, cy, 4.2f, c);
+        Gfx.circle(cx, cy, 1.9f, 0xFF15171F);
+    }
 }

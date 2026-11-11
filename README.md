@@ -1,4 +1,4 @@
-# 1227 — v1.7.1 (Minecraft 1.8.9 · Forge 11.15.1.2318 · Java 8)
+# 1227 — v1.8.0 (Minecraft 1.8.9 · Forge 11.15.1.2318 · Java 8)
 
 Mod client-side e puramente visual. Não envia pacotes, não desenha através de paredes e não muda alcance,
 timing de ataque ou outras mecânicas do servidor.
@@ -174,6 +174,24 @@ nada depende de Lunar ou de outro launcher.
 ### Licença dos modelos enviados
 O modelo do Tung Sahur (ZAHUR.fbx + textura) e a butterfly knife (.blend) foram enviados pelo usuário. Antes de
 publicar o 1227, confira a licença de cada um (por exemplo, se exigem crédito ao autor) e coloque o crédito aqui.
+
+## Mudanças na v1.8.0
+- **Configurações em janela:** clique na engrenagem do card (ou botão direito) para abrir as opções do mod numa janela; clique esquerdo no card liga/desliga. Esc, o X ou clicar fora fecham.
+- **Emotes de dança:** 10 danças novas (Shuffle, Robot, Disco, Headbang, Glide, Hype, Breakdance, Swing, Sprinkler, Pump It) numa segunda página da roda. Troque de página pelas abas, rolando o mouse ou com botão direito.
+- **Tung Tung Sahur maior:** agora ~2,1x a altura da vítima por padrão, com a opção "Tung Sahur size" (1x–3x) no Kill Effect.
+- **Weapon Models:**
+  - Rotação X/Y/Z e "Model size", aplicados em volta do cabo.
+  - "Blade width" (padrão 1,6x) e Thickness padrão maior: as lâminas finas ficaram mais largas.
+  - Detalhe: um friso de luz no centro da lâmina e brilho nos dois fios.
+  - **Empunhadura e golpe próprios por espada** ("Hold & swing": Per model / Classic):
+    - Katana e Holy Claymore: com as duas mãos e corte horizontal.
+    - Cleaver, Obsidian Edge e Rune Greatsword: golpe pesado de cima pra baixo.
+    - Void Rapier e Butterfly Knife: estocada.
+    - Dragon Fang: pegada invertida.
+    - Energy Saber e Storm Blade: arco girando.
+    - Twin Fang: corte duplo.
+    - Crystal Blade: flutuando.
+    - As demais: clássico.
 
 ## Mudanças na v1.7.1
 - Tecla padrão da roda de emotes trocada de B para "." (ponto), porque vários clients já usam B para emotes.

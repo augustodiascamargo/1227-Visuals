@@ -20,8 +20,21 @@ import org.lwjgl.input.Keyboard;
  */
 public final class EmotesModule extends Module {
     public static EmotesModule INSTANCE;
-    public static final String[] EMOTES = {"Wave", "Groove", "Clap", "Flex", "Salute", "Sit", "Spin", "Facepalm", "T-Pose", "Cheer", "Bow", "Laugh"};
-    private static final boolean[] LOOPS = {false, true, true, false, false, true, true, false, true, true, false, true};
+    public static final String[] EMOTES = {"Wave", "Groove", "Clap", "Flex", "Salute", "Sit", "Spin", "Facepalm", "T-Pose", "Cheer", "Bow", "Laugh",
+            // dances (second page of the wheel)
+            "Shuffle", "Robot", "Disco", "Headbang", "Glide", "Hype", "Breakdance", "Swing", "Sprinkler", "Pump It"};
+    private static final boolean[] LOOPS = {false, true, true, false, false, true, true, false, true, true, false, true,
+            true, true, true, true, true, true, true, true, true, true};
+    public static final String[] PAGES = {"Emotes", "Dances"};
+    private static final int[] PAGE_START = {0, 12, 22};
+
+    public static int pageStart(int page) {
+        return PAGE_START[page];
+    }
+
+    public static int pageSize(int page) {
+        return PAGE_START[page + 1] - PAGE_START[page];
+    }
 
     private final Setting.Key wheelKey;
     private final Setting.Mode camera;
@@ -33,7 +46,7 @@ public final class EmotesModule extends Module {
     private float lastHealth = -1f;
 
     public EmotesModule() {
-        super("Emotes", "12 emotes for your character, from a wheel.", Category.ANIMATIONS, true);
+        super("Emotes", "12 emotes and 10 dances for your character, from a wheel.", Category.ANIMATIONS, true);
         INSTANCE = this;
         // "." by default: B is already the emote key in several clients (Lunar and others). The setting was
         // renamed so configs that saved B pick up the new default.
@@ -210,6 +223,140 @@ public final class EmotesModule extends Module {
                 p.lArm[1] = 35f;
                 p.lift = 0.02f * Math.abs(sin(t, 14f));
                 break;
+            // ---------------------------------------------------------------- dances
+            case 12: { // Shuffle: heel-toe steps sliding side to side
+                float b = sin(t, 9f), s = sin(t, 4.5f);
+                p.rLeg[0] = 22f * b;
+                p.lLeg[0] = -22f * b;
+                p.rLeg[2] = 10f + 8f * s;
+                p.lLeg[2] = -10f + 8f * s;
+                p.body[2] = 5f * s;
+                p.lift = 0.05f * Math.abs(b);
+                p.rArm[0] = 30f + 25f * b;
+                p.lArm[0] = 30f - 25f * b;
+                p.rArm[1] = 25f;
+                p.lArm[1] = 25f;
+                p.head[2] = -6f * s;
+                break;
+            }
+            case 13: { // Robot: stepped, held poses
+                float st = (float) Math.floor(t * 3f);
+                float a = (st % 4f) < 2f ? 1f : -1f, b = (st % 2f) < 1f ? 1f : -1f;
+                p.rArm[0] = 90f;
+                p.lArm[0] = 90f;
+                p.rArm[1] = 25f * a;
+                p.lArm[1] = 25f * a;
+                p.rArm[2] = 10f + 10f * b;
+                p.lArm[2] = 10f - 10f * b;
+                p.head[1] = 35f * a;
+                p.body[1] = 12f * a;
+                p.rLeg[0] = 6f * b;
+                p.lLeg[0] = -6f * b;
+                break;
+            }
+            case 14: { // Disco: pointing up and down across the body
+                float s = sin(t, 4f);
+                p.rArm[0] = 90f + 75f * s;
+                p.rArm[2] = 25f - 20f * s;
+                p.lArm[0] = 20f;
+                p.lArm[2] = 20f;
+                p.lArm[1] = 40f;
+                p.body[2] = -7f * s;
+                p.body[1] = 10f * s;
+                p.lift = 0.04f * Math.abs(sin(t, 8f));
+                p.rLeg[0] = 10f * sin(t, 8f);
+                p.head[0] = -8f * s;
+                break;
+            }
+            case 15: { // Headbang
+                float b = sin(t, 13f);
+                p.head[0] = 22f + 22f * b;
+                p.body[0] = -10f - 8f * b;
+                p.rArm[0] = 60f + 15f * b;
+                p.lArm[0] = 60f + 15f * b;
+                p.rArm[1] = 30f;
+                p.lArm[1] = 30f;
+                p.lift = -0.06f;
+                p.rLeg[0] = -12f;
+                p.lLeg[0] = 12f;
+                break;
+            }
+            case 16: { // Glide: smooth side-to-side wave through the body
+                float s = sin(t, 3f), c = sin(t + 0.4f, 3f);
+                p.body[2] = 9f * s;
+                p.head[2] = -12f * c;
+                p.rArm[2] = 70f + 20f * s;
+                p.lArm[2] = 70f - 20f * s;
+                p.rArm[0] = 15f * c;
+                p.lArm[0] = -15f * c;
+                p.rLeg[2] = 12f + 6f * s;
+                p.lLeg[2] = -12f + 6f * s;
+                p.lift = 0.03f * c;
+                break;
+            }
+            case 17: { // Hype: jumping with fists pumping alternately
+                float b = sin(t, 7f);
+                p.lift = 0.30f * Math.abs(b);
+                p.rArm[0] = 150f + 25f * b;
+                p.lArm[0] = 150f - 25f * b;
+                p.rArm[2] = 15f;
+                p.lArm[2] = 15f;
+                p.rLeg[0] = -15f * Math.abs(b);
+                p.lLeg[0] = 15f * Math.abs(b);
+                p.head[0] = -12f;
+                break;
+            }
+            case 18: { // Breakdance: a crouched spin with kicking legs
+                p.spin = t * 420f;
+                p.lift = -0.45f * in;
+                p.body[0] = -25f * in;
+                p.rArm[0] = 40f;
+                p.lArm[0] = 40f;
+                p.rArm[2] = 35f;
+                p.lArm[2] = 35f;
+                p.rLeg[0] = 70f + 40f * sin(t, 7f);
+                p.lLeg[0] = 20f - 30f * sin(t, 7f);
+                p.rLeg[2] = 30f;
+                p.lLeg[2] = -20f;
+                break;
+            }
+            case 19: { // Swing: arms swinging together, hips bouncing
+                float s = sin(t, 5f);
+                p.rArm[0] = 50f * s;
+                p.lArm[0] = 50f * s;
+                p.rArm[2] = 12f;
+                p.lArm[2] = 12f;
+                p.body[1] = 18f * s;
+                p.lift = 0.05f * Math.abs(sin(t, 10f)) - 0.04f;
+                p.rLeg[0] = -10f * s;
+                p.lLeg[0] = 10f * s;
+                p.head[1] = -10f * s;
+                break;
+            }
+            case 20: { // Sprinkler: hand behind the head, the other arm sweeping in steps
+                float st = (float) Math.floor(t * 6f) % 8f;
+                p.lArm[0] = 150f;
+                p.lArm[2] = 50f;
+                p.lArm[1] = -30f;
+                p.rArm[0] = 90f;
+                p.rArm[1] = -40f + st * 10f;
+                p.body[1] = -15f + st * 4f;
+                p.head[1] = -20f + st * 5f;
+                p.rLeg[0] = 10f * sin(t, 12f);
+                break;
+            }
+            case 21: { // Pump It: arms punching up together on the beat
+                float b = Math.abs(sin(t, 6f));
+                p.rArm[0] = 100f + 70f * b;
+                p.lArm[0] = 100f + 70f * b;
+                p.rArm[2] = 20f;
+                p.lArm[2] = 20f;
+                p.lift = 0.08f * b;
+                p.head[0] = -10f * b;
+                p.rLeg[0] = 8f * b;
+                p.lLeg[0] = -8f * b;
+                break;
+            }
             default:
                 break;
         }

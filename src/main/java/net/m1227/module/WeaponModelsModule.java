@@ -28,7 +28,8 @@ public final class WeaponModelsModule extends Module {
     private final Setting.Mode model;
     private final Setting.Col primary, secondary, glow;
     private final Setting.Bool emissive, matchWeaponFx;
-    private final Setting.Num length, size, posX, posY, posZ;
+    private final Setting.Num length, size, posX, posY, posZ, rotX, rotY, rotZ, scaleAll, bladeWidth;
+    private final Setting.Mode holdMode;
     private final Setting.Bool lightning, flipOnEquip;
     private final Setting.Key inspectKey;
     private long animStart = -1L;
@@ -53,10 +54,16 @@ public final class WeaponModelsModule extends Module {
         matchWeaponFx = add(new Setting.Bool("Glow follows Weapon Effects color", true));
         emissive = add(new Setting.Bool("Glowing parts", true));
         length = add(new Setting.Num("Length", 1.0, 0.8, 1.3, 0.02, "x"));
-        size = add(new Setting.Num("Thickness", 1.35, 0.6, 2.5, 0.05, "x"));
+        size = add(new Setting.Num("Thickness", 1.6, 0.6, 2.5, 0.05, "x"));
         posX = add(new Setting.Num("Offset X", 0.0, -0.5, 0.5, 0.01, ""));
         posY = add(new Setting.Num("Offset Y", 0.0, -0.5, 0.5, 0.01, ""));
         posZ = add(new Setting.Num("Offset Z", 0.0, -0.5, 0.5, 0.01, ""));
+        rotX = add(new Setting.Num("Rotation X", 0, -180, 180, 1, "\u00b0"));
+        rotY = add(new Setting.Num("Rotation Y", 0, -180, 180, 1, "\u00b0"));
+        rotZ = add(new Setting.Num("Rotation Z", 0, -180, 180, 1, "\u00b0"));
+        scaleAll = add(new Setting.Num("Model size", 1.15, 0.6, 1.8, 0.05, "x"));
+        bladeWidth = add(new Setting.Num("Blade width", 1.6, 0.8, 3.0, 0.05, "x"));
+        holdMode = add(new Setting.Mode("Hold & swing", "Per model", "Per model", "Classic"));
         lightning = add(new Setting.Bool("Lightning arcs", false));
         flipOnEquip = add(new Setting.Bool("Butterfly: flip open when drawn", true)).showIf(() -> model.is("Butterfly Knife"));
         inspectKey = add(new Setting.Key("Butterfly: inspect (flip) key", org.lwjgl.input.Keyboard.KEY_V));
@@ -92,6 +99,16 @@ public final class WeaponModelsModule extends Module {
         }
         GlStateManager.scale(0.5F, 0.5F, 0.5F);
         GlStateManager.translate(-0.5F, -0.5F, -0.5F);
+        // user rotation / size, around the grip (lower part of the diagonal)
+        float gx = OX + AX * 0.2f, gy = OY + AY * 0.2f;
+        GlStateManager.translate(gx, gy, OZ);
+        if (rotX.f() != 0f) GlStateManager.rotate(rotX.f(), 1f, 0f, 0f);
+        if (rotY.f() != 0f) GlStateManager.rotate(rotY.f(), 0f, 1f, 0f);
+        if (rotZ.f() != 0f) GlStateManager.rotate(rotZ.f(), 0f, 0f, 1f);
+        if (model.is("Dragon Fang") && holdMode.is("Per model")) GlStateManager.rotate(180f, 0f, 0f, 1f); // reverse grip
+        float sa = scaleAll.f();
+        GlStateManager.scale(sa, sa, sa);
+        GlStateManager.translate(-gx, -gy, -OZ);
         len = 1.30f * length.f();
         GlStateManager.disableTexture2D();
         GlStateManager.disableLighting();
@@ -415,7 +432,10 @@ public final class WeaponModelsModule extends Module {
     }
 
     /** Diamond cross-section blade through stations (s, half width, half thickness, curve). */
-    private void extrude(float[] ss, float[] hw, float[] th, float[] cv, int c0, int c1, float alpha, boolean flat) {
+    private void extrude(float[] ss, float[] hw0, float[] th, float[] cv, int c0, int c1, float alpha, boolean flat) {
+        float bw = bladeWidth.f();
+        float[] hw = new float[hw0.length];
+        for (int i = 0; i < hw.length; i++) hw[i] = hw0[i] * bw;
         float[][] sec = {{1f, 0f}, {0f, 1f}, {-1f, 0f}, {0f, -1f}};
         GL11.glBegin(GL11.GL_QUADS);
         for (int i = 0; i + 1 < ss.length; i++) {
@@ -431,6 +451,129 @@ public final class WeaponModelsModule extends Module {
             }
         }
         GL11.glEnd();
+        if (!flat && alpha >= 0.99f && ss.length >= 3) ridge(ss, hw, th, cv, c1);
+    }
+
+    /** Detail pass: a bright ridge line down both faces of the blade and a glint along each edge. */
+    private void ridge(float[] ss, float[] hw, float[] th, float[] cv, int light) {
+        GL11.glBegin(GL11.GL_QUADS);
+        for (int i = 0; i + 1 < ss.length; i++) {
+            if (hw[i] < 0.004f) continue;
+            float w0 = 0.0035f / Math.max(0.3f, thick), w1 = w0;
+            for (int side = -1; side <= 1; side += 2) {
+                // centre ridge (sits just above the diamond's peak)
+                pt(ss[i], -w0, side * th[i] * 1.03f, cv[i], p);
+                pt(ss[i], w0, side * th[i] * 1.03f, cv[i], q);
+                pt(ss[i + 1], w1, side * th[i + 1] * 1.03f, cv[i + 1], r);
+                pt(ss[i + 1], -w1, side * th[i + 1] * 1.03f, cv[i + 1], s4);
+                face(p, q, r, s4, ParticleSystem.mix(light, 0xFFFFFF, 0.6f), 0.9f, true);
+                // edge glint
+                pt(ss[i], side * hw[i] * 0.97f, -0.002f, cv[i], p);
+                pt(ss[i], side * hw[i] * 0.97f, 0.002f, cv[i], q);
+                pt(ss[i + 1], side * hw[i + 1] * 0.97f, 0.002f, cv[i + 1], r);
+                pt(ss[i + 1], side * hw[i + 1] * 0.97f, -0.002f, cv[i + 1], s4);
+                face(p, q, r, s4, 0xFFFFFF, 0.55f, true);
+            }
+        }
+        GL11.glEnd();
+    }
+
+    // ------------------------------------------------------------- hold & swing styles
+
+    /** Classic, Two-handed, Heavy, Thrust, Reverse, Flourish, Twin, Float. */
+    public String style() {
+        if (holdMode.is("Classic")) return "Classic";
+        String m = model.get();
+        if (m.equals("Katana") || m.equals("Holy Claymore")) return "Two-handed";
+        if (m.equals("Cleaver") || m.equals("Obsidian Edge") || m.equals("Rune Greatsword")) return "Heavy";
+        if (m.equals("Void Rapier")) return "Thrust";
+        if (m.equals("Dragon Fang")) return "Reverse";
+        if (m.equals("Energy Saber") || m.equals("Storm Blade")) return "Flourish";
+        if (m.equals("Twin Fang")) return "Twin";
+        if (m.equals("Crystal Blade")) return "Float";
+        if (m.equals("Butterfly Knife")) return "Thrust";
+        return "Classic";
+    }
+
+    public boolean twoHanded() {
+        return style().equals("Two-handed");
+    }
+
+    private static float ease(float t) {
+        t = Math.max(0f, Math.min(1f, t));
+        return t * t * (3f - 2f * t);
+    }
+
+    /** Translation (x, y, z) and extra yaw the second hand follows during the swing. */
+    public float[] swingOffsets(float swing) {
+        float k = (float) Math.sin(swing * Math.PI);
+        return new float[]{-0.25f * k, 0.05f * k, -0.1f * k, -60f * ease(swing) + 30f * k};
+    }
+
+    /**
+     * Replaces the vanilla first-person hold + swing transform (same units: hand space).
+     * Every style keeps the equip motion so drawing the weapon still slides it in.
+     */
+    public void holdTransform(float equip, float swing) {
+        String st = style();
+        double t = System.nanoTime() / 1e9;
+        float k = (float) Math.sin(swing * Math.PI), sq = (float) Math.sin(Math.sqrt(swing) * Math.PI);
+        if (st.equals("Two-handed")) {
+            // held across the body with both hands; the swing is a wide horizontal slash
+            GlStateManager.translate(0.28F - 0.25f * k, -0.48F + 0.05f * k, -0.80F - 0.1f * k);
+            GlStateManager.translate(0.0F, equip * -0.6F, 0.0F);
+            GlStateManager.rotate(30F - 60f * ease(swing) + 30f * k, 0F, 1F, 0F);
+            GlStateManager.rotate(-14F + 10f * k, 0F, 0F, 1F);
+            GlStateManager.rotate(-6F - 30f * k, 1F, 0F, 0F);
+            GlStateManager.scale(0.4F, 0.4F, 0.4F);
+        } else if (st.equals("Heavy")) {
+            // raised a little, then a downward chop over the top
+            GlStateManager.translate(0.56F, -0.50F + 0.12f * k, -0.72F - 0.15f * k);
+            GlStateManager.translate(0.0F, equip * -0.6F, 0.0F);
+            GlStateManager.rotate(45F, 0F, 1F, 0F);
+            GlStateManager.rotate(-95f * sq + 25f * k, 1F, 0F, 0F);
+            GlStateManager.rotate(-8f * k, 0F, 0F, 1F);
+            GlStateManager.scale(0.42F, 0.42F, 0.42F);
+        } else if (st.equals("Thrust")) {
+            // pointed forward; the swing is a straight lunge
+            GlStateManager.translate(0.50F - 0.12f * k, -0.50F + 0.04f * k, -0.72F - 0.42f * k);
+            GlStateManager.translate(0.0F, equip * -0.6F, 0.0F);
+            GlStateManager.rotate(35F + 10f * k, 0F, 1F, 0F);
+            GlStateManager.rotate(-28F - 12f * k, 1F, 0F, 0F);
+            GlStateManager.scale(0.4F, 0.4F, 0.4F);
+        } else if (st.equals("Reverse")) {
+            // reverse grip (blade flipped in renderFirstPerson); the swing stabs downward
+            GlStateManager.translate(0.52F - 0.1f * k, -0.48F - 0.18f * k, -0.72F - 0.12f * k);
+            GlStateManager.translate(0.0F, equip * -0.6F, 0.0F);
+            GlStateManager.rotate(55F, 0F, 1F, 0F);
+            GlStateManager.rotate(25f * k, 1F, 0F, 0F);
+            GlStateManager.scale(0.4F, 0.4F, 0.4F);
+        } else if (st.equals("Flourish")) {
+            // a spinning arc; idles with a faint hum
+            float hum = (float) Math.sin(t * 38.0) * 0.004f;
+            GlStateManager.translate(0.56F - 0.3f * k + hum, -0.52F + 0.1f * k, -0.72F);
+            GlStateManager.translate(0.0F, equip * -0.6F, 0.0F);
+            GlStateManager.rotate(45F + 70f * sq, 0F, 1F, 0F);
+            GlStateManager.rotate(-40f * k, 0F, 0F, 1F);
+            GlStateManager.rotate(-60f * sq, 1F, 0F, 0F);
+            GlStateManager.rotate(360f * ease(swing), 0F, 0F, 1F);
+            GlStateManager.scale(0.4F, 0.4F, 0.4F);
+        } else if (st.equals("Twin")) {
+            // two quick slashes per swing (right, then back left)
+            float a = (float) Math.sin(swing * Math.PI * 2);
+            GlStateManager.translate(0.56F - 0.25f * k, -0.52F, -0.72F - 0.1f * k);
+            GlStateManager.translate(0.0F, equip * -0.6F, 0.0F);
+            GlStateManager.rotate(45F + 55f * a, 0F, 1F, 0F);
+            GlStateManager.rotate(-35f * k, 1F, 0F, 0F);
+            GlStateManager.scale(0.4F, 0.4F, 0.4F);
+        } else { // Float
+            float bob = (float) Math.sin(t * 2.2) * 0.02f;
+            GlStateManager.translate(0.56F - 0.3f * sq, -0.52F + bob + 0.15f * k, -0.72F - 0.15f * k);
+            GlStateManager.translate(0.0F, equip * -0.6F, 0.0F);
+            GlStateManager.rotate(45F + 60f * sq, 0F, 1F, 0F);
+            GlStateManager.rotate((float) Math.sin(t * 1.3) * 4f - 70f * sq, 1F, 0F, 0F);
+            GlStateManager.scale(0.4F, 0.4F, 0.4F);
+        }
     }
 
     /** Additive translucent shell around a blade. */

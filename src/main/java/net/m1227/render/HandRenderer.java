@@ -227,8 +227,19 @@ public final class HandRenderer {
                     transform(equip, 0.0F);
                 }
             } else {
-                itemUsed(swingP);
-                transform(equip, swingP);
+                net.m1227.module.WeaponModelsModule wm = net.m1227.module.WeaponModelsModule.INSTANCE;
+                if (wm != null && wm.replaces(item) && !wm.style().equals("Classic")) {
+                    // each custom sword has its own way of being held and swung
+                    if (wm.twoHanded() && full && !p.isInvisible()) {
+                        GlStateManager.pushMatrix();
+                        leftArm(mc, p, equip, swingP, wm);
+                        GlStateManager.popMatrix();
+                    }
+                    wm.holdTransform(equip, swingP);
+                } else {
+                    itemUsed(swingP);
+                    transform(equip, swingP);
+                }
             }
             float s = an != null ? an.itemScale() : 1f;
             if (s != 1.0F) GlStateManager.scale(s, s, s);
@@ -312,6 +323,28 @@ public final class HandRenderer {
         }
         GlStateManager.translate(0.0F, 0.0F, f1 * 0.1F);
         GlStateManager.scale(1.0F, 1.0F, 1.0F + f1 * 0.2F);
+    }
+
+    /**
+     * Mirrored copy of the vanilla first-person arm for the left hand, pulled in towards the
+     * centre so it reaches the grip of a two-handed weapon and follows its swing.
+     */
+    private static void leftArm(Minecraft mc, AbstractClientPlayer p, float equip, float swing, net.m1227.module.WeaponModelsModule wm) {
+        float[] sw = wm.swingOffsets(swing);
+        GlStateManager.translate(sw[0], sw[1], sw[2]);
+        GlStateManager.translate(-0.30F, -0.62F, -0.80F);
+        GlStateManager.translate(0.0F, equip * -0.6F, 0.0F);
+        GlStateManager.rotate(-45.0F + 28.0F + sw[3], 0.0F, 1.0F, 0.0F);
+        mc.getTextureManager().bindTexture(p.getLocationSkin());
+        GlStateManager.translate(1.0F, 3.6F, 3.5F);
+        GlStateManager.rotate(-120.0F, 0.0F, 0.0F, 1.0F);
+        GlStateManager.rotate(200.0F, 1.0F, 0.0F, 0.0F);
+        GlStateManager.rotate(135.0F, 0.0F, 1.0F, 0.0F);
+        GlStateManager.translate(-5.6F, 0.0F, 0.0F);
+        Render<AbstractClientPlayer> render = mc.getRenderManager().getEntityRenderObject(p);
+        GlStateManager.disableCull();
+        ((RenderPlayer) render).renderLeftArm(p);
+        GlStateManager.enableCull();
     }
 
     private static void arm(Minecraft mc, AbstractClientPlayer p, float equip, float swing) {

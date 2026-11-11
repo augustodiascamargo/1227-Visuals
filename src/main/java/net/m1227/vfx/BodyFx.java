@@ -284,6 +284,9 @@ public final class BodyFx {
      * The Sahur kill: the character model you supplied rises behind the target, bonks it twice
      * with its bat and sends it flying with the third hit, then sinks back into the ground.
      */
+    /** Height of the Tung Sahur relative to the victim (set from the Kill Effect setting). */
+    public static float sahurScale = 2.1f;
+
     public void sahur(EntityLivingBase victim, double x, double y, double z, float yaw, float height,
                       float dirX, float dirZ, int c0, int c1) {
         if (MeshAssets.sahur() == null) {
@@ -291,7 +294,7 @@ public final class BodyFx {
             return;
         }
         Sahur s = new Sahur();
-        s.h = 2.4f * Math.max(0.6f, height / 1.8f);
+        s.h = 1.8f * sahurScale * Math.max(0.6f, height / 1.8f);
         s.fx = -dirX;
         s.fz = -dirZ;
         // model +x in world = (fz, -fx); put the bat's impact point on the target
