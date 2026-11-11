@@ -17,15 +17,18 @@ import org.lwjgl.util.glu.Project;
  * effect code, so what you see is exactly what plays in game.
  */
 public final class PreviewStage {
-    private static final float CAM_Y = 1.45f, CAM_Z = -3.9f, PITCH = 11f, YAW = 0f;
+    private static final float CAM_Y = 1.3f, CAM_Z = -3.25f, PITCH = 8f, YAW = 0f;
     private static final FloatBuffer PROJ = BufferUtils.createFloatBuffer(16), VIEW = BufferUtils.createFloatBuffer(16);
     /** Spot effects are played at while a stage triggers them: feet at the origin, facing the camera. */
     static double[] spot;
+    /** True while a menu preview draws its stand-in (world-only features skip it). */
+    public static boolean rendering;
 
     private final ParticleSystem ps = ParticleSystem.isolated(1500);
     private final Lines lines = Lines.isolated();
     private final Arcs arcs = Arcs.isolated();
     private final ShockwaveSystem waves = ShockwaveSystem.isolated();
+    private final BodyFx bodies = BodyFx.isolated();
     private Framebuffer fb;
     private boolean scissorWas;
     private float timer;
@@ -47,6 +50,7 @@ public final class PreviewStage {
         lines.clear();
         arcs.clear();
         waves.clear();
+        bodies.clear();
         timer = 0.15f;
     }
 
@@ -71,6 +75,8 @@ public final class PreviewStage {
         Lines gLines = Lines.INSTANCE;
         Arcs gArcs = Arcs.INSTANCE;
         ShockwaveSystem gWaves = ShockwaveSystem.INSTANCE;
+        BodyFx gBodies = BodyFx.INSTANCE;
+        BodyFx.INSTANCE = bodies;
         ParticleSystem.INSTANCE = ps;
         Lines.INSTANCE = lines;
         Arcs.INSTANCE = arcs;
@@ -87,6 +93,7 @@ public final class PreviewStage {
             timer -= dt;
             if (continuous || timer <= 0f) {
                 timer = period;
+                if (!continuous) bodies.standInHidden = false;
                 spot = new double[]{0, 0, 0, 0, 1}; // forward = the camera's view direction (+z), like a player facing the target
                 try {
                     trigger.run();
@@ -103,7 +110,7 @@ public final class PreviewStage {
             GlStateManager.clear(GL11.GL_COLOR_BUFFER_BIT | GL11.GL_DEPTH_BUFFER_BIT);
             GlStateManager.matrixMode(GL11.GL_PROJECTION);
             GlStateManager.loadIdentity();
-            Project.gluPerspective(48f, pxW / (float) pxH, 0.05f, 100f);
+            Project.gluPerspective(46f, pxW / (float) pxH, 0.05f, 100f);
             GlStateManager.matrixMode(GL11.GL_MODELVIEW);
             GlStateManager.loadIdentity();
             GlStateManager.rotate(PITCH, 1f, 0f, 0f);
@@ -114,13 +121,14 @@ public final class PreviewStage {
             GlStateManager.disableFog();
             GlStateManager.disableCull();
             floor(accent);
-            if (mannequin) mannequin();
+            if (mannequin && !bodies.standInHidden && !player(mc)) mannequin();
             ps.renderStage(dt, 0, CAM_Y, CAM_Z, YAW, PITCH);
         } finally {
             ParticleSystem.INSTANCE = gPs;
             Lines.INSTANCE = gLines;
             Arcs.INSTANCE = gArcs;
             ShockwaveSystem.INSTANCE = gWaves;
+            BodyFx.INSTANCE = gBodies;
             mc.getFramebuffer().bindFramebuffer(true);
             if (scissorWas) GL11.glEnable(GL11.GL_SCISSOR_TEST);
             GlStateManager.matrixMode(GL11.GL_PROJECTION);
@@ -189,6 +197,58 @@ public final class PreviewStage {
         GL11.glLineWidth(1f);
         GlStateManager.depthMask(true);
         GlStateManager.enableTexture2D();
+    }
+
+    private static net.minecraft.client.entity.EntityOtherPlayerMP model;
+
+    /**
+     * Draws your own character (with your skin) as the stand-in, like the inventory screen does.
+     * Returns false when it cannot (no world yet), so the plain mannequin is used instead.
+     */
+    private static boolean player(Minecraft mc) {
+        if (mc.theWorld == null || mc.thePlayer == null) return false;
+        try {
+            if (model == null || model.worldObj != mc.theWorld) {
+                model = new net.minecraft.client.entity.EntityOtherPlayerMP(mc.theWorld, mc.thePlayer.getGameProfile());
+            }
+            net.minecraft.client.entity.EntityOtherPlayerMP e = model;
+            e.setPosition(0, 0, 0);
+            e.prevPosX = e.lastTickPosX = e.posX;
+            e.prevPosY = e.lastTickPosY = e.posY;
+            e.prevPosZ = e.lastTickPosZ = e.posZ;
+            e.rotationYaw = e.prevRotationYaw = 180f;
+            e.renderYawOffset = e.prevRenderYawOffset = 180f;
+            e.rotationYawHead = e.prevRotationYawHead = 180f;
+            e.rotationPitch = e.prevRotationPitch = 0f;
+            net.minecraft.client.renderer.entity.RenderManager rm = mc.getRenderManager();
+            net.minecraft.entity.Entity viewer = rm.livingPlayer;
+            rm.livingPlayer = e; // no name tag above the stand-in
+            rm.setRenderShadow(false);
+            GlStateManager.enableTexture2D();
+            GlStateManager.enableDepth();
+            GlStateManager.disableBlend();
+            GlStateManager.enableRescaleNormal();
+            net.minecraft.client.renderer.RenderHelper.enableStandardItemLighting();
+            OpenGlHelper.setLightmapTextureCoords(OpenGlHelper.lightmapTexUnit, 240f, 240f);
+            GlStateManager.color(1f, 1f, 1f, 1f);
+            rendering = true;
+            try {
+                rm.renderEntityWithPosYaw(e, 0, 0, 0, 180f, 1f);
+            } finally {
+                rendering = false;
+            }
+            net.minecraft.client.renderer.RenderHelper.disableStandardItemLighting();
+            GlStateManager.disableRescaleNormal();
+            rm.setRenderShadow(true);
+            rm.livingPlayer = viewer;
+            GlStateManager.setActiveTexture(OpenGlHelper.lightmapTexUnit);
+            GlStateManager.disableTexture2D();
+            GlStateManager.setActiveTexture(OpenGlHelper.defaultTexUnit);
+            GlStateManager.enableBlend();
+            return true;
+        } catch (Throwable t) {
+            return false;
+        }
     }
 
     /** Blocky stand-in figure (same proportions as a Minecraft player), softly shaded. */

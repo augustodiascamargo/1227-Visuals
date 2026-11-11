@@ -116,6 +116,7 @@ public final class ParticleSystem {
             arcs.render(this);
         }
         Lines.INSTANCE.render();
+        BodyFx.INSTANCE.render(d, 0, 0, 0);
         frameCount = 0;
     }
 
@@ -265,6 +266,7 @@ public final class ParticleSystem {
             arcs.render(this);
         }
         Lines.INSTANCE.render();
+        BodyFx.INSTANCE.render(dt, rX, rY, rZ);
         frameCount = 0;
     }
 

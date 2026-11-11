@@ -92,6 +92,29 @@ public final class WeaponEffectsModule extends Module {
         comboBoost = add(new Setting.Bool("Grow with combo", true));
         anyItem = add(new Setting.Bool("Any held item (not just swords)", false));
         others = add(new Setting.Bool("Show on other players", false));
+        add(new Setting.Action("Preview", new Runnable() {
+            @Override
+            public void run() {
+                double[] a = net.m1227.vfx.Preview.ahead(4.5, 3.0);
+                if (a == null) return;
+                ParticleSystem ps = ParticleSystem.INSTANCE;
+                int t = type() / 4, c0 = c0(), c1 = c1();
+                // a blade-shaped streak (as if a sword were swung through the air) ...
+                for (int i = 0; i < 22; i++) {
+                    float u = i / 21f;
+                    double x = a[0] - 0.55 + u * 1.1, y = a[1] + 0.9 + u * 0.9, z = a[2] - a[4] * 0.4;
+                    emit(ps, t, x, y, z, ps.rand(-0.2f, 0.2f), ps.rand(0f, 0.5f), ps.rand(-0.2f, 0.2f), fx.size.f(),
+                            fx.duration.f() * 0.8f, c0, c1, fx.alpha());
+                }
+                // ... then the hit burst on the stand-in
+                double x = a[0] - a[3] * 0.3, y = a[1] + 1.1, z = a[2] - a[4] * 0.3;
+                for (int i = 0; i < 12; i++) {
+                    emit(ps, t, x, y, z, (float) -a[3] * 2f + ps.rand(-1.5f, 1.5f), ps.rand(0f, 2f), (float) -a[4] * 2f + ps.rand(-1.5f, 1.5f),
+                            fx.size.f() * 1.2f, fx.duration.f(), c0, c1, fx.alpha());
+                }
+                if (t == 5) Arcs.INSTANCE.spawn(x, y + 0.6, z, x + 0.4, y - 0.6, z, 0.2f, 0.15f, c0, fx.alpha());
+            }
+        }));
     }
 
     private int type() {

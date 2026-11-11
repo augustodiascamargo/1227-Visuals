@@ -36,8 +36,8 @@ public final class TrailsModule extends Module {
     private boolean leftFoot;
 
     // position history (ring buffer) for path trails
-    private final double[] hx = new double[HIST], hy = new double[HIST], hz = new double[HIST];
-    private final double[] ht = new double[HIST];
+    private double[] hx = new double[HIST], hy = new double[HIST], hz = new double[HIST];
+    private double[] ht = new double[HIST];
     private int head, size;
     private double lastSample;
 
@@ -55,6 +55,73 @@ public final class TrailsModule extends Module {
         size = 0;
     }
 
+    /** Private trail memory for one menu preview tile (so previews never touch your real trail). */
+    public static final class PreviewState {
+        final double[] hx = new double[HIST], hy = new double[HIST], hz = new double[HIST], ht = new double[HIST];
+        int head, size;
+        double lastSample, stepDist, t, lx, lz;
+        float acc;
+        boolean leftFoot, started;
+    }
+
+    /**
+     * Menu gallery: an emitter runs a figure-eight in front of the camera and leaves the given
+     * trail style, using the same code as your own trail.
+     */
+    public void previewFrame(String st, PreviewState s) {
+        ParticleSystem ps = ParticleSystem.INSTANCE;
+        float d = ps.dt > 0f ? ps.dt : 0.016f;
+        s.t += d;
+        double a = s.t * 1.5;
+        double x = Math.sin(a) * 1.35, z = Math.sin(a * 2) * 0.55 + 0.3;
+        if (!s.started) {
+            s.lx = x;
+            s.lz = z;
+            s.started = true;
+        }
+        // movement per tick (1/20 s), as the real trail sees it
+        double mx = (x - s.lx) / d / 20.0, mz = (z - s.lz) / d / 20.0;
+        s.lx = x;
+        s.lz = z;
+        double[] ox = hx, oy = hy, oz = hz, ot = ht;
+        int oh = head, os = size;
+        double ols = lastSample, osd = stepDist;
+        float oa = acc;
+        boolean olf = leftFoot;
+        hx = s.hx;
+        hy = s.hy;
+        hz = s.hz;
+        ht = s.ht;
+        head = s.head;
+        size = s.size;
+        lastSample = s.lastSample;
+        stepDist = s.stepDist;
+        acc = s.acc;
+        leftFoot = s.leftFoot;
+        try {
+            step(ps, st, x, 0, z, mx, mz, x, 0, z, true);
+            // a small glowing runner so you can see what leaves the trail
+            AuraShapes.sprite(ps, Sprite.GLOW, x, 0.9, z, 0.35f, 0f, false, fx.color1.rgb(), 0.9f);
+        } finally {
+            s.head = head;
+            s.size = size;
+            s.lastSample = lastSample;
+            s.stepDist = stepDist;
+            s.acc = acc;
+            s.leftFoot = leftFoot;
+            hx = ox;
+            hy = oy;
+            hz = oz;
+            ht = ot;
+            head = oh;
+            size = os;
+            lastSample = ols;
+            stepDist = osd;
+            acc = oa;
+            leftFoot = olf;
+        }
+    }
+
     @SubscribeEvent
     public void onRender(RenderWorldLastEvent e) {
         ParticleSystem ps = ParticleSystem.INSTANCE;
@@ -69,6 +136,13 @@ public final class TrailsModule extends Module {
         double mx = p.posX - p.lastTickPosX, mz = p.posZ - p.lastTickPosZ;
         boolean moving = mx * mx + mz * mz >= 0.0025;
 
+        step(ps, st, x, y, z, mx, mz, p.posX, p.posY, p.posZ, p.onGround);
+    }
+
+    /** One frame of the trail for an emitter at (x, y, z) that moved (mx, mz) this tick. */
+    private void step(ParticleSystem ps, String st, double x, double y, double z, double mx, double mz,
+                      double fx0, double fy0, double fz0, boolean onGround) {
+        boolean moving = mx * mx + mz * mz >= 0.0025;
         if (st.equals("Ribbon") || st.equals("Waves") || st.equals("Geometric") || st.equals("Energy")) {
             sample(ps, x, y, z, moving);
             drawPath(ps, st, x, y, z);
@@ -76,7 +150,7 @@ public final class TrailsModule extends Module {
         }
         if (ps.dt <= 0f || !moving) return;
         if (st.equals("Footprints")) {
-            footprints(ps, p, mx, mz);
+            footprints(ps, fx0, fy0, fz0, onGround, mx, mz);
             return;
         }
 
@@ -251,8 +325,8 @@ public final class TrailsModule extends Module {
     }
 
     /** Glowing footprints left and right of the path, one per step. */
-    private void footprints(ParticleSystem ps, EntityPlayerSP p, double mx, double mz) {
-        if (!p.onGround) return;
+    private void footprints(ParticleSystem ps, double fpx, double fpy, double fpz, boolean onGround, double mx, double mz) {
+        if (!onGround) return;
         stepDist += Math.sqrt(mx * mx + mz * mz) * ps.dt * 20.0;
         if (stepDist < 0.62) return;
         stepDist = 0;
@@ -261,7 +335,7 @@ public final class TrailsModule extends Module {
         float dx = (float) (mx / len), dz = (float) (mz / len);
         float side = leftFoot ? 0.16f : -0.16f;
         float sz = fx.size.f();
-        Particle f = ps.glow(p.posX - dz * side, p.posY + 0.03, p.posZ + dx * side, 0f, 0f, 0f,
+        Particle f = ps.glow(fpx - dz * side, fpy + 0.03, fpz + dx * side, 0f, 0f, 0f,
                 fx.duration.f() * 2.5f, sz * 1.1f, sz * 0.9f, fx.color1.rgb(), fx.color2.rgb(), fx.alpha() * 0.9f);
         if (f != null) {
             f.sprite = Sprite.PETAL;

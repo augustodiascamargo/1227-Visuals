@@ -190,11 +190,28 @@ public final class DynamicIslandModule extends Module {
             w = tw;
             h = th;
         }
+        // Critically damped spring, integrated in small fixed steps. A single long frame (a lag
+        // spike, alt-tab, a slower PC) used to make the old one-step update blow up to
+        // infinity/NaN, after which the island stayed invisible for good.
         float k = 220f * springSpeed.f() * springSpeed.f(), c = 2f * (float) Math.sqrt(k);
-        vw += (k * (tw - w) - c * vw) * dt;
-        vh += (k * (th - h) - c * vh) * dt;
-        w += vw * dt;
-        h += vh * dt;
+        float left = dt;
+        while (left > 0f) {
+            float st = Math.min(left, 0.004f);
+            vw += (k * (tw - w) - c * vw) * st;
+            vh += (k * (th - h) - c * vh) * st;
+            w += vw * st;
+            h += vh * st;
+            left -= st;
+        }
+        if (Float.isNaN(w) || Float.isInfinite(w) || Float.isNaN(h) || Float.isInfinite(h) || w < 1f || h < 1f || w > 2000f || h > 400f) {
+            w = tw;
+            h = th;
+            vw = 0f;
+            vh = 0f;
+        }
+        for (int i = 0; i < 4; i++) {
+            if (Float.isNaN(layer[i])) layer[i] = i == mode ? 1f : 0f;
+        }
 
         float sc = scale.f();
         int sw = e.resolution.getScaledWidth();

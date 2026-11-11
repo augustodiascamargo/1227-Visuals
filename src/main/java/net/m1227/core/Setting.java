@@ -193,13 +193,14 @@ public abstract class Setting<T> {
      * are simply invisible.
      */
     public static final class Col extends Setting<Integer> {
-        public float hue, sat;
+        public float hue, sat, bri = 1f;
 
         public Col(String name, int rgb) {
             super(name, rgb & 0xFFFFFF);
             float[] hsb = java.awt.Color.RGBtoHSB((rgb >> 16) & 255, (rgb >> 8) & 255, rgb & 255, null);
             hue = hsb[0];
             sat = hsb[1];
+            bri = hsb[2];
         }
 
         public int rgb() {
@@ -208,7 +209,12 @@ public abstract class Setting<T> {
 
         public void setRgb(int rgb) {
             float[] hsb = java.awt.Color.RGBtoHSB((rgb >> 16) & 255, (rgb >> 8) & 255, rgb & 255, null);
-            setHS(hsb[0], hsb[1]);
+            setHSB(hsb[0], hsb[1], hsb[2]);
+        }
+
+        public void setHSB(float h, float s, float b) {
+            bri = Math.max(0f, Math.min(1f, b));
+            setHS(h, s);
         }
 
         @Override
@@ -216,13 +222,14 @@ public abstract class Setting<T> {
             float[] hsb = java.awt.Color.RGBtoHSB((def >> 16) & 255, (def >> 8) & 255, def & 255, null);
             hue = hsb[0];
             sat = hsb[1];
+            bri = hsb[2];
             super.reset();
         }
 
         public void setHS(float h, float s) {
             hue = Math.max(0f, Math.min(1f, h));
             sat = Math.max(0f, Math.min(1f, s));
-            set(java.awt.Color.HSBtoRGB(hue, sat, 1f) & 0xFFFFFF);
+            set(java.awt.Color.HSBtoRGB(hue, sat, bri) & 0xFFFFFF);
         }
 
         @Override
@@ -230,6 +237,7 @@ public abstract class Setting<T> {
             JsonObject o = new JsonObject();
             o.addProperty("h", hue);
             o.addProperty("s", sat);
+            o.addProperty("b", bri);
             return o;
         }
 
@@ -240,7 +248,10 @@ public abstract class Setting<T> {
             if (!o.has("h") || !o.has("s")) return;
             hue = Math.max(0f, Math.min(1f, o.get("h").getAsFloat()));
             sat = Math.max(0f, Math.min(1f, o.get("s").getAsFloat()));
-            value = java.awt.Color.HSBtoRGB(hue, sat, 1f) & 0xFFFFFF;
+            // configs from before brightness existed: keep the default's brightness (dark tints stayed dark)
+            float defBri = java.awt.Color.RGBtoHSB((def >> 16) & 255, (def >> 8) & 255, def & 255, null)[2];
+            bri = o.has("b") ? Math.max(0f, Math.min(1f, o.get("b").getAsFloat())) : defBri;
+            value = java.awt.Color.HSBtoRGB(hue, sat, bri) & 0xFFFFFF;
         }
     }
 

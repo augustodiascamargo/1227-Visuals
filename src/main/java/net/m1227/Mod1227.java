@@ -26,7 +26,7 @@ import org.apache.logging.log4j.Logger;
 public class Mod1227 {
     public static final String MODID = "m1227";
     public static final String NAME = "1227";
-    public static final String VERSION = "1.5.0";
+    public static final String VERSION = "1.7.1";
     public static final Logger LOGGER = LogManager.getLogger(NAME);
 
     /** Forge's config folder (set in preInit, before modules are created). */
@@ -48,6 +48,7 @@ public class Mod1227 {
         MinecraftForge.EVENT_BUS.register(new CombatTracker());
         MinecraftForge.EVENT_BUS.register(InputManager.INSTANCE);
         MinecraftForge.EVENT_BUS.register(net.m1227.hud.ClickCounter.INSTANCE);
+        MinecraftForge.EVENT_BUS.register(new net.m1227.vfx.BodyFx.Hider());
         MinecraftForge.EVENT_BUS.register(net.m1227.render.HandRenderer.INSTANCE);
         ClientCommandHandler.instance.registerCommand(new Command1227());
 

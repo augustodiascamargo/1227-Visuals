@@ -79,6 +79,52 @@ public final class Gfx {
         end();
     }
 
+    private static final net.minecraft.util.ResourceLocation LOGO = new net.minecraft.util.ResourceLocation("m1227", "textures/logo.png");
+
+    /**
+     * The 1227 symbol (a white mask) tinted with any colour, with an optional soft glow.
+     * Used in the menu corner and the watermark; it follows the accent colour.
+     */
+    public static void logo(float x, float y, float size, int argb, float glow) {
+        Minecraft mc = Minecraft.getMinecraft();
+        mc.getTextureManager().bindTexture(LOGO);
+        GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_LINEAR);
+        GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_LINEAR);
+        GlStateManager.enableTexture2D();
+        GlStateManager.enableBlend();
+        GlStateManager.disableAlpha();
+        GlStateManager.disableCull();
+        float a = (argb >>> 24) / 255f, r = ((argb >> 16) & 255) / 255f, g = ((argb >> 8) & 255) / 255f, b = (argb & 255) / 255f;
+        if (glow > 0f) {
+            // additive halo: the same mask drawn a little larger, twice
+            GlStateManager.blendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE);
+            for (int i = 1; i <= 2; i++) {
+                float gs = size * (1f + 0.08f * i), o = (gs - size) / 2f;
+                quadTex(x - o, y - o, gs, r, g, b, a * glow * (0.35f / i));
+            }
+        }
+        GlStateManager.tryBlendFuncSeparate(770, 771, 1, 0);
+        quadTex(x, y, size, r, g, b, a);
+        GlStateManager.enableAlpha();
+        GlStateManager.color(1f, 1f, 1f, 1f);
+        GL11.glColor4f(1f, 1f, 1f, 1f);
+    }
+
+    private static void quadTex(float x, float y, float s, float r, float g, float b, float a) {
+        GlStateManager.color(r, g, b, a);
+        GL11.glColor4f(r, g, b, a);
+        GL11.glBegin(GL11.GL_QUADS);
+        GL11.glTexCoord2f(0f, 0f);
+        GL11.glVertex2f(x, y);
+        GL11.glTexCoord2f(0f, 1f);
+        GL11.glVertex2f(x, y + s);
+        GL11.glTexCoord2f(1f, 1f);
+        GL11.glVertex2f(x + s, y + s);
+        GL11.glTexCoord2f(1f, 0f);
+        GL11.glVertex2f(x + s, y);
+        GL11.glEnd();
+    }
+
     /** Outline whose colour goes from top (at y) to bottom (at y + h). */
     public static void roundedOutlineGradient(float x, float y, float w, float h, float r, float t, int top, int bottom) {
         if (w <= 0f || h <= 0f) return;
@@ -154,6 +200,19 @@ public final class Gfx {
         GL11.glVertex2f(x1 - nx, y1 - ny);
         GL11.glVertex2f(x2 - nx, y2 - ny);
         GL11.glVertex2f(x2 + nx, y2 + ny);
+        GL11.glEnd();
+        end();
+    }
+
+    /** Any convex quad (corners in order). */
+    public static void quad(float x0, float y0, float x1, float y1, float x2, float y2, float x3, float y3, int argb) {
+        begin();
+        color(argb);
+        GL11.glBegin(GL11.GL_QUADS);
+        GL11.glVertex2f(x0, y0);
+        GL11.glVertex2f(x1, y1);
+        GL11.glVertex2f(x2, y2);
+        GL11.glVertex2f(x3, y3);
         GL11.glEnd();
         end();
     }

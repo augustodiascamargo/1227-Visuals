@@ -10,7 +10,7 @@ import net.minecraft.client.Minecraft;
 /** The 1227 mark on screen, in a few quiet styles, optionally with FPS / time / server. */
 public final class WatermarkHud extends HudModule {
     private final Setting.Mode style;
-    private final Setting.Bool fps, time, server, version;
+    private final Setting.Bool fps, time, server, version, logo;
     private final SimpleDateFormat clock = new SimpleDateFormat("HH:mm");
     private float w = 60, h = 16;
 
@@ -21,6 +21,7 @@ public final class WatermarkHud extends HudModule {
         time = add(new Setting.Bool("Clock", true));
         server = add(new Setting.Bool("Server", false));
         version = add(new Setting.Bool("Version", false));
+        logo = add(new Setting.Bool("1227 symbol", true));
     }
 
     @Override
@@ -90,14 +91,16 @@ public final class WatermarkHud extends HudModule {
             Gfx.textScaled("1227", x + 6, y + 5, 1.25f, 0xFFFFFFFF);
             if (!in.isEmpty()) Gfx.text(in, x + tw + 14, y + 5.5f, LABEL);
         } else { // Pill
-            w = tw + iw + 18;
+            float lo = logo.on() ? 10f : 0f;
+            w = tw + iw + 18 + lo;
             h = 16;
             panel(x, y, w, h);
-            Gfx.circle(x + 7, y + 8, 2.2f, Gfx.alpha(ac, 0.75f + 0.25f * (float) Math.sin(t * 3)));
-            Gfx.textScaled("1227", x + 12, y + 3.5f, 1.25f, 0xFFFFFFFF);
+            if (logo.on()) Gfx.logo(x + 2.5f, y + 0.5f, 15f, ac, 0.6f + 0.4f * (float) Math.sin(t * 2));
+            else Gfx.circle(x + 7, y + 8, 2.2f, Gfx.alpha(ac, 0.75f + 0.25f * (float) Math.sin(t * 3)));
+            Gfx.textScaled("1227", x + 12 + lo, y + 3.5f, 1.25f, 0xFFFFFFFF);
             if (!in.isEmpty()) {
-                Gfx.rect(x + tw + 16, y + 4, 1, 8, Gfx.alpha(0xFFFFFFFF, 0.2f));
-                Gfx.text(in, x + tw + 21, y + 4.5f, LABEL);
+                Gfx.rect(x + tw + 16 + lo, y + 4, 1, 8, Gfx.alpha(0xFFFFFFFF, 0.2f));
+                Gfx.text(in, x + tw + 21 + lo, y + 4.5f, LABEL);
             }
         }
     }

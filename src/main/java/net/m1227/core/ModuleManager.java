@@ -40,6 +40,7 @@ public final class ModuleManager {
         register(new LowFireModule());
         register(new AnimationsModule());
         register(new ToggleSprintModule());
+        register(new EmotesModule());
         register(new HitSoundsModule());
         register(new DynamicIslandModule());
         register(new HitMarkerModule());

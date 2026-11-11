@@ -245,11 +245,10 @@ public class ClickGui extends GuiScreen {
         Gfx.roundedRect(wx, wy, SIDE, H, rad - 1, Gfx.alpha(Theme.sidebar(), o));
         Gfx.rect(wx + SIDE - rad, wy, rad, H, Gfx.alpha(Theme.sidebar(), o));
         Gfx.rect(wx + SIDE, wy + 10, 1, H - 20, Gfx.alpha(Theme.cardBorder(ACCENT) != 0 ? Theme.cardBorder(ACCENT) : 0x14FFFFFF, o));
-        // brand: accent tile + wordmark
-        Gfx.roundedRect(wx + 14, wy + 14, 24, 24, 7, Gfx.alpha(ACCENT, o));
-        Gfx.gradient(wx + 14, wy + 14, 24, 12, Gfx.alpha(0x40FFFFFF, o), 0x00FFFFFF);
+        // brand: the 1227 symbol in the accent colour (follows the menu colour) + wordmark
+        float pulse = 0.75f + 0.25f * (float) Math.sin(System.currentTimeMillis() / 700.0);
+        Gfx.logo(wx + 9, wy + 9, 34, Gfx.alpha(Gfx.mix(ACCENT, WHITE, 0.12f), o), pulse);
         Gfx.weight(TtfFont.BOLD);
-        Gfx.textScaled("12", wx + 26 - Gfx.textWidth("12", 0.95f) / 2f, wy + 21.5f, 0.95f, Gfx.alpha(WHITE, o));
         Gfx.textScaled("1227", wx + 44, wy + 14.5f, 1.35f, Gfx.alpha(TEXT, o));
         Gfx.weight(TtfFont.MEDIUM);
         Gfx.textScaled("V I S U A L S", wx + 44.5f, wy + 29f, 0.62f, Gfx.alpha(DIM, o));
@@ -693,27 +692,91 @@ public class ClickGui extends GuiScreen {
                 }
             }, null));
         } else if (s instanceof Setting.Col) {
-            final Setting.Col c = (Setting.Col) s;
-            Gfx.text(s.name, x, y + 1, Gfx.alpha(TEXT, al));
-            Gfx.roundedRect(x + w - 20, y, 20, 9, 3, Gfx.alpha(0xFF000000 | c.rgb(), al));
-            float b1 = y + 13, b2 = y + 24, bh = 7;
-            Gfx.hueBar(x, b1, w, bh, al);
-            Gfx.rect(x + c.hue * w - 1, b1 - 1, 2, bh + 2, Gfx.alpha(WHITE, al));
-            Gfx.satBar(x, b2, w, bh, java.awt.Color.HSBtoRGB(c.hue, 1f, 1f) & 0xFFFFFF, al);
-            Gfx.rect(x + c.sat * w - 1, b2 - 1, 2, bh + 2, Gfx.alpha(WHITE, al));
-            hits.add(new Hit(x, b1 - 2, w, bh + 4, true, null, new Drag() {
-                @Override
-                public void to(float cx) {
-                    c.setHS((cx - x) / w, c.sat);
-                }
-            }));
-            hits.add(new Hit(x, b2 - 2, w, bh + 4, true, null, new Drag() {
-                @Override
-                public void to(float cx) {
-                    c.setHS(c.hue, (cx - x) / w);
-                }
-            }));
+            drawColor((Setting.Col) s, x, y, w, al);
         }
+    }
+
+    private static final java.util.Set<Setting<?>> OPEN_COLORS = new java.util.HashSet<Setting<?>>();
+    private static final int[] SWATCHES = {0xFFFFFF, 0x8B5CFF, 0x6C7BFF, 0x2DD4FF, 0x3DDC84, 0xFFC857,
+            0xFF8A3D, 0xFF4D5E, 0xFF4FD8, 0xB57BFF, 0x9AA3B5, 0x15161C};
+    private float dragY;
+
+    /** Colour row: swatch + hex; click to open a picker with a saturation/brightness square, hue bar and swatches. */
+    private void drawColor(final Setting.Col c, final float x, final float y, final float w, float al) {
+        Gfx.text(c.name, x, y + 4, Gfx.alpha(TEXT, al));
+        String hex = String.format("#%06X", c.rgb());
+        float sw = 26, sx = x + w - sw;
+        Gfx.textScaled(hex, sx - 8 - Gfx.textWidth(hex, 0.8f), y + 4.6f, 0.8f, Gfx.alpha(DIM, al));
+        Gfx.roundedRect(sx, y + 2, sw, 12, 6, Gfx.alpha(0xFF000000 | c.rgb(), al));
+        Gfx.roundedOutline(sx, y + 2, sw, 12, 6, 0.8f, Gfx.alpha(0x40FFFFFF, al));
+        final boolean open = OPEN_COLORS.contains(c);
+        hits.add(new Hit(x, y, w, 16, true, new Click() {
+            @Override
+            public void on(float cx, int bt) {
+                if (bt != 0) return;
+                if (!OPEN_COLORS.remove(c)) OPEN_COLORS.add(c);
+            }
+        }, null));
+        if (!open) return;
+        final float qx = x, qy = y + 20, qw = Math.min(150f, w * 0.5f), qh = 62;
+        int pure = java.awt.Color.HSBtoRGB(c.hue, 1f, 1f) & 0xFFFFFF;
+        Gfx.satBar(qx, qy, qw, qh, pure, al);
+        Gfx.gradient(qx, qy, qw, qh, 0x00000000, Gfx.alpha(0xFF000000, al));
+        Gfx.roundedOutline(qx, qy, qw, qh, 3, 0.8f, Gfx.alpha(0x30FFFFFF, al));
+        float kx = qx + c.sat * qw, ky = qy + (1f - c.bri) * qh;
+        Gfx.circle(kx, ky, 4f, Gfx.alpha(0xFF000000, al * 0.6f));
+        Gfx.circle(kx, ky, 3.2f, Gfx.alpha(WHITE, al));
+        Gfx.circle(kx, ky, 2.2f, Gfx.alpha(0xFF000000 | c.rgb(), al));
+        hits.add(new Hit(qx, qy, qw, qh, true, null, new Drag() {
+            @Override
+            public void to(float cx) {
+                c.setHSB(c.hue, (cx - qx) / qw, 1f - (dragY - qy) / qh);
+            }
+        }));
+        final float hy = qy + qh + 8;
+        Gfx.hueBar(x, hy, w, 7, al);
+        Gfx.circle(x + c.hue * w, hy + 3.5f, 4.5f, Gfx.alpha(WHITE, al));
+        Gfx.circle(x + c.hue * w, hy + 3.5f, 3.2f, Gfx.alpha(0xFF000000 | pure, al));
+        hits.add(new Hit(x, hy - 3, w, 13, true, null, new Drag() {
+            @Override
+            public void to(float cx) {
+                c.setHSB((cx - x) / w, c.sat, c.bri);
+            }
+        }));
+        // swatches + accent
+        float gx = qx + qw + 10, gw = x + w - gx;
+        int per = 6;
+        float cell = Math.min(18f, (gw - (per - 1) * 5f) / per);
+        for (int i = 0; i < SWATCHES.length; i++) {
+            final int rgb = SWATCHES[i];
+            float cx0 = gx + (i % per) * (cell + 5), cy0 = qy + (i / per) * (cell + 5);
+            Gfx.roundedRect(cx0, cy0, cell, cell, cell / 2f, Gfx.alpha(0xFF000000 | rgb, al));
+            if ((c.rgb() & 0xFFFFFF) == rgb) Gfx.roundedOutline(cx0 - 1.5f, cy0 - 1.5f, cell + 3, cell + 3, cell / 2f + 1.5f, 1f, Gfx.alpha(WHITE, al));
+            hits.add(new Hit(cx0, cy0, cell, cell, true, new Click() {
+                @Override
+                public void on(float mx, int bt) {
+                    if (bt == 0) c.setRgb(rgb);
+                }
+            }, null));
+        }
+        float by = qy + 2 * (cell + 5) + 4;
+        final int acc = ACCENT & 0xFFFFFF;
+        Gfx.roundedRect(gx, by, gw, 16, 8, Gfx.alpha(0x1CFFFFFF, al));
+        Gfx.circle(gx + 9, by + 8, 3.5f, Gfx.alpha(ACCENT, al));
+        Gfx.textScaled("Use accent", gx + 17, by + 4.6f, 0.8f, Gfx.alpha(TEXT, al));
+        hits.add(new Hit(gx, by, gw, 16, true, new Click() {
+            @Override
+            public void on(float mx, int bt) {
+                if (bt == 0) c.setRgb(acc);
+            }
+        }, null));
+        Gfx.textScaled("Reset", gx + 4, by + 22, 0.78f, Gfx.alpha(DIM, al));
+        hits.add(new Hit(gx, by + 18, 40, 12, true, new Click() {
+            @Override
+            public void on(float mx, int bt) {
+                if (bt == 0) c.reset();
+            }
+        }, null));
     }
 
     // =================================================================
@@ -725,7 +788,7 @@ public class ClickGui extends GuiScreen {
         if (s instanceof Setting.Action) return 24f;
         if (s instanceof Setting.Key) return 30f;
         if (s instanceof Setting.Num) return 26f;
-        if (s instanceof Setting.Col) return 36f;
+        if (s instanceof Setting.Col) return OPEN_COLORS.contains(s) ? 106f : 20f;
         return 18f;
     }
 
@@ -746,6 +809,7 @@ public class ClickGui extends GuiScreen {
     private static int galleryKind(Module m, Setting.Mode md) {
         if (md.options.length < 2) return 0;
         if ((m instanceof net.m1227.module.TargetAuraModule || m instanceof net.m1227.module.PlayerAuraModule) && md.name.equals("Style")) return 2;
+        if (m instanceof net.m1227.module.TrailsModule && md.name.equals("Style")) return 3;
         return previewAction(m, md) != null ? 1 : 0;
     }
 
@@ -800,10 +864,12 @@ public class ClickGui extends GuiScreen {
                 final String key = m.name + "/" + md.name + "/" + opt;
                 net.m1227.vfx.PreviewStage st = stages.get(key);
                 if (st == null) {
-                    st = new net.m1227.vfx.PreviewStage(kind == 2 ? 1f : 2.2f, true, kind == 2);
+                    float loop = m instanceof net.m1227.module.KillEffectModule ? 3.4f : 2.2f;
+                    st = new net.m1227.vfx.PreviewStage(kind == 1 ? loop : 1f, kind != 3, kind != 1);
                     stages.put(key, st);
                 }
-                Runnable trig = kind == 2 ? auraTrigger(m, opt, key) : new Runnable() {
+                Runnable trig = kind == 3 ? trailTrigger((net.m1227.module.TrailsModule) m, opt, key)
+                        : kind == 2 ? auraTrigger(m, opt, key) : new Runnable() {
                     @Override
                     public void run() {
                         String old = md.get();
@@ -870,7 +936,25 @@ public class ClickGui extends GuiScreen {
         };
     }
 
+    private final Map<String, net.m1227.module.TrailsModule.PreviewState> trailStates = new HashMap<String, net.m1227.module.TrailsModule.PreviewState>();
+
+    private Runnable trailTrigger(final net.m1227.module.TrailsModule m, final String opt, String key) {
+        net.m1227.module.TrailsModule.PreviewState s0 = trailStates.get(key);
+        if (s0 == null) {
+            s0 = new net.m1227.module.TrailsModule.PreviewState();
+            trailStates.put(key, s0);
+        }
+        final net.m1227.module.TrailsModule.PreviewState st = s0;
+        return new Runnable() {
+            @Override
+            public void run() {
+                m.previewFrame(opt, st);
+            }
+        };
+    }
+
     private void disposeStages() {
+        trailStates.clear();
         for (net.m1227.vfx.PreviewStage st : stages.values()) st.dispose();
         stages.clear();
         auraStates.clear();
@@ -941,6 +1025,7 @@ public class ClickGui extends GuiScreen {
             if (h.list && !inList(mx, my)) continue;
             if (h.click != null) h.click.on(mx, button);
             if (h.drag != null && button == 0) {
+                dragY = my;
                 drag = h.drag;
                 drag.to(mx);
             }
@@ -950,6 +1035,7 @@ public class ClickGui extends GuiScreen {
 
     @Override
     protected void mouseClickMove(int mx, int my, int button, long time) {
+        dragY = localY(my);
         if (drag != null) drag.to(localX(mx));
     }
 

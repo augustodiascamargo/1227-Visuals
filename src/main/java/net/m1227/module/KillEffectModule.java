@@ -17,16 +17,24 @@ import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 public final class KillEffectModule extends Module {
     private final Setting.Mode style;
     private final FxSettings fx;
+    private final Setting.Bool red;
 
     public KillEffectModule() {
         super("Kill Effect", "Effect when you finish off a target.", Category.COMBAT, true);
-        style = add(new Setting.Mode("Style", "Nova", "Nova", "Ascend", "Implode", "Lightning", "Cash"));
+        style = add(new Setting.Mode("Style", "Nova", "Nova", "Ascend", "Implode", "Lightning", "Cash",
+                "Ragdoll", "Decapitation", "Shatter", "Ice Shatter", "Executioner", "Tung Sahur"));
         fx = new FxSettings(this, 0x8B5CFF, 0x2DD4FF, 26, 1.0, 0.14, 1.0);
+        red = add(new Setting.Bool("Red particles (Decapitation)", false)).showIf(() -> style.is("Decapitation"));
         add(new Setting.Action("Preview", new Runnable() {
             @Override
             public void run() {
                 double[] a = Preview.ahead(4.5, 3.0);
-                if (a != null) play(a[0], a[1], a[2], 0.6f, 1.8f);
+                if (a != null) {
+                    net.minecraft.client.Minecraft mc = net.minecraft.client.Minecraft.getMinecraft();
+                    // the stand-in faces you; you hit it "forwards"
+                    float yaw = (float) Math.toDegrees(Math.atan2(a[3], -a[4]));
+                    play(a[0], a[1], a[2], 0.6f, 1.8f, mc.thePlayer, yaw, (float) a[3], (float) a[4]);
+                }
             }
         }));
     }
@@ -34,15 +42,51 @@ public final class KillEffectModule extends Module {
     @SubscribeEvent
     public void onKill(CombatTracker.KillEvent e) {
         EntityLivingBase t = e.target;
-        play(t.posX, t.posY, t.posZ, t.width, t.height);
+        net.minecraft.client.entity.EntityPlayerSP me = net.minecraft.client.Minecraft.getMinecraft().thePlayer;
+        float dx = 0f, dz = 1f;
+        if (me != null) {
+            double ddx = t.posX - me.posX, ddz = t.posZ - me.posZ, l = Math.sqrt(ddx * ddx + ddz * ddz);
+            if (l > 1e-3) {
+                dx = (float) (ddx / l);
+                dz = (float) (ddz / l);
+            }
+        }
+        play(t.posX, t.posY, t.posZ, t.width, t.height, t, t.renderYawOffset, dx, dz);
     }
 
     /** feetY is the y of the ground under the target. */
     public void play(double x, double feetY, double z, float width, float height) {
+        play(x, feetY, z, width, height, null, 0f, 0f, 1f);
+    }
+
+    /** victim (may be null) gives the body its skin; (dirX, dirZ) = from you towards the target. */
+    public void play(double x, double feetY, double z, float width, float height, EntityLivingBase victim, float yaw, float dirX, float dirZ) {
         ParticleSystem ps = ParticleSystem.INSTANCE;
         double y = feetY + height * 0.5;
         if (!ps.inRange(x, y, z)) return;
         String s = style.get();
+        int c0 = fx.color1.rgb(), c1 = fx.color2.rgb();
+        net.m1227.vfx.BodyFx bf = net.m1227.vfx.BodyFx.INSTANCE;
+        if (s.equals("Ragdoll")) {
+            bf.ragdoll(victim, x, feetY, z, yaw, height, dirX, dirZ, fx.speed.f(), c0, c1);
+            return;
+        }
+        if (s.equals("Decapitation")) {
+            bf.decapitate(victim, x, feetY, z, yaw, height, dirX, dirZ, c0, c1, red.on());
+            return;
+        }
+        if (s.equals("Shatter") || s.equals("Ice Shatter")) {
+            bf.shatter(victim, x, feetY, z, yaw, height, s.equals("Ice Shatter"), c0, c1);
+            return;
+        }
+        if (s.equals("Tung Sahur")) {
+            bf.sahur(victim, x, feetY, z, yaw, height, dirX, dirZ, c0, c1);
+            return;
+        }
+        if (s.equals("Executioner")) {
+            bf.executioner(victim, x, feetY, z, yaw, height, dirX, dirZ, 0xFF000000 | c0, c1);
+            return;
+        }
         if (s.equals("Nova")) nova(ps, x, y, z, feetY);
         else if (s.equals("Ascend")) ascend(ps, x, z, feetY, width);
         else if (s.equals("Lightning")) lightning(ps, x, feetY, z, height);

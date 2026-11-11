@@ -23,13 +23,18 @@ import org.lwjgl.opengl.GL11;
  */
 public final class WeaponModelsModule extends Module {
     public static WeaponModelsModule INSTANCE;
-    public static final String[] MODELS = {"Katana", "Crystal Blade", "Energy Saber", "Rune Greatsword", "Twin Fang", "Obsidian Edge", "Storm Blade"};
+    public static final String[] MODELS = {"Katana", "Crystal Blade", "Energy Saber", "Rune Greatsword", "Twin Fang", "Obsidian Edge", "Storm Blade", "Butterfly Knife", "Cleaver", "Dragon Fang", "Holy Claymore", "Void Rapier"};
 
     private final Setting.Mode model;
     private final Setting.Col primary, secondary, glow;
     private final Setting.Bool emissive, matchWeaponFx;
     private final Setting.Num length, size, posX, posY, posZ;
-    private final Setting.Bool lightning;
+    private final Setting.Bool lightning, flipOnEquip;
+    private final Setting.Key inspectKey;
+    private long animStart = -1L;
+    private int animKind; // 0 none, 1 open (equip), 2 close+open (inspect)
+    private net.minecraft.item.ItemStack lastHeld;
+    private boolean inspectWasDown;
 
     // item-space frame: blade runs along the item's diagonal
     private static final float OX = 0.04f, OY = 0.04f, OZ = 0.5f;
@@ -53,6 +58,8 @@ public final class WeaponModelsModule extends Module {
         posY = add(new Setting.Num("Offset Y", 0.0, -0.5, 0.5, 0.01, ""));
         posZ = add(new Setting.Num("Offset Z", 0.0, -0.5, 0.5, 0.01, ""));
         lightning = add(new Setting.Bool("Lightning arcs", false));
+        flipOnEquip = add(new Setting.Bool("Butterfly: flip open when drawn", true)).showIf(() -> model.is("Butterfly Knife"));
+        inspectKey = add(new Setting.Key("Butterfly: inspect (flip) key", org.lwjgl.input.Keyboard.KEY_V));
     }
 
     public boolean lightning() {
@@ -94,12 +101,28 @@ public final class WeaponModelsModule extends Module {
         GlStateManager.shadeModel(GL11.GL_SMOOTH);
         String md = model.get();
         int b = primary.rgb(), h = secondary.rgb(), g = glowRgb();
+        if (md.equals("Butterfly Knife")) {
+            butterfly(mc, stack, b, h, g);
+            GlStateManager.shadeModel(GL11.GL_FLAT);
+            GlStateManager.enableTexture2D();
+            GlStateManager.enableLighting();
+            GlStateManager.enableCull();
+            GlStateManager.disableBlend();
+            GlStateManager.color(1f, 1f, 1f, 1f);
+            GL11.glColor4f(1f, 1f, 1f, 1f);
+            GlStateManager.popMatrix();
+            return;
+        }
         if (md.equals("Crystal Blade")) crystal(b, h, g);
         else if (md.equals("Energy Saber")) saber(h, g);
         else if (md.equals("Rune Greatsword")) rune(b, h, g);
         else if (md.equals("Twin Fang")) twin(b, h, g);
         else if (md.equals("Obsidian Edge")) obsidian(h, g);
         else if (md.equals("Storm Blade")) storm(b, h, g);
+        else if (md.equals("Cleaver")) cleaver(b, h, g);
+        else if (md.equals("Dragon Fang")) fang(b, h, g);
+        else if (md.equals("Holy Claymore")) claymore(b, h, g);
+        else if (md.equals("Void Rapier")) rapier(b, h, g);
         else katana(b, h, g);
         GlStateManager.shadeModel(GL11.GL_FLAT);
         GlStateManager.enableTexture2D();
@@ -240,6 +263,119 @@ public final class WeaponModelsModule extends Module {
         float[] cv = {0f, 0.01f, -0.005f, 0.01f, 0f, 0f};
         extrude(ss, hw, th, cv, 0x120E18, ParticleSystem.mix(0x120E18, g, 0.35f), 1f, false);
         if (emissive.on()) edgeLine(ss, hw, cv, g, 0.9f, 1f);
+    }
+
+    /**
+     * The butterfly knife from your .blend file: two handles swing around their pins, driven by
+     * the model's own animation (closed <-> open). Flips open when drawn and on the inspect key.
+     */
+    private void butterfly(Minecraft mc, net.minecraft.item.ItemStack stack, int blade, int hilt, int glow) {
+        net.m1227.vfx.MeshAssets.Rigid k = net.m1227.vfx.MeshAssets.knife();
+        if (k == null) {
+            katana(blade, hilt, glow);
+            return;
+        }
+        long now = System.currentTimeMillis();
+        if (lastHeld == null || stack.getItem() != lastHeld.getItem() || mc.thePlayer.inventory.currentItem != lastSlot) {
+            lastSlot = mc.thePlayer.inventory.currentItem;
+            if (flipOnEquip.on()) {
+                animStart = now;
+                animKind = 1;
+            }
+        }
+        lastHeld = stack;
+        int key = inspectKey.code();
+        boolean down = key > 0 && mc.currentScreen == null && org.lwjgl.input.Keyboard.isKeyDown(key);
+        if (down && !inspectWasDown && (animKind == 0 || now - animStart > 1100L)) {
+            animStart = now;
+            animKind = 2;
+        }
+        inspectWasDown = down;
+        // frame 0 = open (in hand), frame 39 = closed
+        float ft = 0f, t = (now - animStart) / 1000f;
+        if (animKind == 1) {
+            ft = t < 0.7f ? 39f * (1f - t / 0.7f) : 0f;
+            if (t >= 0.7f) animKind = 0;
+        } else if (animKind == 2) {
+            if (t < 0.5f) ft = 39f * (t / 0.5f);
+            else if (t < 1.05f) ft = 39f * (1f - (t - 0.5f) / 0.55f);
+            else animKind = 0;
+        }
+        final float kk = len / 2.84f;
+        final float th = thick;
+        net.m1227.vfx.MeshAssets.Mapper map = new net.m1227.vfx.MeshAssets.Mapper() {
+            @Override
+            public void map(float x, float y, float z, float[] o) {
+                float a = (1.46f - x) * kk;      // along the sword diagonal, handles at the bottom
+                float n = (z + 0.18f) * kk;      // swing plane = the item plane
+                o[0] = OX + AX * a + NX * n;
+                o[1] = OY + AY * a + NY * n;
+                o[2] = OZ + y * kk * 1.6f * th;
+            }
+        };
+        int[][] colors = {{ParticleSystem.mix(blade, 0xFFFFFF, 0.15f), glow}, {hilt}, {ParticleSystem.mix(hilt, 0xFFFFFF, 0.12f)}, {glow}};
+        boolean[] em = {false, false, false, emissive.on()};
+        k.draw(ft, map, colors, em, 1f);
+    }
+
+    private int lastSlot = -1;
+
+    /** Wide, squared-off chopping blade with a spine. */
+    private void cleaver(int blade, int hilt, int g) {
+        grip(0.0f, 0.3f, 0.03f, hilt, true);
+        box(0.3f, 0.33f, 0.07f, 0.03f, 0x3A3F4A, 0f);
+        float[] ss = {0.33f, 0.4f, 0.85f, 0.97f, 1.0f};
+        float[] hw = {0.08f, 0.12f, 0.12f, 0.11f, 0.06f};
+        float[] th = {0.02f, 0.018f, 0.016f, 0.014f, 0.01f};
+        float[] cv = {0.03f, 0.05f, 0.05f, 0.045f, 0.03f};
+        extrude(ss, hw, th, cv, ParticleSystem.mix(blade, 0x5A606E, 0.35f), ParticleSystem.mix(blade, 0xFFFFFF, 0.5f), 1f, false);
+        if (emissive.on()) edgeLine(ss, hw, cv, g, 0.7f, 0.5f);
+    }
+
+    /** Curved, serrated fang with a bone-like grip. */
+    private void fang(int blade, int hilt, int g) {
+        grip(0.0f, 0.28f, 0.03f, ParticleSystem.mix(hilt, 0xD8C9A8, 0.5f), true);
+        octa(0.29f, 0.05f, g);
+        int n = 16;
+        float[] ss = new float[n], hw = new float[n], th = new float[n], cv = new float[n];
+        for (int i = 0; i < n; i++) {
+            float u = i / (float) (n - 1);
+            ss[i] = 0.31f + 0.69f * u;
+            float teeth = (i % 2 == 0) ? 1f : 0.7f; // serrated edge
+            hw[i] = (0.075f * (1f - u * 0.85f)) * teeth;
+            th[i] = 0.022f * (1f - u * 0.7f);
+            cv[i] = -0.09f * u * u;
+        }
+        hw[n - 1] = 0f;
+        th[n - 1] = 0f;
+        extrude(ss, hw, th, cv, ParticleSystem.mix(blade, 0xE8E2D0, 0.4f), ParticleSystem.mix(g, 0xFFFFFF, 0.4f), 1f, false);
+        if (emissive.on()) emissiveShell(ss, hw, th, cv, g, 0.18f, 1.3f);
+    }
+
+    /** Long two-handed blade, wide cross-guard with a glowing gem. */
+    private void claymore(int blade, int hilt, int g) {
+        grip(0.0f, 0.3f, 0.026f, hilt, true);
+        octa(0.02f, 0.045f, 0xFFE9A8);
+        box(0.3f, 0.335f, 0.2f, 0.03f, 0xC9A65A, 0.03f);
+        octa(0.318f, 0.04f, g);
+        float[] ss = {0.335f, 0.4f, 0.9f, 1.0f};
+        float[] hw = {0.06f, 0.065f, 0.05f, 0f};
+        float[] th = {0.02f, 0.02f, 0.016f, 0f};
+        float[] cv = new float[ss.length];
+        extrude(ss, hw, th, cv, ParticleSystem.mix(blade, 0xFFFFFF, 0.25f), 0xFFF6DA, 1f, false);
+        if (emissive.on()) emissiveShell(ss, hw, th, cv, 0xFFE08A, 0.14f, 1.25f);
+    }
+
+    /** Needle-thin blade with a round cup guard and a void-glow core. */
+    private void rapier(int blade, int hilt, int g) {
+        grip(0.0f, 0.24f, 0.024f, hilt, true);
+        disc(0.24f, 0.27f, 0.09f, 0.03f, 0x1B1622);
+        float[] ss = {0.27f, 0.5f, 0.95f, 1.0f};
+        float[] hw = {0.022f, 0.018f, 0.01f, 0f};
+        float[] th = {0.014f, 0.012f, 0.008f, 0f};
+        float[] cv = new float[ss.length];
+        extrude(ss, hw, th, cv, 0x1A1424, ParticleSystem.mix(0x1A1424, g, 0.5f), 1f, false);
+        if (emissive.on()) emissiveShell(ss, hw, th, cv, g, 0.3f, 1.8f);
     }
 
     /** Steel blade with a bright energy channel; pairs with the lightning arcs. */

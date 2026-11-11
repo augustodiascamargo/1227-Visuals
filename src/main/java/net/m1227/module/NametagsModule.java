@@ -59,6 +59,10 @@ public final class NametagsModule extends Module {
     @SuppressWarnings("rawtypes")
     public void onName(RenderLivingEvent.Specials.Pre e) {
         if (!(e.entity instanceof EntityPlayer)) return;
+        if (net.m1227.vfx.PreviewStage.rendering) {
+            e.setCanceled(true);
+            return;
+        }
         Minecraft mc = Minecraft.getMinecraft();
         EntityPlayer p = (EntityPlayer) e.entity;
         if (mc.thePlayer == null) return;

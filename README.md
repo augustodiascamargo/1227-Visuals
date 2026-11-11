@@ -1,4 +1,4 @@
-# 1227 — v1.5.0 (Minecraft 1.8.9 · Forge 11.15.1.2318 · Java 8)
+# 1227 — v1.7.1 (Minecraft 1.8.9 · Forge 11.15.1.2318 · Java 8)
 
 Mod client-side e puramente visual. Não envia pacotes, não desenha através de paredes e não muda alcance,
 timing de ataque ou outras mecânicas do servidor.
@@ -141,3 +141,40 @@ nada depende de Lunar ou de outro launcher.
 - Botão "Menu style" no topo do menu abre direto a página Settings > Menu Style (agora a primeira de Settings).
 - Editor de HUD: botões para ligar/desligar também Dynamic Island, Crosshair, Nametags, Chat e Hit Marker
   (ex.: para trazer a Dynamic Island de volta depois de desligar).
+
+## Mudanças na v1.5.1
+- Dynamic Island: a animação de "mola" que muda o tamanho da ilha podia explodir para infinito/NaN depois de um quadro
+  longo (travada, alt-tab, PC mais lento), e a ilha sumia de vez. Agora é calculada em passos pequenos e, se algum
+  valor ficar inválido, ela se recupera sozinha no quadro seguinte.
+- Galeria: o boneco dos previews agora é o seu personagem com a sua skin; câmera mais próxima.
+- Weapon Effects ganhou galeria com os 40 efeitos (rastro de espada + impacto em cada cartão).
+
+## Mudanças na v1.6.0
+- Trails ganhou galeria: cada um dos 16 estilos aparece num cartão com uma luz correndo em "8" e deixando o rastro,
+  com o mesmo código do rastro real (cada cartão tem a própria memória, sem mexer no seu rastro).
+- Novo seletor de cores: linha compacta com amostra e código hex; ao clicar abre um quadrado de saturação/brilho,
+  barra de matiz, 12 cores prontas, "Use accent" e "Reset". As cores agora guardam o brilho (antes toda cor salva
+  voltava com brilho máximo; tintas escuras, como a do Menu Style, ficavam claras depois de reabrir o jogo).
+
+## Mudanças na v1.7.0
+- Símbolo 1227 no canto do menu (e opcional no Watermark), desenhado a partir da arte enviada como máscara branca e
+  pintado com a cor de destaque escolhida, com brilho pulsando.
+- Kill Effect: Ragdoll, Decapitation (opção de partículas vermelhas), Shatter, Ice Shatter, Executioner (gigante de
+  obsidiana original com martelo) e Tung Sahur (modelo enviado pelo usuário, que bate duas vezes no alvo com o taco e
+  lança o corpo no terceiro golpe). O corpo do jogador derrotado é refeito com a skin dele em 6 partes com física
+  (gravidade, giro, quique e atrito); o corpo original é escondido só enquanto está morto. Tudo é só visual, no cliente.
+- Weapon Models: Butterfly Knife (modelo e animação do .blend enviado: abre ao sacar e gira na tecla de inspeção, V),
+  Cleaver, Dragon Fang, Holy Claymore e Void Rapier.
+- Emotes (Animations): roda de emotes na tecla "." (ponto) com 12 emotes (Wave, Groove, Clap, Flex, Salute, Sit, Spin, Facepalm,
+  T-Pose, Cheer, Bow, Laugh). A câmera vira para mostrar o personagem; andar, pular, agachar, atacar ou levar dano
+  encerra. Só você vê os emotes (não há envio para o servidor).
+- tools/: conversores em Python usados para transformar o FBX (esqueleto + animação, com o golpe do taco adicionado)
+  e o .blend em modelos leves (assets/m1227/models). Para trocar os modelos, rode bake.py / bakeknife.py.
+
+### Licença dos modelos enviados
+O modelo do Tung Sahur (ZAHUR.fbx + textura) e a butterfly knife (.blend) foram enviados pelo usuário. Antes de
+publicar o 1227, confira a licença de cada um (por exemplo, se exigem crédito ao autor) e coloque o crédito aqui.
+
+## Mudanças na v1.7.1
+- Tecla padrão da roda de emotes trocada de B para "." (ponto), porque vários clients já usam B para emotes.
+  Dá para mudar em Animations > Emotes > Emote key (o menu avisa se a tecla estiver em conflito).
