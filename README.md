@@ -1,4 +1,4 @@
-# 1227 — v1.12.0 (Minecraft 1.8.9 · Forge 11.15.1.2318 · Java 8)
+# 1227 — v1.13.0 (Minecraft 1.8.9 · Forge 11.15.1.2318 · Java 8)
 
 Mod client-side e puramente visual. Não envia pacotes, não desenha através de paredes e não muda alcance,
 timing de ataque ou outras mecânicas do servidor.
@@ -63,11 +63,6 @@ audio/   HitSoundEngine, SoundBank
 ```
 A entrada (teclas) fica em `InputManager`, separada da interface. O código depende só do Forge 1.8.9;
 nada depende de Lunar ou de outro launcher.
-
-## Contas do launcher
-A tela **Contas** permite manter perfis locais com nome escolhido pelo usuário. Consulte `docs/ACCOUNT_PROFILES.md` para o estado da autenticação e os próximos requisitos. Esses perfis são úteis para identificação, desenvolvimento e ambientes de teste que aceitam jogadores sem autenticação. Eles não criam uma sessão Minecraft, não comprovam propriedade do jogo e não liberam servidores autenticados.
-
-O login Microsoft oficial ainda precisa ser configurado e implementado por meio de um aplicativo OAuth registrado, com validação Xbox Live/XSTS e Minecraft Services. O launcher não solicita a senha Microsoft diretamente nem simula uma autenticação. A versão atual do launcher também ainda não inicia o Minecraft por conta própria; ela instala/atualiza o mod e integra-se a instalações Forge existentes.
 
 ## Compatibilidade com launchers
 - **Forge 1.8.9:** alvo do projeto.
@@ -188,6 +183,13 @@ O login Microsoft oficial ainda precisa ser configurado e implementado por meio 
 ### Licença dos modelos enviados
 O modelo do Tung Sahur (ZAHUR.fbx + textura) e a butterfly knife (.blend) foram enviados pelo usuário. Antes de
 publicar o 1227, confira a licença de cada um (por exemplo, se exigem crédito ao autor) e coloque o crédito aqui.
+
+## Mudanças na v1.13.0
+- **Scoreboard (HUD):** a barra lateral vira um elemento de HUD que dá para mover e redimensionar, com opções para esconder os números vermelhos, título, sombra, espaçamento e o fundo do HUD. Mostra exatamente o que o servidor envia.
+- **Tab List:** painel limpo com a cabeça dos jogadores, ping em ms colorido (ou barras), você em destaque, cabeçalho e rodapé do servidor e a mesma ordem do vanilla.
+- **Boss Bar:** barra fina com a cor de destaque, roxa clássica ou por vida, porcentagem opcional, altura, largura e escala do texto ajustáveis, ou esconder por completo.
+- **Hit Delay (HUD):** tempo desde o seu último hit e o intervalo entre os dois últimos, com barra. Só observa os seus ataques.
+- **Projectile Trails:** rastros em flechas, pérolas, bolas de neve, ovos, poções e anzol (estilos Glow, Sparkle, Smoke, Rainbow e Flame), seus ou de todos.
 
 ## Mudanças na v1.12.0
 - **HUDs novos:** Clock (hora, data e tempo de sessão), Memory (RAM do Java com barra e entidades renderizadas), Server Info (endereço, jogadores no tab e ping), Compass (bússola deslizante com graus) e Session Stats (kills, mortes, K/D, hits e melhor combo).

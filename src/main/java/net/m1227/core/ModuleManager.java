@@ -28,6 +28,7 @@ public final class ModuleManager {
         register(new HitEffectModule());
         register(new KillEffectModule());
         register(new ShockwaveModule());
+        register(new ProjectileTrailsModule());
         register(new DamageNumbersModule());
         register(new MatchFxModule());
         register(new WeaponEffectsModule());
@@ -63,6 +64,10 @@ public final class ModuleManager {
         register(new net.m1227.hud.ServerHud());
         register(new net.m1227.hud.CompassHud());
         register(new net.m1227.hud.SessionHud());
+        register(new net.m1227.hud.ScoreboardHud());
+        register(new net.m1227.hud.HitDelayHud());
+        register(new TabListModule());
+        register(new BossBarModule());
         register(new MenuStyleModule());
         register(new ClientModule());
         register(new PresetsModule());
