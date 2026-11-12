@@ -1,4 +1,4 @@
-# 1227 — v1.10.0 (Minecraft 1.8.9 · Forge 11.15.1.2318 · Java 8)
+# 1227 — v1.11.0 (Minecraft 1.8.9 · Forge 11.15.1.2318 · Java 8)
 
 Mod client-side e puramente visual. Não envia pacotes, não desenha através de paredes e não muda alcance,
 timing de ataque ou outras mecânicas do servidor.
@@ -174,6 +174,15 @@ nada depende de Lunar ou de outro launcher.
 ### Licença dos modelos enviados
 O modelo do Tung Sahur (ZAHUR.fbx + textura) e a butterfly knife (.blend) foram enviados pelo usuário. Antes de
 publicar o 1227, confira a licença de cada um (por exemplo, se exigem crédito ao autor) e coloque o crédito aqui.
+
+## Mudanças na v1.11.0
+- **Facas (Weapon Models):** 6 modelos novos e originais: Karambit (lâmina em gancho com anel), Bayonet, Flip Knife, Huntsman (com dentes no dorso), Skeleton Knife (cabo vazado com anel) e Push Dagger. Agora são 18 modelos.
+- **Finishes:** Emerald, Pearl, Sapphire, Crimson, Rose Steel, Ember Fade, Ocean Fade, Midnight, Gold e Toxic. A lâmina faz degradê até a cor da ponta; "Custom" usa as suas cores.
+- **Inspect em todos os modelos:** a tecla Inspect (V) gira a arma na mão e a aproxima da câmera. A butterfly continua com o flip.
+- **Céus "shader":** nova camada GLSL de nuvens volumétricas (Volumetric Clouds e Storm Clouds), com nuvens que se movem, sombra embaixo e relâmpagos no Storm.
+  - Céus novos: Overcast, Silver Sky, Storm Front, Night Overcast, Ember Night (horizonte laranja) e Teal Night (aurora verde). São 50 no total.
+  - Com "Shader layer" em Off, cada céu usa a própria camada (as nuvens desses céus); escolhendo outra camada, ela substitui.
+- **Shockwave "Block Wave":** os blocos do chão sobem como cópias translúcidas, com a cor de cada bloco, numa onda que se espalha. Só visual: o mundo não muda.
 
 ## Mudanças na v1.10.0
 - **Weapon Models:**

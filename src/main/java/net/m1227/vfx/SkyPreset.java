@@ -1,7 +1,7 @@
 package net.m1227.vfx;
 
 /**
- * One of the 44 dynamic skies: a gradient plus a mix of animated layers
+ * One of the 50 dynamic skies: a gradient plus a mix of animated layers
  * (stars, galaxy band, nebula clouds, flowing light lines, aurora, sun or
  * moon, stylised clouds, shooting stars, code rain, retro grid, storm).
  * All layers are drawn procedurally every frame; nothing is a static image.
@@ -33,6 +33,8 @@ public final class SkyPreset {
     public float shooting;
     public boolean codeRain, grid;
     public float storm;
+    /** GLSL layer this sky uses when the shader setting is "Auto" (0 = none). */
+    public int shader;
 
     private SkyPreset(String name, int top, int horizon, int bottom) {
         this.name = name;
@@ -58,6 +60,7 @@ public final class SkyPreset {
     private SkyPreset code() { codeRain = true; return this; }
     private SkyPreset grid() { grid = true; return this; }
     private SkyPreset storm(float v) { storm = v; return this; }
+    private SkyPreset shader(int v) { shader = v; return this; }
 
     public static final SkyPreset[] ALL = {
             p("Night Flow", 0x000000, 0x0B0D10, 0x000000).stars(0.25f, 0xFFFFFF).lines(16, 0xFFFFFF, 0xBFEFFF),
@@ -103,7 +106,14 @@ public final class SkyPreset {
             p("Matrix Storm", 0x000000, 0x001A08, 0x000000).code().storm(0.2f),
             p("Starlight Ribbons", 0x02030F, 0x0E1233, 0x01020A).stars(0.9f, 0xFFFFFF).lines(14, 0xFFFFFF, 0x9AE8FF).ribbons().shooting(0.5f),
             p("Toxic Sky", 0x020A00, 0x1F3D05, 0x010500).nebula(0.8f, 0x8BFF2D, 0x2DFF8A).glow(0.4f, 0xB8FF3D).stars(0.2f, 0xE8FFD6),
-            p("Pastel Dream", 0xB8C8FF, 0xFFD6F0, 0xD6C8FF).clouds(0.9f, 0xFFFFFF).aurora(4, 0xFFB8F0, 0xB8E8FF).glow(0.2f, 0xFFFFFF)
+            p("Pastel Dream", 0xB8C8FF, 0xFFD6F0, 0xD6C8FF).clouds(0.9f, 0xFFFFFF).aurora(4, 0xFFB8F0, 0xB8E8FF).glow(0.2f, 0xFFFFFF),
+            // realistic "shader" skies: volumetric cloud decks
+            p("Overcast", 0x8C9096, 0xC4C7CC, 0x6A6D72).clouds(0f, 0xF2F3F5).shader(7),
+            p("Silver Sky", 0xA9B4C2, 0xE2E6EC, 0x8A939E).clouds(0f, 0xFFFFFF).shader(7).body(SkyPreset.SUN, 0xFFF6E0, true),
+            p("Storm Front", 0x2C3036, 0x5C6068, 0x1C1E22).clouds(0f, 0x9EA3AC).shader(8).storm(0.12f),
+            p("Night Overcast", 0x14161B, 0x2E3138, 0x0B0C0F).clouds(0f, 0x4A4E57).stars(0.45f, 0xFFFFFF).shader(8),
+            p("Ember Night", 0x04050B, 0x9A3A16, 0x0A0604).stars(0.6f, 0xFFFFFF).shooting(0.6f).glow(0.5f, 0xFF5A1F),
+            p("Teal Night", 0x020608, 0x0E4A42, 0x010304).aurora(5, 0x2DFFB0, 0x1A8A7A).stars(0.5f, 0xFFFFFF).shooting(0.4f)
     };
 
     public static String[] names() {

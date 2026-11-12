@@ -15,7 +15,12 @@ import org.lwjgl.opengl.GL20;
  */
 public final class SkyShader {
     public static final String[] STYLES = {"Off", "Nebula", "Aurora Veil", "Cosmic Ocean", "Plasma Storm", "Warp Stars",
-            "Sunset Clouds"};
+            "Sunset Clouds", "Volumetric Clouds", "Storm Clouds"};
+
+    /** Styles drawn with normal alpha blending (they can darken the sky) instead of additively. */
+    public static boolean opaque(int style) {
+        return style >= 7;
+    }
 
     private static final String VERT = "#version 120\n"
             + "varying vec3 vDir;\n"
@@ -60,6 +65,23 @@ public final class SkyShader {
             + "  float k = 1.0/(abs(el)+0.22); vec3 p = vec3(d.x*k, 0.0, d.z*k)*1.2 + vec3(uTime*0.02,0.0,uTime*0.01);\n"
             + "  float c = smoothstep(0.45,0.8,fbm(p*1.5)); float glow = exp(-abs(el)*5.0);\n"
             + "  col = uC*glow*0.45 + mix(uA,uB,glow)*c*step(0.0,el)*0.9;\n"
+            + " } else if (uStyle==7 || uStyle==8) {\n"
+            // cloud deck projected on a plane above the camera; domain-warped fbm for soft, billowy shapes
+            + "  bool storm = uStyle==8; float h = max(el, 0.0);\n"
+            + "  float k = 1.0/(h+0.06); vec2 q = d.xz*k*0.55 + vec2(uTime*0.012, uTime*0.006)*(storm?2.2:1.0);\n"
+            + "  vec3 p = vec3(q.x, uTime*0.004, q.y);\n"
+            + "  float w = fbm(p*0.9+vec3(3.1,0.0,1.7));\n"
+            + "  float n = fbm(p*1.4 + w*1.6);\n"
+            + "  float cov = smoothstep(storm?0.28:0.42, storm?0.62:0.78, n);\n"
+            + "  float shade = fbm(p*2.6 + w*2.0 + vec3(0.0,5.0,0.0));\n"
+            + "  vec3 lit = mix(uB, uA, smoothstep(0.25, 0.85, shade));\n"
+            + "  if (storm) lit *= 0.75 + 0.25*smoothstep(0.4,0.8,shade);\n"
+            + "  float horizon = smoothstep(0.0, 0.12, h);\n"
+            + "  vec3 base = mix(uC, lit, horizon);\n"
+            + "  float a = mix(storm?0.85:0.55, 1.0, cov) * (storm?1.0:cov*0.9+0.1);\n"
+            + "  a *= mix(0.65, 1.0, horizon) * step(-0.02, el);\n"
+            + "  if (storm) { float f = step(0.995, hash(vec3(floor(uTime*6.0)))); base += vec3(0.6,0.65,0.8)*f*smoothstep(0.5,0.9,n); }\n"
+            + "  gl_FragColor = vec4(base, a*uAlpha); return;\n"
             + " }\n"
             + " gl_FragColor = vec4(col, uAlpha);\n"
             + "}\n";

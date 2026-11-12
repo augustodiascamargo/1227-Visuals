@@ -23,13 +23,32 @@ import org.lwjgl.opengl.GL11;
  */
 public final class WeaponModelsModule extends Module {
     public static WeaponModelsModule INSTANCE;
-    public static final String[] MODELS = {"Katana", "Crystal Blade", "Energy Saber", "Rune Greatsword", "Twin Fang", "Obsidian Edge", "Storm Blade", "Butterfly Knife", "Cleaver", "Dragon Fang", "Holy Claymore", "Void Rapier"};
+    public static final String[] MODELS = {"Katana", "Crystal Blade", "Energy Saber", "Rune Greatsword", "Twin Fang", "Obsidian Edge", "Storm Blade", "Butterfly Knife", "Cleaver", "Dragon Fang", "Holy Claymore", "Void Rapier",
+            "Karambit", "Bayonet", "Flip Knife", "Huntsman", "Skeleton Knife", "Push Dagger"};
+    /** Blade finishes: name, blade, tip (fade), hilt, glow. "Custom" uses the colour settings. */
+    public static final String[] FINISHES = {"Custom", "Emerald", "Pearl", "Sapphire", "Crimson", "Rose Steel", "Ember Fade",
+            "Ocean Fade", "Midnight", "Gold", "Toxic"};
+    private static final int[][] FINISH_COLORS = {
+            {0, 0, 0, 0},
+            {0x0E9F6E, 0x2DFFB0, 0x111317, 0x2DFF9A},
+            {0xE8ECF2, 0xFFFFFF, 0xC9CED8, 0xFFFFFF},
+            {0x1B2A8F, 0x6A5CFF, 0x0E0F18, 0x6A5CFF},
+            {0x8F0E1E, 0xFF4058, 0x1A0E10, 0xFF3048},
+            {0xB8A0A8, 0xFF6F9A, 0x2E2A30, 0xFF6F9A},
+            {0xFFB000, 0xFF2D7A, 0x2A1A10, 0xFF6A00},
+            {0x14D2FF, 0x7A3CFF, 0x10141E, 0x2DA8FF},
+            {0x1A1D26, 0x4A5268, 0x0B0C10, 0x8B5CFF},
+            {0xD4A63A, 0xFFF1A8, 0x3A2A10, 0xFFD36B},
+            {0x5CFF2D, 0xE8FF3D, 0x10180A, 0x8BFF2D}};
 
     private final Setting.Mode model;
     private final Setting.Col primary, secondary, glow;
     private final Setting.Bool emissive, matchWeaponFx;
     private final Setting.Num length, size, posX, posY, posZ, rotX, rotY, rotZ, scaleAll, bladeWidth;
-    private final Setting.Mode holdMode;
+    private final Setting.Mode holdMode, finish;
+    /** Tip colour of the current finish (blade fades into it), or -1 for the model's own highlight. */
+    private int tipColor = -1;
+    private long inspectStart = -1L;
     private final Setting.Bool showHands;
     private final Setting.Num handAngle, secondAngle, handSize;
     /** How much "Blade width" applies to the current model (wide blades like the cleaver stay as built). */
@@ -49,9 +68,10 @@ public final class WeaponModelsModule extends Module {
     private final float[] p = new float[3], q = new float[3], r = new float[3], s4 = new float[3];
 
     public WeaponModelsModule() {
-        super("Weapon Models", "Original 3D sword models in first person.", Category.WEAPONS, false);
+        super("Weapon Models", "18 original 3D swords and knives in first person, with finishes.", Category.WEAPONS, false);
         INSTANCE = this;
         model = add(new Setting.Mode("Model", "Katana", MODELS));
+        finish = add(new Setting.Mode("Finish", "Custom", FINISHES));
         primary = add(new Setting.Col("Blade color", 0xD8E2F0));
         secondary = add(new Setting.Col("Hilt color", 0x2A2238));
         glow = add(new Setting.Col("Glow color", 0x8B5CFF));
@@ -74,7 +94,7 @@ public final class WeaponModelsModule extends Module {
         handSize = add(new Setting.Num("Hand size", 1.0, 0.6, 1.6, 0.05, "x")).showIf(() -> showHands.on());
         lightning = add(new Setting.Bool("Lightning arcs", false));
         flipOnEquip = add(new Setting.Bool("Butterfly: flip open when drawn", true)).showIf(() -> model.is("Butterfly Knife"));
-        inspectKey = add(new Setting.Key("Butterfly: inspect (flip) key", org.lwjgl.input.Keyboard.KEY_V));
+        inspectKey = add(new Setting.Key("Inspect key", org.lwjgl.input.Keyboard.KEY_V));
     }
 
     public boolean lightning() {
@@ -115,8 +135,9 @@ public final class WeaponModelsModule extends Module {
         if (rotZ.f() != 0f) GlStateManager.rotate(rotZ.f(), 0f, 0f, 1f);
         float sa = scaleAll.f();
         GlStateManager.scale(sa, sa, sa);
+        if (!model.is("Butterfly Knife")) inspect(mc);
         GlStateManager.translate(-gx, -gy, -OZ);
-        len = 1.30f * length.f();
+        len = 1.30f * length.f() * (knife() ? 0.8f : 1f);
         GlStateManager.disableTexture2D();
         GlStateManager.disableLighting();
         GlStateManager.disableCull();
@@ -129,6 +150,15 @@ public final class WeaponModelsModule extends Module {
         GlStateManager.shadeModel(GL11.GL_SMOOTH);
         String md = model.get();
         int b = primary.rgb(), h = secondary.rgb(), g = glowRgb();
+        tipColor = -1;
+        int fi = java.util.Arrays.asList(FINISHES).indexOf(finish.get());
+        if (fi > 0) {
+            int[] fc = FINISH_COLORS[fi];
+            b = fc[0];
+            tipColor = fc[1];
+            h = fc[2];
+            if (!matchWeaponFx.on()) g = fc[3];
+        }
         widthBoost = md.equals("Cleaver") ? 0f : (md.equals("Rune Greatsword") || md.equals("Holy Claymore") || md.equals("Obsidian Edge")) ? 0.4f : 1f;
         if (md.equals("Butterfly Knife")) {
             butterfly(mc, stack, b, h, g);
@@ -153,6 +183,12 @@ public final class WeaponModelsModule extends Module {
         else if (md.equals("Dragon Fang")) fang(b, h, g);
         else if (md.equals("Holy Claymore")) claymore(b, h, g);
         else if (md.equals("Void Rapier")) rapier(b, h, g);
+        else if (md.equals("Karambit")) karambit(b, h, g);
+        else if (md.equals("Bayonet")) bayonet(b, h, g);
+        else if (md.equals("Flip Knife")) flip(b, h, g);
+        else if (md.equals("Huntsman")) huntsman(b, h, g);
+        else if (md.equals("Skeleton Knife")) skeleton(b, h, g);
+        else if (md.equals("Push Dagger")) push(b, h, g);
         else katana(b, h, g);
         hands(mc);
         GlStateManager.shadeModel(GL11.GL_FLAT);
@@ -459,7 +495,9 @@ public final class WeaponModelsModule extends Module {
                 pt(ss[i + 1], b[0] * hw[i + 1], b[1] * th[i + 1], cv[i + 1], r);
                 pt(ss[i + 1], a[0] * hw[i + 1], a[1] * th[i + 1], cv[i + 1], s4);
                 float u = (ss[i] - ss[0]) / Math.max(0.001f, ss[ss.length - 1] - ss[0]);
-                int col = ParticleSystem.mix(c0, c1, u * 0.6f + (k % 2 == 0 ? 0.25f : 0f));
+                int col = tipColor >= 0 && !flat
+                        ? ParticleSystem.mix(ParticleSystem.mix(c0, tipColor, u * u), 0xFFFFFF, k % 2 == 0 ? 0.12f : 0f)
+                        : ParticleSystem.mix(c0, c1, u * 0.6f + (k % 2 == 0 ? 0.25f : 0f));
                 face(p, q, r, s4, col, alpha, flat);
             }
         }
@@ -491,6 +529,216 @@ public final class WeaponModelsModule extends Module {
         GL11.glEnd();
     }
 
+    // ------------------------------------------------------------- knives
+
+    private boolean knife() {
+        String m = model.get();
+        return m.equals("Karambit") || m.equals("Bayonet") || m.equals("Flip Knife") || m.equals("Huntsman")
+                || m.equals("Skeleton Knife") || m.equals("Push Dagger");
+    }
+
+    /**
+     * Inspect (all models except the butterfly, which flips): the knife turns over in the hand
+     * to show both sides and tilts towards you, then settles back. Rotates around the grip.
+     */
+    private void inspect(Minecraft mc) {
+        int key = inspectKey.code();
+        long now = System.currentTimeMillis();
+        boolean down = key != 0 && mc.currentScreen == null && net.m1227.core.InputManager.isDown(key);
+        if (down && !inspectWasDown && (inspectStart < 0L || now - inspectStart > 1700L)) inspectStart = now;
+        inspectWasDown = down;
+        if (inspectStart < 0L) return;
+        float t = (now - inspectStart) / 1600f;
+        if (t >= 1f) {
+            inspectStart = -1L;
+            return;
+        }
+        float e = t * t * (3f - 2f * t);
+        float lift = (float) Math.sin(t * Math.PI);
+        GlStateManager.rotate(-30f * lift, 1f, 0f, 0f);       // bring it towards the camera
+        GlStateManager.rotate(25f * lift, 0f, 0f, 1f);
+        GlStateManager.rotate(360f * e, AX, AY, 0f);           // spin around the blade's axis
+    }
+
+    private static int metal(int c) {
+        return ParticleSystem.mix(c, 0xB8BEC8, 0.65f);
+    }
+
+    /** Box like {@link #box} but shifted across the blade by nc. */
+    private void slab(float s0, float s1, float nc, float hw, float th, int c) {
+        float[][] sec = {{1f, 1f}, {-1f, 1f}, {-1f, -1f}, {1f, -1f}};
+        GL11.glBegin(GL11.GL_QUADS);
+        for (int k = 0; k < 4; k++) {
+            float[] a = sec[k], b = sec[(k + 1) % 4];
+            pt(s0, a[0] * hw, a[1] * th, nc, p);
+            pt(s0, b[0] * hw, b[1] * th, nc, q);
+            pt(s1, b[0] * hw, b[1] * th, nc, r);
+            pt(s1, a[0] * hw, a[1] * th, nc, s4);
+            face(p, q, r, s4, c, 1f, false);
+        }
+        for (int end = 0; end < 2; end++) {
+            float s = end == 0 ? s0 : s1;
+            pt(s, hw, th, nc, p);
+            pt(s, -hw, th, nc, q);
+            pt(s, -hw, -th, nc, r);
+            pt(s, hw, -th, nc, s4);
+            face(p, q, r, s4, c, 1f, false);
+        }
+        GL11.glEnd();
+    }
+
+    /** Flat ring (finger loop) centred at station sc, across offset nc, in the blade plane. */
+    private void ring(float sc, float nc, float ro, float ri, float th, int c) {
+        int n = 22;
+        GL11.glBegin(GL11.GL_QUADS);
+        for (int i = 0; i < n; i++) {
+            double a0 = Math.PI * 2 * i / n, a1 = Math.PI * 2 * (i + 1) / n;
+            float c0 = (float) Math.cos(a0), s0 = (float) Math.sin(a0), c1 = (float) Math.cos(a1), s1 = (float) Math.sin(a1);
+            for (int side = -1; side <= 1; side += 2) {
+                pt(sc + ro * c0 / len, ro * s0, side * th, nc, p);
+                pt(sc + ro * c1 / len, ro * s1, side * th, nc, q);
+                pt(sc + ri * c1 / len, ri * s1, side * th, nc, r);
+                pt(sc + ri * c0 / len, ri * s0, side * th, nc, s4);
+                face(p, q, r, s4, c, 1f, false);
+            }
+            for (int w = 0; w < 2; w++) {
+                float rr = w == 0 ? ro : ri;
+                pt(sc + rr * c0 / len, rr * s0, -th, nc, p);
+                pt(sc + rr * c1 / len, rr * s1, -th, nc, q);
+                pt(sc + rr * c1 / len, rr * s1, th, nc, r);
+                pt(sc + rr * c0 / len, rr * s0, th, nc, s4);
+                face(p, q, r, s4, ParticleSystem.mix(c, 0x000000, w == 0 ? 0.1f : 0.3f), 1f, false);
+            }
+        }
+        GL11.glEnd();
+    }
+
+    private void karambit(int blade, int hilt, int g) {
+        ring(-0.07f, 0f, 0.075f, 0.045f, 0.02f, metal(hilt));
+        grip(0.0f, 0.3f, 0.032f, hilt, true);
+        box(0.3f, 0.335f, 0.036f, 0.026f, metal(blade), 0f);
+        int n = 14;
+        float[] ss = new float[n], hw = new float[n], th = new float[n], cv = new float[n];
+        for (int i = 0; i < n; i++) {
+            float u = i / (float) (n - 1);
+            ss[i] = 0.335f + 0.5f * u;
+            hw[i] = 0.05f * (1f - u * u) + 0.004f;
+            th[i] = 0.011f * (1f - 0.6f * u);
+            cv[i] = -0.32f * u * u;                                  // the claw hook
+        }
+        hw[n - 1] = 0f;
+        th[n - 1] = 0f;
+        extrude(ss, hw, th, cv, blade, ParticleSystem.mix(blade, 0xFFFFFF, 0.6f), 1f, false);
+        if (emissive.on()) edgeLine(ss, hw, cv, g, 0.7f, 0.5f);
+    }
+
+    private void bayonet(int blade, int hilt, int g) {
+        box(-0.035f, 0.0f, 0.036f, 0.03f, metal(hilt), 0f);         // pommel
+        grip(0.0f, 0.32f, 0.033f, hilt, true);
+        box(0.32f, 0.35f, 0.095f, 0.028f, metal(hilt), 0f);         // cross guard
+        int n = 10;
+        float[] ss = new float[n], hw = new float[n], th = new float[n], cv = new float[n];
+        for (int i = 0; i < n; i++) {
+            float u = i / (float) (n - 1);
+            ss[i] = 0.35f + 0.65f * u;
+            hw[i] = u < 0.72f ? 0.05f : 0.05f * (1f - (u - 0.72f) / 0.28f);
+            th[i] = 0.012f * (1f - 0.5f * u);
+            cv[i] = u < 0.72f ? 0f : -0.02f * (u - 0.72f) / 0.28f;  // clip point
+        }
+        hw[n - 1] = 0f;
+        th[n - 1] = 0f;
+        extrude(ss, hw, th, cv, blade, ParticleSystem.mix(blade, 0xFFFFFF, 0.6f), 1f, false);
+        if (emissive.on()) edgeLine(ss, hw, cv, g, 0.6f, 0.5f);
+    }
+
+    private void flip(int blade, int hilt, int g) {
+        int n0 = 6;
+        float[] hs = new float[n0], hh = new float[n0], ht = new float[n0], hc = new float[n0];
+        for (int i = 0; i < n0; i++) {
+            float u = i / (float) (n0 - 1);
+            hs[i] = 0.33f * u;
+            hh[i] = 0.026f + 0.01f * (float) Math.sin(u * Math.PI);
+            ht[i] = 0.02f;
+            hc[i] = 0.01f * (float) Math.sin(u * Math.PI);
+        }
+        int keep = tipColor;
+        tipColor = -1;
+        extrude(hs, hh, ht, hc, hilt, ParticleSystem.mix(hilt, 0xFFFFFF, 0.15f), 1f, false);
+        tipColor = keep;
+        box(0.31f, 0.36f, 0.04f, 0.024f, metal(hilt), 0f);         // pivot
+        int n = 12;
+        float[] ss = new float[n], hw = new float[n], th = new float[n], cv = new float[n];
+        for (int i = 0; i < n; i++) {
+            float u = i / (float) (n - 1);
+            ss[i] = 0.36f + 0.58f * u;
+            hw[i] = 0.055f * (float) Math.sin(Math.PI * (0.18f + 0.82f * u)) + 0.006f;
+            th[i] = 0.01f * (1f - 0.5f * u);
+            cv[i] = 0.025f * u;
+        }
+        hw[n - 1] = 0f;
+        th[n - 1] = 0f;
+        extrude(ss, hw, th, cv, blade, ParticleSystem.mix(blade, 0xFFFFFF, 0.6f), 1f, false);
+        if (emissive.on()) edgeLine(ss, hw, cv, g, 0.6f, 0.5f);
+    }
+
+    private void huntsman(int blade, int hilt, int g) {
+        box(-0.03f, 0.0f, 0.038f, 0.03f, metal(hilt), 0f);
+        grip(0.0f, 0.3f, 0.036f, hilt, true);
+        box(0.3f, 0.33f, 0.085f, 0.03f, metal(hilt), 0f);
+        int n = 12;
+        float[] ss = new float[n], hw = new float[n], th = new float[n], cv = new float[n];
+        for (int i = 0; i < n; i++) {
+            float u = i / (float) (n - 1);
+            ss[i] = 0.33f + 0.67f * u;
+            hw[i] = u < 0.65f ? 0.06f + 0.008f * u : 0.065f * (1f - (u - 0.65f) / 0.35f);
+            th[i] = 0.013f * (1f - 0.5f * u);
+            cv[i] = u < 0.65f ? 0.008f * u : -0.03f * (u - 0.65f) / 0.35f;
+        }
+        hw[n - 1] = 0f;
+        th[n - 1] = 0f;
+        extrude(ss, hw, th, cv, blade, ParticleSystem.mix(blade, 0xFFFFFF, 0.6f), 1f, false);
+        // sawback teeth on the spine
+        for (int i = 0; i < 6; i++) {
+            float s0 = 0.4f + i * 0.035f;
+            slab(s0, s0 + 0.018f, 0.068f, 0.008f, 0.009f, metal(blade));
+        }
+        if (emissive.on()) edgeLine(ss, hw, cv, g, 0.6f, 0.5f);
+    }
+
+    private void skeleton(int blade, int hilt, int g) {
+        ring(-0.06f, 0f, 0.06f, 0.038f, 0.018f, metal(hilt));
+        slab(0.0f, 0.3f, 0.026f, 0.009f, 0.016f, metal(hilt));      // open frame handle
+        slab(0.0f, 0.3f, -0.026f, 0.009f, 0.016f, metal(hilt));
+        box(0.0f, 0.02f, 0.035f, 0.016f, metal(hilt), 0f);
+        box(0.28f, 0.33f, 0.04f, 0.022f, metal(hilt), 0f);
+        if (emissive.on()) slab(0.03f, 0.27f, 0f, 0.004f, 0.004f, g);
+        int n = 11;
+        float[] ss = new float[n], hw = new float[n], th = new float[n], cv = new float[n];
+        for (int i = 0; i < n; i++) {
+            float u = i / (float) (n - 1);
+            ss[i] = 0.33f + 0.6f * u;
+            hw[i] = 0.05f * (1f - (float) Math.pow(u, 2.2)) + 0.003f;
+            th[i] = 0.011f * (1f - 0.5f * u);
+            cv[i] = -0.03f * u * u;
+        }
+        hw[n - 1] = 0f;
+        th[n - 1] = 0f;
+        extrude(ss, hw, th, cv, blade, ParticleSystem.mix(blade, 0xFFFFFF, 0.6f), 1f, false);
+        if (emissive.on()) edgeLine(ss, hw, cv, g, 0.6f, 0.5f);
+    }
+
+    private void push(int blade, int hilt, int g) {
+        // T-handle across the fist, short broad blade straight out of it
+        slab(0.0f, 0.07f, 0f, 0.11f, 0.03f, hilt);
+        slab(0.07f, 0.11f, 0f, 0.035f, 0.022f, metal(hilt));
+        float[] ss = {0.11f, 0.2f, 0.36f, 0.5f, 0.6f};
+        float[] hw = {0.05f, 0.07f, 0.055f, 0.03f, 0f};
+        float[] th = {0.016f, 0.014f, 0.011f, 0.007f, 0f};
+        float[] cv = new float[ss.length];
+        extrude(ss, hw, th, cv, blade, ParticleSystem.mix(blade, 0xFFFFFF, 0.6f), 1f, false);
+        if (emissive.on()) edgeLine(ss, hw, cv, g, 0.6f, 1f);
+    }
+
     // ------------------------------------------------------------- hold & swing styles
 
     /** Classic, Two-handed, Heavy, Thrust, Flourish, Twin. */
@@ -502,6 +750,8 @@ public final class WeaponModelsModule extends Module {
         if (m.equals("Void Rapier") || m.equals("Butterfly Knife")) return "Thrust";
         if (m.equals("Energy Saber") || m.equals("Storm Blade")) return "Flourish";
         if (m.equals("Twin Fang") || m.equals("Dragon Fang")) return "Twin";
+        if (m.equals("Karambit")) return "Flourish";
+        if (m.equals("Bayonet") || m.equals("Huntsman") || m.equals("Skeleton Knife") || m.equals("Push Dagger")) return "Thrust";
         return "Classic";
     }
 
@@ -597,7 +847,7 @@ public final class WeaponModelsModule extends Module {
         GlStateManager.enableDepth();
         GlStateManager.depthMask(true);
         GL11.glBegin(GL11.GL_QUADS);
-        arm(0.17f, handAngle.f(), 40, 16, slim);
+        arm(model.is("Push Dagger") ? 0.035f : 0.17f, handAngle.f(), 40, 16, slim);
         if (twoHanded()) arm(0.05f, handAngle.f() + secondAngle.f(), 32, 48, slim);
         GL11.glEnd();
         GlStateManager.disableTexture2D();

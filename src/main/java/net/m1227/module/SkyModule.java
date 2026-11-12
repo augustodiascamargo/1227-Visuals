@@ -125,6 +125,7 @@ public final class SkyModule extends Module {
         transition = add(new Setting.Num("Transition time", 1.5, 0.2, 5.0, 0.1, "s"));
         showBody = add(new Setting.Bool("Sun / moon / planet", true));
         fogMatch = add(new Setting.Bool("Fog matches sky", true));
+        // "Off" = only the sky's own layer (the cloud skies have one); any other choice replaces it
         shaderStyle = add(new Setting.Mode("Shader layer (GLSL)", "Off", net.m1227.vfx.SkyShader.STYLES));
         shaderStrength = add(new Setting.Num("Shader strength", 0.8, 0.1, 1.5, 0.05, "x")).showIf(() -> !shaderStyle.is("Off"));
         shaderPalette = add(new Setting.Mode("Shader colors", "Match sky", "Match sky", "Custom")).showIf(() -> !shaderStyle.is("Off"));
@@ -139,10 +140,11 @@ public final class SkyModule extends Module {
 
     /** GLSL layer between the gradient and the geometric layers. */
     private void shaderLayer(SkyPreset p, float w, double t) {
-        int style = java.util.Arrays.asList(net.m1227.vfx.SkyShader.STYLES).indexOf(shaderStyle.get());
+        int style = shaderStyle.is("Off") ? p.shader : java.util.Arrays.asList(net.m1227.vfx.SkyShader.STYLES).indexOf(shaderStyle.get());
         if (style <= 0) return;
         int a, b, c;
-        if (shaderPalette.is("Custom")) {
+        boolean own = shaderStyle.is("Off");
+        if (shaderPalette.is("Custom") && !own) {
             a = shaderA.rgb();
             b = shaderB.rgb();
             c = shaderC.rgb();
@@ -150,9 +152,16 @@ public final class SkyModule extends Module {
             a = tinted(p.aurora > 0 ? p.auroraA : p.nebA);
             b = tinted(p.aurora > 0 ? p.auroraB : p.nebB);
             c = tinted(p.lineGlow);
+            if (net.m1227.vfx.SkyShader.opaque(style)) {
+                // clouds: lit top, shadowed underside, horizon blends into the sky's own horizon
+                a = tinted(p.cloudColor);
+                b = tinted(net.m1227.vfx.ParticleSystem.mix(p.cloudColor, p.top, 0.6f));
+                c = tinted(p.horizon);
+            }
         }
-        GlStateManager.blendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE);
-        net.m1227.vfx.SkyShader.draw(style, t, a, b, c, w * shaderStrength.f() * Math.min(1.2f, brightness.f()));
+        if (net.m1227.vfx.SkyShader.opaque(style)) GlStateManager.blendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
+        else GlStateManager.blendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE);
+        net.m1227.vfx.SkyShader.draw(style, t, a, b, c, w * (own ? 1f : shaderStrength.f()) * Math.min(1.2f, brightness.f()));
         GlStateManager.blendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
     }
 
