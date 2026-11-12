@@ -19,7 +19,7 @@ public final class JumpEffectModule extends Module {
     public static final String[] STYLES = {
             "Lightning", "Orb Ring", "Ripple", "Dust Puff", "Rune Seal", "Shock Ring", "Star Burst", "Crystal Spikes",
             "Flame Burst", "Light Pillar", "Petal Bloom", "Snow Puff", "Hex Burst", "Spark Fountain", "Smoke Ring",
-            "Electric Ring", "Comet Drop", "Halo Drop", "Bubble Pop", "Cash Burst"
+            "Electric Ring", "Comet Drop", "Halo Drop", "Bubble Pop", "Cash Burst", "Block Wave"
     };
 
     private final Setting.Mode style, landStyle;
@@ -30,7 +30,7 @@ public final class JumpEffectModule extends Module {
     private float maxFall;
 
     public JumpEffectModule() {
-        super("Jump Effects", "20 effects when you jump, plus a landing impact.", Category.MOVEMENT, false);
+        super("Jump Effects", "21 effects when you jump, plus a landing impact.", Category.MOVEMENT, false);
         style = add(new Setting.Mode("Jump style", "Lightning", STYLES));
         landStyle = add(new Setting.Mode("Landing style", "Ripple", STYLES));
         fx = new FxSettings(this, 0xFF8A3D, 0xFFD36B, 10, 1.0, 0.12, 0.6);
@@ -83,7 +83,11 @@ public final class JumpEffectModule extends Module {
         int n = Math.max(4, ps.scale(fx.amount.f() * scale));
         double gy = y + 0.06;
 
-        if (s.equals("Lightning")) {
+        if (s.equals("Block Wave")) {
+            // ground blocks pop up as ghost copies in a spreading ring (see vfx/BlockWave)
+            net.m1227.vfx.BlockWave.INSTANCE.spawn(x, y, z, 3.2f * scale * spd, life * 1.3f, c0, a);
+            flat(ps, x, gy, z, Sprite.RING, life * 0.8f, size, size * 9f * scale, c0, c1, a * 0.35f, 0f);
+        } else if (s.equals("Lightning")) {
             int k = Math.max(3, ps.scale(fx.amount.f() * 0.7f));
             for (int i = 0; i < k; i++) {
                 double ang = i * (Math.PI * 2 / k) + ps.rand(-0.3f, 0.3f);

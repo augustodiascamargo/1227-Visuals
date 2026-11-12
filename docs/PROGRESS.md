@@ -7,7 +7,6 @@ Este arquivo é o registro contínuo do projeto. Cada etapa anota o que foi feit
 | Pasta | Conteúdo |
 |---|---|
 | `/` (raiz) | Mod Forge 1.8.9 (`build.gradle`, `src/`); fica na raiz para não quebrar o build existente |
-| `launcher/` | Launcher em Tauri 2 + React + TypeScript + Rust |
 | `api/` | API em Cloudflare Worker (manifesto de versões e notícias) |
 | `site/` | Site estático (Cloudflare Pages), gerado por `tools/build_site.py` |
 | `docs/` | Auditoria, progresso e processo de release |
@@ -60,7 +59,7 @@ Este arquivo é o registro contínuo do projeto. Cada etapa anota o que foi feit
 - A interface do launcher em janela real e com escala do Windows diferente.
 
 ## Decisão (12/11/2026): o 1227 continua como mod
-O foco volta a ser só o mod. A pasta `launcher/` fica pausada: não é necessária para usar o 1227 e pode ser apagada sem afetar o mod. A API e o site continuam opcionais para divulgar as versões.
+O foco volta a ser só o mod. Na v1.14.0 a pasta `launcher/` e o workflow `launcher.yml` foram removidos a pedido. A API e o site continuam opcionais, para divulgar as versões.
 
 ## Etapa 3 (v1.13.0): concluída
 - HUD Scoreboard: desliga o sidebar do Forge (`GuiIngameForge.renderObjective`) só enquanto está ativo.
@@ -70,6 +69,14 @@ O foco volta a ser só o mod. A pasta `launcher/` fica pausada: não é necessá
 - Projectile Trails.
 - Teste: compilação com `javac` sem erros próprios. Falta teste no jogo.
 - Não feito: **Freelook**. Vários servidores grandes proíbem, e sem mixin ele precisaria mexer na rotação do jogador, o que pode ser lido como vantagem. Fica fora até haver um jeito só de câmera.
+
+## Etapa 4 (v1.14.0): concluída
+- Block Wave movido para Jump Effects (`vfx/BlockWave`).
+- `render/Silhouette`: desenha entidades e itens como silhueta de cor sólida (GL_COMBINE com cor constante e alpha da textura), sempre com teste de profundidade. É a base de Afterimage, dos contornos de Player Glow e Item Glow e do Hit Color.
+- Ambient Particles: voadores com rastro (retos, curvas e viradas bruscas).
+- China Hat no Halo.
+- Pesquisa: o TikTok não pode ser consultado daqui (só busca na web, sem acesso aos vídeos). Usei listas de mods "visuals" de PvP no Modrinth e no CurseForge como referência de recursos comuns no gênero (China Hat, Hit Color, contornos, rastros). Nada foi copiado: só a ideia do recurso.
+- Teste: compilação com `javac` sem erros próprios. Falta teste no jogo, principalmente da espessura do contorno e da pose dos fantasmas.
 
 ## Próximas etapas (histórico, antes da decisão acima)
 

@@ -21,18 +21,21 @@ import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
  * around the silhouette, like a rim glow. Never visible through walls.
  */
 public final class PlayerGlowModule extends Module {
-    private final Setting.Mode who, colorMode;
+    private final Setting.Mode who, colorMode, style;
+    private final Setting.Num thickness;
     private final Setting.Col color;
     private final Setting.Num intensity, size, pulse;
 
     public PlayerGlowModule() {
-        super("Player Glow", "Soft coloured rim glow around players.", Category.AURAS, false);
+        super("Player Glow", "Rim glow and/or a crisp outline around players.", Category.AURAS, false);
+        style = add(new Setting.Mode("Style", "Glow", "Glow", "Outline", "Glow + Outline"));
         who = add(new Setting.Mode("Players", "Target", "Target", "Self (3rd person)", "Target and self", "Everyone"));
         colorMode = add(new Setting.Mode("Color", "Team color", "Team color", "Custom", "Health", "Rainbow"));
         color = add(new Setting.Col("Custom color", 0x8B5CFF));
         intensity = add(new Setting.Num("Intensity", 0.45, 0.05, 1.0, 0.05, ""));
         size = add(new Setting.Num("Size", 1.0, 0.5, 2.0, 0.05, "x"));
         pulse = add(new Setting.Num("Pulse", 0.3, 0.0, 1.0, 0.05, ""));
+        thickness = add(new Setting.Num("Outline thickness", 1.0, 0.4, 3.0, 0.1, "x")).showIf(() -> !style.is("Glow"));
     }
 
     @SubscribeEvent
@@ -80,6 +83,12 @@ public final class PlayerGlowModule extends Module {
         double y = ParticleSystem.lerp(e.lastTickPosY, e.posY, pt);
         double z = ParticleSystem.lerp(e.lastTickPosZ, e.posZ, pt);
         if (!ps.inRange(x, y, z)) return;
+        if (!style.is("Glow")) {
+            // crisp outline: coloured silhouettes around the body, the body redrawn on top
+            float a = Math.min(1f, 0.35f + intensity.f()) * (1f - pulse.f() * 0.35f * (1f + (float) Math.sin(ps.time * 3)));
+            net.m1227.render.Silhouette.outline(e, pt, colorFor(mc, e, ps.time), a, thickness.f());
+            if (style.is("Outline")) return;
+        }
         double t = ps.time;
         int c = colorFor(mc, e, t);
         float a = intensity.f() * (1f - pulse.f() * 0.5f * (1f + (float) Math.sin(t * 3)));

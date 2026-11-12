@@ -68,12 +68,14 @@ FEATURES = [
                     "15 elementos de HUD: Watermark, Info, Keystrokes, Target, Combo, Armor, Potions, Coordenadas, Movimento, Held Item, Relógio, Memória, Servidor, Bússola e Estatísticas da sessão",
                     "Dynamic Island com cartão de combate e notificações"]),
     ("Combate (só visual)", ["Hit Effect, Hit Marker, Damage Numbers e Kill Effects (inclui ragdoll e decapitação)",
-                             "Shockwave com 9 estilos, incluindo Block Wave",
+                             "Shockwave com 8 estilos e Hit Color (tinta própria no dano)",
                              "Weapon Effects (40 efeitos), Item Glow e 18 modelos 3D de espadas e facas com finishes e inspect",
                              "Hit Sounds sintetizados, com pitch, variação, combo e limite de sobreposição"]),
     ("Mundo e jogador", ["50 céus dinâmicos com camada GLSL (nebulosa, aurora, nuvens volumétricas e tempestade)",
                          "Ambience com 12 atmosferas, partículas ambientes e World (hora e clima só na sua tela)",
-                         "Auras, Halo, Aura Hat, Wings, Trails, Jump Effects e Player Glow",
+                         "Auras, Halo (com China Hat), Aura Hat, Wings, Trails, Afterimage e Jump Effects (com Block Wave)",
+                         "Player Glow e Item Glow com contorno (outline) ou brilho",
+                         "Partículas ambientes, inclusive luzes voando com rastro (retas, curvas ou com viradas bruscas)",
                          "22 emotes e danças, numa roda de seleção"]),
     ("Câmera e jogo", ["Motion Blur, Zoom, Static FOV, View Bobbing e Camera FX",
                        "1.7 Animations e Toggle Sprint (com as regras do vanilla)",
@@ -104,7 +106,6 @@ DOWNLOAD = """<section class="hero small"><h1>Download</h1><p class="muted">Requ
 <li>Coloque o arquivo <code>1227-x.y.z.jar</code> em <code>.minecraft/mods</code>.</li>
 <li>Abra o jogo com o perfil Forge 1.8.9 e aperte <b>Right Ctrl</b> para abrir o menu.</li></ol>
 <p class="muted">Confira o arquivo com o SHA-256 mostrado acima (no Windows: <code>certutil -hashfile arquivo.jar SHA256</code>).</p></section>
-<section class="card"><h2>Launcher 1227</h2><p class="muted">O launcher (Windows) instala, verifica, atualiza e restaura versões do mod, numa instância própria ou no seu Forge existente. Ele é publicado junto com as releases quando estiver pronto para distribuição.</p></section>
 <script src="assets/download.js"></script>"""
 
 DOCS = """<section class="hero small"><h1>Documentação</h1></section>
@@ -132,9 +133,9 @@ FAQ = """<section class="hero small"><h1>Perguntas frequentes</h1></section>
 PRIVACY = """<section class="hero small"><h1>Política de privacidade</h1></section>
 <section class="card"><ul>
 <li>O mod 1227 não coleta, não envia e não guarda dados pessoais. As configurações ficam só no seu computador.</li>
-<li>O launcher consulta a API do 1227 para saber as versões e as notícias. Essa consulta não envia conta, nome de usuário nem identificador; o provedor de hospedagem (Cloudflare) pode registrar o IP e o horário da requisição nos logs técnicos dele.</li>
+<li>A página de download consulta a API do 1227 para mostrar a última versão. Essa consulta não envia conta, nome de usuário nem identificador; o provedor de hospedagem (Cloudflare) pode registrar o IP e o horário da requisição nos logs técnicos dele.</li>
 <li>Os downloads vêm do GitHub Releases, sujeitos à política de privacidade do GitHub.</li>
-<li>O launcher nunca pede nem guarda a senha da sua conta Microsoft.</li></ul></section>"""
+<li>O 1227 nunca pede nem guarda a senha da sua conta Microsoft.</li></ul></section>"""
 
 TERMS = """<section class="hero small"><h1>Termos de uso</h1></section>
 <section class="card"><ul>

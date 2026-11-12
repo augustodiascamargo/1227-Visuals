@@ -26,6 +26,8 @@ public final class ItemGlowModule extends Module {
         super("Item Glow", "Coloured glow that follows the shape of the held item.", Category.WEAPONS, false);
         INSTANCE = this;
         items = add(new Setting.Mode("Items", "Swords", "Swords", "Weapons and tools", "Any item"));
+        style = add(new Setting.Mode("Style", "Glow", "Glow", "Outline", "Glow + Outline"));
+        outline = add(new Setting.Num("Outline thickness", 1.0, 0.4, 3.0, 0.1, "x")).showIf(() -> !style.is("Glow"));
         colorMode = add(new Setting.Mode("Color mode", "Gradient", "Single", "Gradient", "Rainbow", "Weapon effect"));
         color1 = add(new Setting.Col("Color", 0x8B5CFF));
         color2 = add(new Setting.Col("Color 2", 0x2DD4FF));
@@ -34,6 +36,21 @@ public final class ItemGlowModule extends Module {
         layers = add(new Setting.Num("Layers", 3, 1, 6, 1, ""));
         pulseSpeed = add(new Setting.Num("Pulse speed", 1.5, 0.0, 6.0, 0.1, ""));
         pulseDepth = add(new Setting.Num("Pulse depth", 0.35, 0.0, 1.0, 0.05, ""));
+    }
+
+    private final Setting.Mode style;
+    private final Setting.Num outline;
+
+    public boolean glowOn() {
+        return !style.is("Outline");
+    }
+
+    public boolean outlineOn() {
+        return !style.is("Glow");
+    }
+
+    public float outlineWidth() {
+        return 0.03f * outline.f();
     }
 
     public boolean applies(ItemStack s) {

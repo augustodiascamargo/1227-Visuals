@@ -79,7 +79,8 @@ public final class HandFx {
         // then 0.5x and a -0.5 offset into the model's 0..1 space
         if (!model.isGui3d()) GlStateManager.scale(2.0F, 2.0F, 2.0F);
         model.getItemCameraTransforms().applyTransform(ItemCameraTransforms.TransformType.FIRST_PERSON);
-        if (glow) glowCopies(mc, stack, model, g);
+        if (glow && g.outlineOn()) outlineCopies(mc, stack, model, g);
+        if (glow && g.glowOn()) glowCopies(mc, stack, model, g);
         GlStateManager.scale(0.5F, 0.5F, 0.5F);
         GlStateManager.translate(-0.5F, -0.5F, -0.5F);
         if (arcs) {
@@ -102,6 +103,37 @@ public final class HandFx {
     }
 
     // ----------------------------------------------------------- glow
+
+    /**
+     * Contour around the held item: solid-colour silhouettes of the item shifted in 8 directions
+     * in its own plane, pushed behind the real item with polygon offset so only the rim shows.
+     */
+    private void outlineCopies(Minecraft mc, ItemStack stack, IBakedModel model, ItemGlowModule g) {
+        int c = g.color(time);
+        float a = Math.min(1f, 0.4f + g.intensity()) * g.pulse(time);
+        float w = g.outlineWidth();
+        mc.getTextureManager().bindTexture(TextureMap.locationBlocksTexture);
+        GlStateManager.disableLighting();
+        GlStateManager.enableBlend();
+        GlStateManager.tryBlendFuncSeparate(770, 771, 1, 0);
+        GlStateManager.depthMask(false);
+        GL11.glEnable(GL11.GL_POLYGON_OFFSET_FILL);
+        GL11.glPolygonOffset(2f, 4f);
+        Silhouette.begin(c, a);
+        for (int i = 0; i < 8; i++) {
+            double ang = Math.PI * 2 * i / 8;
+            GlStateManager.pushMatrix();
+            GlStateManager.translate((float) Math.cos(ang) * w, (float) Math.sin(ang) * w, 0f);
+            mc.getRenderItem().renderItem(stack, model);
+            GlStateManager.popMatrix();
+        }
+        Silhouette.end();
+        GL11.glPolygonOffset(0f, 0f);
+        GL11.glDisable(GL11.GL_POLYGON_OFFSET_FILL);
+        GlStateManager.depthMask(true);
+        GlStateManager.enableLighting();
+        GlStateManager.color(1f, 1f, 1f, 1f);
+    }
 
     private void glowCopies(Minecraft mc, ItemStack stack, IBakedModel model, ItemGlowModule g) {
         int layers = g.layers();

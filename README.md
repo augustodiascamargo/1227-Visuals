@@ -1,4 +1,4 @@
-# 1227 — v1.13.0 (Minecraft 1.8.9 · Forge 11.15.1.2318 · Java 8)
+# 1227 — v1.14.0 (Minecraft 1.8.9 · Forge 11.15.1.2318 · Java 8)
 
 Mod client-side e puramente visual. Não envia pacotes, não desenha através de paredes e não muda alcance,
 timing de ataque ou outras mecânicas do servidor.
@@ -7,8 +7,7 @@ timing de ataque ou outras mecânicas do servidor.
 | Pasta | O que é |
 |---|---|
 | raiz (`build.gradle`, `src/`) | O mod Forge |
-| `launcher/` | Launcher (Tauri 2 + React + TypeScript + Rust). Build: workflow "Build launcher" |
-| `api/` | API de versões e notícias (Cloudflare Worker) |
+| `api/` | API de versões e notícias para o site (Cloudflare Worker, opcional) |
 | `site/` | Site oficial estático (Cloudflare Pages) |
 | `docs/` | `AUDIT.md` (auditoria), `PROGRESS.md` (progresso, testes e próximas etapas), `RELEASE.md` (como publicar) |
 
@@ -183,6 +182,16 @@ nada depende de Lunar ou de outro launcher.
 ### Licença dos modelos enviados
 O modelo do Tung Sahur (ZAHUR.fbx + textura) e a butterfly knife (.blend) foram enviados pelo usuário. Antes de
 publicar o 1227, confira a licença de cada um (por exemplo, se exigem crédito ao autor) e coloque o crédito aqui.
+
+## Mudanças na v1.14.0
+- **Launcher removido** do projeto (pasta `launcher/` e o workflow dele). O 1227 é distribuído só como mod.
+- **Block Wave** saiu do Shockwave e virou um estilo de **Jump Effects** (pulo e/ou aterrissagem): os blocos do chão sobem como cópias translúcidas numa onda.
+- **Afterimage (novo):** cópias-fantasma do jogador deixadas nas últimas posições, cada uma com a pose que ele tinha ali, sumindo aos poucos. Cor única, degradê ou arco-íris; quantidade, espaçamento, duração e opacidade ajustáveis. Funciona em você e, se quiser, no alvo ou em todos.
+- **Player Glow:** estilo "Outline" (contorno nítido em volta do jogador) ou "Glow + Outline", com espessura ajustável. O contorno respeita paredes.
+- **Item Glow:** estilo "Outline" (contorno que segue o formato do item segurado) ou "Glow + Outline".
+- **Ambient Particles:** luzes voando com rastro: Shooting Stars (retas), Wisps (curvas suaves), Darting Sparks (viradas bruscas) e Flyers Mix.
+- **Hit Color (novo):** tinge o jogador ou mob atingido com a sua cor durante o piscar de dano (por cima do vermelho do vanilla).
+- **Halo:** estilo China Hat (chapéu cônico translúcido que acompanha a cabeça, com cores girando).
 
 ## Mudanças na v1.13.0
 - **Scoreboard (HUD):** a barra lateral vira um elemento de HUD que dá para mover e redimensionar, com opções para esconder os números vermelhos, título, sombra, espaçamento e o fundo do HUD. Mostra exatamente o que o servidor envia.

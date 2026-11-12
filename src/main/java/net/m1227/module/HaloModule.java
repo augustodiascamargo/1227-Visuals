@@ -23,8 +23,8 @@ public final class HaloModule extends Module {
     private float trailAcc;
 
     public HaloModule() {
-        super("Halo", "Halo, crown of stars or orbiting orbs.", Category.COSMETICS, false);
-        style = add(new Setting.Mode("Style", "Angel Halo", "Angel Halo", "Star Crown", "Orbiting Orbs"));
+        super("Halo", "Halo, crown of stars, orbiting orbs or a china hat.", Category.COSMETICS, false);
+        style = add(new Setting.Mode("Style", "Angel Halo", "Angel Halo", "Star Crown", "Orbiting Orbs", "China Hat"));
         fx = new FxSettings(this, 0xFFF4C2, 0xFFFFFF, 3, 1.0, 0.3, 0.35);
         height = add(new Setting.Num("Height above head", 0.28, 0.05, 0.8, 0.01, ""));
         others = add(new Setting.Bool("Show on other players", false));
@@ -63,6 +63,11 @@ public final class HaloModule extends Module {
             AuraShapes.sprite(ps, Sprite.GLOW, cx, y, cz, size * 1.35f, 0f, true, c0, alpha * 0.35f);
             AuraShapes.sprite(ps, Sprite.RING, cx, y, cz, size, (float) (t * 0.6 * spd), true, c0, alpha);
             AuraShapes.sprite(ps, Sprite.RING, cx, y + 0.002, cz, size * 0.96f, 0f, true, c1, alpha * 0.6f);
+        } else if (st.equals("China Hat")) {
+            // flat cone resting on the head, tilting with the head's pitch, colours sweeping round
+            float yawH = (float) Math.toRadians(p.prevRotationYawHead + (p.rotationYawHead - p.prevRotationYawHead) * pt);
+            float pitch = (float) Math.toRadians(p.prevRotationPitch + (p.rotationPitch - p.prevRotationPitch) * pt);
+            chinaHat(cx, head + 0.02 + height.get() * 0.15, cz, size * 2f, yawH, pitch * 0.35f, (float) (t * spd), c0, c1, alpha);
         } else if (st.equals("Star Crown")) {
             int n = Math.max(3, Math.min(12, fx.amount.i() + 3));
             double y = head + height.get() * 0.6 + bob;
@@ -92,5 +97,51 @@ public final class HaloModule extends Module {
                 }
             }
         }
+    }
+
+    private void chinaHat(double x, double y, double z, float r, float yaw, float tilt, float t, int c0, int c1, float a) {
+        net.minecraft.client.Minecraft mc = net.minecraft.client.Minecraft.getMinecraft();
+        double vx = x - mc.getRenderManager().viewerPosX, vy = y - mc.getRenderManager().viewerPosY, vz = z - mc.getRenderManager().viewerPosZ;
+        net.minecraft.client.renderer.GlStateManager.pushMatrix();
+        net.minecraft.client.renderer.GlStateManager.translate(vx, vy, vz);
+        net.minecraft.client.renderer.GlStateManager.rotate((float) -Math.toDegrees(yaw), 0f, 1f, 0f);
+        net.minecraft.client.renderer.GlStateManager.rotate((float) Math.toDegrees(tilt), 1f, 0f, 0f);
+        net.minecraft.client.renderer.GlStateManager.disableTexture2D();
+        net.minecraft.client.renderer.GlStateManager.disableLighting();
+        net.minecraft.client.renderer.GlStateManager.disableCull();
+        net.minecraft.client.renderer.GlStateManager.enableBlend();
+        net.minecraft.client.renderer.GlStateManager.tryBlendFuncSeparate(770, 771, 1, 0);
+        net.minecraft.client.renderer.GlStateManager.depthMask(false);
+        net.minecraft.client.renderer.GlStateManager.shadeModel(org.lwjgl.opengl.GL11.GL_SMOOTH);
+        int n = 40;
+        float apex = r * 0.42f;
+        org.lwjgl.opengl.GL11.glBegin(org.lwjgl.opengl.GL11.GL_TRIANGLE_FAN);
+        org.lwjgl.opengl.GL11.glColor4f(1f, 1f, 1f, a * 0.55f);
+        org.lwjgl.opengl.GL11.glVertex3f(0f, apex, 0f);
+        for (int i = 0; i <= n; i++) {
+            double ang = Math.PI * 2 * i / n;
+            int c = ParticleSystem.mix(c0, c1, 0.5f + 0.5f * (float) Math.sin(ang + t * 2.0));
+            org.lwjgl.opengl.GL11.glColor4f(((c >> 16) & 255) / 255f, ((c >> 8) & 255) / 255f, (c & 255) / 255f, a * 0.4f);
+            org.lwjgl.opengl.GL11.glVertex3f((float) Math.cos(ang) * r, 0f, (float) Math.sin(ang) * r);
+        }
+        org.lwjgl.opengl.GL11.glEnd();
+        // bright rim
+        org.lwjgl.opengl.GL11.glLineWidth(2f);
+        org.lwjgl.opengl.GL11.glBegin(org.lwjgl.opengl.GL11.GL_LINE_LOOP);
+        for (int i = 0; i < n; i++) {
+            double ang = Math.PI * 2 * i / n;
+            int c = ParticleSystem.mix(c0, c1, 0.5f + 0.5f * (float) Math.sin(ang + t * 2.0));
+            org.lwjgl.opengl.GL11.glColor4f(((c >> 16) & 255) / 255f, ((c >> 8) & 255) / 255f, (c & 255) / 255f, a * 0.9f);
+            org.lwjgl.opengl.GL11.glVertex3f((float) Math.cos(ang) * r, 0f, (float) Math.sin(ang) * r);
+        }
+        org.lwjgl.opengl.GL11.glEnd();
+        org.lwjgl.opengl.GL11.glLineWidth(1f);
+        net.minecraft.client.renderer.GlStateManager.shadeModel(org.lwjgl.opengl.GL11.GL_FLAT);
+        net.minecraft.client.renderer.GlStateManager.depthMask(true);
+        net.minecraft.client.renderer.GlStateManager.enableCull();
+        net.minecraft.client.renderer.GlStateManager.enableTexture2D();
+        net.minecraft.client.renderer.GlStateManager.color(1f, 1f, 1f, 1f);
+        org.lwjgl.opengl.GL11.glColor4f(1f, 1f, 1f, 1f);
+        net.minecraft.client.renderer.GlStateManager.popMatrix();
     }
 }

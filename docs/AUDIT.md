@@ -51,4 +51,4 @@ O número indica quantas configurações reais o módulo tem. Considerei "real" 
 - **Sem execução do jogo aqui:** a compilação é checada com `javac` contra o próprio código; símbolos do Minecraft e do Forge ficam sem resolver localmente e só são resolvidos no build do CI.
 - **Desempenho:** sem benchmark medido. Não declaro ganho de FPS; os presets só reduzem o custo dos efeitos do próprio 1227.
 - **Launcher:** autenticação Microsoft exige um Client ID do Azure registrado pelo dono do projeto e aprovado para a API do Minecraft. Isso não pode ser feito por mim (ver PROGRESS.md).
-- **Ambiente sem internet para pacotes:** o launcher (npm/cargo) não pôde ser compilado aqui. O build roda no GitHub Actions.
+- **Launcher:** foi iniciado na v1.12.0 e removido na v1.14.0; o 1227 segue só como mod.

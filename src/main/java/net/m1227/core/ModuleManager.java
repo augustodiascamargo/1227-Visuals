@@ -23,9 +23,11 @@ public final class ModuleManager {
         register(new HaloModule());
         register(new WingsModule());
         register(new TrailsModule());
+        register(new AfterimageModule());
         register(new JumpEffectModule());
         register(new PlayerFxModule());
         register(new HitEffectModule());
+        register(new HitColorModule());
         register(new KillEffectModule());
         register(new ShockwaveModule());
         register(new ProjectileTrailsModule());

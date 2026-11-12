@@ -16,11 +16,8 @@
 
 ## Primeira configuração da API
 - Rode `cd api && npx wrangler deploy` uma vez, ou deixe o workflow fazer isso.
-- Se a URL final não for `https://api.1227client.workers.dev`, troque-a em dois lugares:
-  - `launcher/src-tauri/src/manifest.rs` (`MANIFEST_URL` e `NEWS_URL`);
-  - `site/assets/download.js`.
-- As notícias ficam em `api/data/news.json` (somente texto; o launcher nunca renderiza HTML vindo da API).
+- Se a URL final não for `https://api.1227client.workers.dev`, troque-a em `site/assets/download.js`.
+- As notícias ficam em `api/data/news.json` (somente texto).
 
 ## Segurança
 - Não há segredos no código. Os tokens da Cloudflare ficam só nos *secrets* do GitHub.
-- O launcher só aceita downloads HTTPS de `github.com` e dos CDNs do GitHub, com nome `1227-<versão>.jar`, até 64 MB e SHA-256 conferido.
