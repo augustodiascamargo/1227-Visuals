@@ -5,12 +5,14 @@ import Install from "./pages/Install";
 import Updates from "./pages/Updates";
 import News from "./pages/News";
 import Support from "./pages/Support";
+import Accounts from "./pages/Accounts";
 
-type Page = "home" | "install" | "updates" | "news" | "support";
+type Page = "home" | "install" | "accounts" | "updates" | "news" | "support";
 
 const NAV: { id: Page; label: string }[] = [
   { id: "home", label: "Início" },
   { id: "install", label: "Instalação" },
+  { id: "accounts", label: "Contas" },
   { id: "updates", label: "Atualizações" },
   { id: "news", label: "Notícias" },
   { id: "support", label: "Suporte" },
@@ -70,6 +72,8 @@ export default function App() {
           <Home state={state} updates={updates} updateError={updateError} onChanged={refresh} onRetry={checkUpdates} go={setPage} />
         ) : page === "install" ? (
           <Install state={state} onChanged={refresh} />
+        ) : page === "accounts" ? (
+          <Accounts />
         ) : page === "updates" ? (
           <Updates updates={updates} error={updateError} onRetry={checkUpdates} />
         ) : page === "news" ? (

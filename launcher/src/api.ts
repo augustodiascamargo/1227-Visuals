@@ -2,6 +2,19 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 
 export type Target = "own" | "existing";
+export type ProfileType = "offline" | "microsoft";
+
+export interface AccountProfile {
+  id: string;
+  name: string;
+  profileType: ProfileType;
+  createdAt: number;
+}
+
+export interface AccountStore {
+  profiles: AccountProfile[];
+  selectedProfileId: string | null;
+}
 
 export interface Settings {
   target: Target;
@@ -63,6 +76,10 @@ export interface NewsItem {
 
 export const api = {
   state: () => invoke<StateView>("get_state"),
+  accounts: () => invoke<AccountStore>("get_accounts"),
+  addOfflineAccount: (name: string) => invoke<AccountStore>("add_offline_account", { name }),
+  selectAccount: (id: string) => invoke<AccountStore>("select_account", { id }),
+  removeAccount: (id: string) => invoke<AccountStore>("remove_account", { id }),
   saveSettings: (settings: Settings) => invoke<void>("save_settings", { settings }),
   detectJava: () => invoke<JavaInfo[]>("detect_java"),
   pickFolder: (title: string) => invoke<string | null>("pick_folder", { title }),

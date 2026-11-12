@@ -64,6 +64,11 @@ audio/   HitSoundEngine, SoundBank
 A entrada (teclas) fica em `InputManager`, separada da interface. O código depende só do Forge 1.8.9;
 nada depende de Lunar ou de outro launcher.
 
+## Contas do launcher
+A tela **Contas** permite manter perfis locais com nome escolhido pelo usuário. Consulte `docs/ACCOUNT_PROFILES.md` para o estado da autenticação e os próximos requisitos. Esses perfis são úteis para identificação, desenvolvimento e ambientes de teste que aceitam jogadores sem autenticação. Eles não criam uma sessão Minecraft, não comprovam propriedade do jogo e não liberam servidores autenticados.
+
+O login Microsoft oficial ainda precisa ser configurado e implementado por meio de um aplicativo OAuth registrado, com validação Xbox Live/XSTS e Minecraft Services. O launcher não solicita a senha Microsoft diretamente nem simula uma autenticação. A versão atual do launcher também ainda não inicia o Minecraft por conta própria; ela instala/atualiza o mod e integra-se a instalações Forge existentes.
+
 ## Compatibilidade com launchers
 - **Forge 1.8.9:** alvo do projeto.
 - **Lunar Client 1.8.9:** não verificado. O Lunar não carrega mods Forge próprios em 1.8.9 de forma oficial

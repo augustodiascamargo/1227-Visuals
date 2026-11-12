@@ -92,3 +92,50 @@ button.link { background: none; border: 0; padding: 0; color: var(--accent); tex
 .list-row input { accent-color: var(--accent); }
 .tag { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 99px; background: var(--accent-soft); color: #d4c6ff; margin-left: 6px; }
 .tag.ok { background: rgba(61, 220, 151, 0.15); color: #bff3dc; }
+
+/* Account management */
+.accounts-page { max-width: 980px; }
+.accounts-page > h2 { margin: 3px 0 4px; }
+.account-intro { max-width: 720px; margin: 0 0 20px; }
+.account-choice-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.account-choice { min-width: 0; padding: 18px; border-radius: var(--radius); border: 1px solid var(--line); background: var(--panel); }
+.account-choice-icon { width: 38px; height: 38px; display: grid; place-items: center; border-radius: 11px; margin-bottom: 14px; font-weight: 700; font-size: 20px; }
+.microsoft-icon { color: #fff; background: linear-gradient(135deg, #2878d0, #45a0e8); }
+.offline-icon { color: #d8caff; background: var(--accent-soft); }
+.account-choice-title-row { display: flex; align-items: center; gap: 8px; }
+.account-choice-title-row h3 { margin: 0; }
+.account-choice > p { min-height: 58px; margin: 8px 0 14px; }
+.account-action { width: 100%; }
+.account-explainer { margin-top: 12px; padding: 12px; border-radius: 9px; border: 1px solid var(--line); background: var(--panel-2); }
+.account-explainer p { margin: 6px 0 0; }
+.offline-create { display: flex; gap: 8px; }
+.offline-create input { min-width: 0; flex: 1; padding: 9px 11px; color: var(--text); background: var(--panel-2); border: 1px solid var(--line); border-radius: 9px; outline: none; font: 400 13px "Poppins", sans-serif; }
+.offline-create input:focus { border-color: var(--accent); }
+.form-hint { margin-top: 7px; color: var(--muted); font-size: 11px; }
+.account-list-card { margin-top: 16px; }
+.account-list-heading { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 12px; }
+.account-list-heading h3, .account-list-heading p { margin: 0; }
+.profile-list { display: flex; flex-direction: column; gap: 7px; }
+.profile-row { display: flex; align-items: center; gap: 12px; min-height: 64px; padding: 9px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel-2); }
+.profile-row.active { border-color: rgba(139, 92, 255, .5); background: rgba(139, 92, 255, .08); }
+.profile-avatar { width: 38px; height: 38px; flex: 0 0 38px; display: grid; place-items: center; border-radius: 10px; background: var(--accent-soft); color: #d8caff; font-weight: 700; }
+.profile-avatar.microsoft { background: rgba(52, 145, 225, .16); color: #9bcfff; }
+.profile-details { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.profile-details b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.selected-label { color: var(--ok); font-size: 12px; font-weight: 500; padding: 0 8px; }
+button.danger-quiet { color: #ffaaaa; background: transparent; border-color: transparent; }
+button.danger-quiet:hover:not(:disabled) { background: rgba(255, 107, 107, .09); border-color: rgba(255, 107, 107, .2); }
+.empty-profiles { min-height: 150px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; text-align: center; }
+.empty-symbol { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 50%; background: var(--panel-2); color: var(--accent); font-size: 22px; margin-bottom: 4px; }
+.account-disclaimer { margin-top: 14px; padding: 12px 14px; border: 1px solid rgba(255, 190, 90, .2); border-radius: 10px; background: rgba(255, 190, 90, .05); color: #d8c7a7; font-size: 12px; }
+.account-disclaimer b { color: #f0d5a4; }
+@media (max-width: 760px) {
+  .account-choice-grid { grid-template-columns: 1fr; }
+  .account-choice > p { min-height: 0; }
+}
+@media (max-width: 560px) {
+  .profile-row { flex-wrap: wrap; }
+  .profile-details { min-width: calc(100% - 64px); }
+  .account-list-heading { align-items: flex-start; flex-direction: column; }
+  .offline-create { flex-direction: column; }
+}

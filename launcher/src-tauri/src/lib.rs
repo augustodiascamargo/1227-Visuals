@@ -2,6 +2,7 @@
 //! and news. The web UI can only call the commands below; none of them accepts a free path
 //! or URL from the UI except folders the user picked in the system dialog.
 
+mod accounts;
 mod install;
 mod java;
 mod manifest;
@@ -153,6 +154,27 @@ async fn verify_install() -> Result<bool, String> {
     tauri::async_runtime::spawn_blocking(install::verify).await.map_err(|e| e.to_string())?
 }
 
+
+#[tauri::command]
+fn get_accounts() -> accounts::AccountStore {
+    accounts::list()
+}
+
+#[tauri::command]
+fn add_offline_account(name: String) -> Result<accounts::AccountStore, String> {
+    accounts::add_offline(name)
+}
+
+#[tauri::command]
+fn select_account(id: String) -> Result<accounts::AccountStore, String> {
+    accounts::select(id)
+}
+
+#[tauri::command]
+fn remove_account(id: String) -> Result<accounts::AccountStore, String> {
+    accounts::remove(id)
+}
+
 #[derive(Serialize, Deserialize, Clone)]
 struct NewsItem {
     title: String,
@@ -199,6 +221,10 @@ pub fn run() {
         .manage(AppState::default())
         .invoke_handler(tauri::generate_handler![
             get_state,
+            get_accounts,
+            add_offline_account,
+            select_account,
+            remove_account,
             save_settings,
             detect_java,
             pick_folder,

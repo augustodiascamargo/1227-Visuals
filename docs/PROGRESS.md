@@ -85,3 +85,11 @@ Este arquivo é o registro contínuo do projeto. Cada etapa anota o que foi feit
 - **API sem banco de dados:** o manifesto e as notícias são JSON versionados no Git, publicados no deploy. Para cerca de 100 usuários, o plano gratuito do Workers sobra.
 - **Sem conta própria do 1227:** não há finalidade real nesta etapa (pedido do item 12).
 - **O manifesto não executa nada:** só descreve versões e arquivos; o launcher valida tudo antes de usar.
+
+
+## Perfis de conta do launcher (adicionado nesta revisão)
+- Tela Contas com escolha conceitual entre Conta Microsoft e Perfil Offline.
+- Perfis offline locais podem ser criados, selecionados e removidos; nomes são validados (3–16 caracteres, letras ASCII, números e underline).
+- Perfis são persistidos em `accounts.json` na pasta de dados do launcher. Nenhum token ou senha é armazenado.
+- Login Microsoft está explicitamente sinalizado como ainda não configurado: depende de um Application/Client ID próprio e do fluxo OAuth + Xbox Live/XSTS + Minecraft Services.
+- Limitação mantida de forma explícita: o launcher não inicia o Minecraft nesta versão e os perfis locais não representam autenticação nem licença.
