@@ -120,7 +120,7 @@ public final class HudEditorScreen extends GuiScreen {
             Gfx.rect(x - 1, y, 1, hh, c);
             Gfx.rect(x + w, y, 1, hh, c);
             if (h == hover) {
-                String lbl = h.name + "  " + Math.round(h.scale.f() * 100) + "%";
+                String lbl = h.name + "  " + Math.round(h.scale.f() * 100) + "%" + (h.locked.on() ? "  \u00b7  locked" : "");
                 float ly = y > 14 ? y - 11 : y + hh + 3;
                 Gfx.roundedRect(x - 1, ly - 1, Gfx.textWidth(lbl) + 6, 10, 3, Gfx.alpha(0xFF0B0C11, 0.85f));
                 Gfx.text(lbl, x + 2, ly, 0xFFFFFFFF);
@@ -141,7 +141,8 @@ public final class HudEditorScreen extends GuiScreen {
             Gfx.roundedRect(r[0], r[1], r[2], 14, 7, bg);
             Gfx.text(h.name, r[0] + 8, r[1] + 3.5f, h.isEnabled() ? 0xFFFFFFFF : 0xFFA9ADBA);
         }
-        String help = "Drag to move  ·  Scroll to resize  ·  Right-click to reset  ·  Esc to save";
+        drawLayoutBar(mx, my);
+        String help = "Drag to move  ·  Scroll to resize  ·  Right-click to reset  ·  Middle-click to lock  ·  Esc to save";
         float hw = Gfx.textWidth(help);
         Gfx.roundedRect((width - hw) / 2f - 8, height - 20, hw + 16, 14, 7, Gfx.alpha(0xFF0B0C11, 0.85f));
         Gfx.text(help, (width - hw) / 2f, height - 16.5f, 0xFFA9ADBA);
@@ -158,8 +159,15 @@ public final class HudEditorScreen extends GuiScreen {
                 return;
             }
         }
+        if (button == 0 && clickLayoutBar(mx, my)) return;
         HudModule h = at(mx, my);
         if (h == null) return;
+        if (button == 2) {
+            h.locked.set(!h.locked.on());
+            ConfigManager.markDirty();
+            return;
+        }
+        if (h.locked.on()) return;
         if (button == 1) {
             h.resetPosition();
             ConfigManager.markDirty();
@@ -250,6 +258,7 @@ public final class HudEditorScreen extends GuiScreen {
         int my = height - Mouse.getEventY() * height / mc.displayHeight - 1;
         HudModule h = at(mx, my);
         if (h == null) return;
+        if (h.locked.on()) return;
         h.scale.setClamped(h.scale.f() + (d > 0 ? 0.05 : -0.05));
         ConfigManager.markDirty();
     }
@@ -257,5 +266,42 @@ public final class HudEditorScreen extends GuiScreen {
     @Override
     public void onGuiClosed() {
         ConfigManager.markDirty();
+    }
+
+    // ------------------------------------------------------------- layout slots
+
+    private static final String[] LAYOUT_BTNS = {"Save 1", "Save 2", "Save 3", "Load 1", "Load 2", "Load 3", "Copy", "Paste"};
+
+    private float[] layoutRect(int i) {
+        float bw = 44f, gap = 4f, total = LAYOUT_BTNS.length * (bw + gap) - gap + 16f;
+        float x0 = (width - total) / 2f;
+        float extra = i >= 3 ? 8f : 0f;
+        extra += i >= 6 ? 8f : 0f;
+        return new float[]{x0 + i * (bw + gap) + extra, height - 40, bw};
+    }
+
+    private void drawLayoutBar(int mx, int my) {
+        for (int i = 0; i < LAYOUT_BTNS.length; i++) {
+            float[] r = layoutRect(i);
+            boolean over = mx >= r[0] && mx <= r[0] + r[2] && my >= r[1] && my <= r[1] + 14;
+            boolean load = i >= 3 && i < 6;
+            boolean empty = load && !net.m1227.hud.HudLayouts.hasSlotCached(i - 2);
+            Gfx.roundedRect(r[0], r[1], r[2], 14, 7, Gfx.alpha(over && !empty ? accent() : 0xFF15171F, over ? 0.9f : 0.85f));
+            String t = LAYOUT_BTNS[i];
+            Gfx.text(t, r[0] + (r[2] - Gfx.textWidth(t)) / 2f, r[1] + 3.5f, empty ? 0xFF5A5E6A : (over ? 0xFFFFFFFF : 0xFFA9ADBA));
+        }
+    }
+
+    private boolean clickLayoutBar(int mx, int my) {
+        for (int i = 0; i < LAYOUT_BTNS.length; i++) {
+            float[] r = layoutRect(i);
+            if (mx < r[0] || mx > r[0] + r[2] || my < r[1] || my > r[1] + 14) continue;
+            if (i < 3) net.m1227.hud.HudLayouts.save(i + 1);
+            else if (i < 6) net.m1227.hud.HudLayouts.load(i - 2);
+            else if (i == 6) net.m1227.hud.HudLayouts.copy();
+            else net.m1227.hud.HudLayouts.paste();
+            return true;
+        }
+        return false;
     }
 }

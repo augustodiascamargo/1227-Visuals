@@ -1,0 +1,6 @@
+{
+  "schema": 1,
+  "latest": "0.0.0",
+  "versions": [],
+  "_comment": "Preenchido pelo workflow de release (veja docs/RELEASE.md). O launcher recusa um manifesto sem versões, então publique uma release antes de distribuir o launcher."
+}

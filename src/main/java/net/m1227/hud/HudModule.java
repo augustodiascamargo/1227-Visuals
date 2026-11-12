@@ -19,6 +19,8 @@ import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
  */
 public abstract class HudModule extends Module {
     public final Setting.Num posX, posY, scale;
+    /** Locked elements can't be dragged, resized or reset in the editor (middle-click toggles it there). */
+    public final Setting.Bool locked;
     protected final Setting.Mode background;
     protected final Setting.Num bgOpacity;
     protected final Setting.Bool accentText;
@@ -34,6 +36,7 @@ public abstract class HudModule extends Module {
         background = add(new Setting.Mode("Background", "Liquid Glass", "Liquid Glass", "Glass", "Solid", "Accent bar", "Outline", "Gradient", "None"));
         bgOpacity = add(new Setting.Num("Background opacity", 0.55, 0.0, 1.0, 0.05, "")).showIf(() -> !background.is("None"));
         accentText = add(new Setting.Bool("Accent colored values", true));
+        locked = add(new Setting.Bool("Lock position", false));
     }
 
     /** Unscaled size in GUI pixels. */

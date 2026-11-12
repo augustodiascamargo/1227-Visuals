@@ -1,0 +1,6 @@
+name = "1227client"
+main = "src/index.js"
+compatibility_date = "2024-09-23"
+# Deploy: npx wrangler deploy   (free plan is enough for ~100 users)
+# The URL becomes https://1227client.<your-subdomain>.workers.dev; put it in
+# launcher/src-tauri/src/manifest.rs (MANIFEST_URL / NEWS_URL).

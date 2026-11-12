@@ -1,7 +1,16 @@
-# 1227 — v1.11.0 (Minecraft 1.8.9 · Forge 11.15.1.2318 · Java 8)
+# 1227 — v1.12.0 (Minecraft 1.8.9 · Forge 11.15.1.2318 · Java 8)
 
 Mod client-side e puramente visual. Não envia pacotes, não desenha através de paredes e não muda alcance,
 timing de ataque ou outras mecânicas do servidor.
+
+## O que tem neste repositório
+| Pasta | O que é |
+|---|---|
+| raiz (`build.gradle`, `src/`) | O mod Forge |
+| `launcher/` | Launcher (Tauri 2 + React + TypeScript + Rust). Build: workflow "Build launcher" |
+| `api/` | API de versões e notícias (Cloudflare Worker) |
+| `site/` | Site oficial estático (Cloudflare Pages) |
+| `docs/` | `AUDIT.md` (auditoria), `PROGRESS.md` (progresso, testes e próximas etapas), `RELEASE.md` (como publicar) |
 
 ## Compilar
 Envie esta pasta para um repositório no GitHub. Aba **Actions** > "Build mod jar" > baixe o artefato `1227-jar`.
@@ -174,6 +183,15 @@ nada depende de Lunar ou de outro launcher.
 ### Licença dos modelos enviados
 O modelo do Tung Sahur (ZAHUR.fbx + textura) e a butterfly knife (.blend) foram enviados pelo usuário. Antes de
 publicar o 1227, confira a licença de cada um (por exemplo, se exigem crédito ao autor) e coloque o crédito aqui.
+
+## Mudanças na v1.12.0
+- **HUDs novos:** Clock (hora, data e tempo de sessão), Memory (RAM do Java com barra e entidades renderizadas), Server Info (endereço, jogadores no tab e ping), Compass (bússola deslizante com graus) e Session Stats (kills, mortes, K/D, hits e melhor combo).
+- **Editor de HUD:**
+  - Clique do meio trava ou destrava um elemento (também em "Lock position").
+  - Botões Save 1-3 e Load 1-3 guardam layouts; Copy e Paste levam o layout pela área de transferência.
+- **Backups do config:** a cada início, uma cópia de `config/1227.json` vai para `config/1227-backups/` (as 5 mais recentes).
+- **Performance:** nível Ultra e presets de um clique (Low-end PC, High FPS, Balanced e Visual quality). Os presets mais leves desligam o Motion Blur.
+- **Launcher, API e site:** primeira etapa (veja `docs/PROGRESS.md`).
 
 ## Mudanças na v1.11.0
 - **Facas (Weapon Models):** 6 modelos novos e originais: Karambit (lâmina em gancho com anel), Bayonet, Flip Knife, Huntsman (com dentes no dorso), Skeleton Knife (cabo vazado com anel) e Push Dagger. Agora são 18 modelos.

@@ -28,7 +28,35 @@ public final class ConfigManager {
 
     public static void init(File configDir) {
         file = new File(configDir, "1227.json");
+        backupOnStart();
         load();
+    }
+
+    /** Folder that holds 1227's files (config/). */
+    public static File dir() {
+        return file == null ? new File("config") : file.getParentFile();
+    }
+
+    /**
+     * Keeps a copy of the config from the start of each of the last 5 game sessions in
+     * config/1227-backups/, so a bad change or a broken file can be rolled back by hand
+     * (copy a backup over config/1227.json while the game is closed).
+     */
+    private static void backupOnStart() {
+        try {
+            if (!file.isFile() || file.length() == 0) return;
+            File dir = new File(file.getParentFile(), "1227-backups");
+            if (!dir.isDirectory() && !dir.mkdirs()) return;
+            String stamp = new java.text.SimpleDateFormat("yyyy-MM-dd_HH-mm-ss").format(new java.util.Date());
+            Files.copy(file.toPath(), new File(dir, "1227-" + stamp + ".json").toPath(), StandardCopyOption.REPLACE_EXISTING);
+            File[] all = dir.listFiles((d, n) -> n.startsWith("1227-") && n.endsWith(".json"));
+            if (all != null && all.length > 5) {
+                java.util.Arrays.sort(all, (a, b) -> a.getName().compareTo(b.getName()));
+                for (int i = 0; i < all.length - 5; i++) all[i].delete();
+            }
+        } catch (Exception ex) {
+            Mod1227.LOGGER.warn("Could not back up the 1227 config", ex);
+        }
     }
 
     /** Writes the current settings to another file (profiles). */

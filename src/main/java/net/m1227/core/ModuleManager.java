@@ -58,6 +58,11 @@ public final class ModuleManager {
         register(new net.m1227.hud.PotionHud());
         register(new net.m1227.hud.CoordsHud());
         register(new net.m1227.hud.MovementHud());
+        register(new net.m1227.hud.ClockHud());
+        register(new net.m1227.hud.SystemHud());
+        register(new net.m1227.hud.ServerHud());
+        register(new net.m1227.hud.CompassHud());
+        register(new net.m1227.hud.SessionHud());
         register(new MenuStyleModule());
         register(new ClientModule());
         register(new PresetsModule());

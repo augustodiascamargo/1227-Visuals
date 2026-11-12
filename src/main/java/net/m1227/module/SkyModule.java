@@ -114,7 +114,7 @@ public final class SkyModule extends Module {
     private final float[] env = new float[MAXSEG + 1];
 
     public SkyModule() {
-        super("Dynamic Skies", "30 animated skies with smooth transitions.", Category.SKY, false);
+        super("Dynamic Skies", "50 animated skies with smooth transitions.", Category.SKY, false);
         INSTANCE = this;
         preset = add(new Setting.Mode("Sky", "Night Flow", SkyPreset.names()));
         speed = add(new Setting.Num("Animation speed", 1.0, 0.1, 3.0, 0.1, "x"));
