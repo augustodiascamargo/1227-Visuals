@@ -183,6 +183,41 @@ nada depende de Lunar ou de outro launcher.
 O modelo do Tung Sahur (ZAHUR.fbx + textura) e a butterfly knife (.blend) foram enviados pelo usuário. Antes de
 publicar o 1227, confira a licença de cada um (por exemplo, se exigem crédito ao autor) e coloque o crédito aqui.
 
+## Mudanças na v1.19.0: chuva de verdade, brilho no alvo e espadas animadas
+
+- **Instalador no Windows:** o download agora traz `Instalar 1227.bat` junto do jar. Ele abre o
+  instalador com o Java do sistema ou com o Java que já vem no launcher do Minecraft, então
+  funciona mesmo quando o Windows pergunta "com qual app abrir" o `.jar`. Se não houver Java
+  nenhum, ele abre a pasta `mods` e explica como copiar o arquivo.
+- **Wet World refeito:**
+  - chuva própria em riscos finos que caem e inclinam com o vento (densidade, vento e brilho
+    ajustáveis; "Minecraft" volta à chuva original; neve continua a do Minecraft);
+  - chão molhado: o chão aberto escurece e ganha um brilho do céu em ângulos baixos;
+  - poças de verdade: manchas orgânicas de vários blocos, bordas suaves, refletem o céu (mais
+    quando você olha de lado), pegam o brilho do sol ou da lua, enchem com a chuva e secam
+    depois;
+  - ondinhas e respingos onde as gotas caem;
+  - segue a chuva que você vê (o tempo do módulo World conta);
+  - botão "Preview rain (20 s)" para testar sem esperar chover.
+- **Item Glow / Weapon Effects:** o brilho agora é desenhado atrás do item, então aparece em
+  volta da espada e não por cima dela. O glow virou anéis de cópias deslocadas, que seguem o
+  formato da lâmina.
+- **Aim Helper como no vídeo:**
+  - anel grosso e brilhante (um tubo com halo) que sobe e desce no corpo e inclina de leve;
+  - brilho no corpo do alvo: uma luz colorida no corpo inteiro e uma faixa mais forte que
+    acompanha o anel;
+  - luz suave em volta da silhueta;
+  - tudo com teste de profundidade: só aparece no que você realmente vê.
+- **Weapon Models melhorados:**
+  - lâminas com seção real (face plana e fio chanfrado mais claro), guardas e cabos com cantos
+    chanfrados, tsubas redondas e brilho metálico;
+  - animações novas:
+    - sacar a arma (Spin, Flip ou Rise);
+    - inspeção (Twirl, Turn over, Toss, Show off);
+    - golpes alternando de lado;
+    - respiração parada e pose de corrida;
+    - velocidade das animações ajustável.
+
 ## Mudanças na v1.18.0: o 1227 vira um client dentro do mod
 Instalação: Minecraft 1.8.9, depois Forge 1.8.9, depois `1227.jar` na pasta `mods`. Não precisa de launcher. Detalhes em `docs/CLIENT.md`, sistema visual em `docs/DESIGN.md` e testes em `docs/TEST-REPORT-1.18.md`.
 

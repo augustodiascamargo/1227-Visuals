@@ -306,6 +306,15 @@ public final class SkyModule extends Module {
         e.blue = (c & 255) / 255f * b;
     }
 
+    /** Colour at the top of the 1227 sky on screen right now (with tint and brightness), or -1 when off. */
+    public static int zenithColor() {
+        SkyModule s = INSTANCE;
+        if (s == null || !s.isEnabled() || s.shown == null) return -1;
+        int c = s.tinted(blend(s.previous == null ? s.shown.top : s.previous.top, s.shown.top, s.mix));
+        float b = Math.min(1f, s.brightness.f());
+        return ((int) (((c >> 16) & 255) * b) << 16) | ((int) (((c >> 8) & 255) * b) << 8) | (int) ((c & 255) * b);
+    }
+
     // ------------------------------------------------------------ colour
 
     private static int blend(int a, int b, float t) {

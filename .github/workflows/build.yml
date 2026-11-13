@@ -19,7 +19,12 @@ jobs:
           unzip -q gradle-2.14.1-bin.zip
       - name: Build (reobfuscated jar)
         run: ./gradle-2.14.1/bin/gradle setupCIWorkspace build --no-daemon
+      - name: Package (mod jar + Windows installer launcher)
+        run: |
+          mkdir -p dist
+          cp build/libs/*.jar dist/
+          cp "installer-windows/Instalar 1227.bat" dist/
       - uses: actions/upload-artifact@v4
         with:
           name: 1227-jar
-          path: build/libs/*.jar
+          path: dist/

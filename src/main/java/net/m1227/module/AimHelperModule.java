@@ -8,7 +8,11 @@ import net.m1227.core.CombatTracker;
 import net.m1227.core.Health;
 import net.m1227.core.Module;
 import net.m1227.core.Setting;
+import net.m1227.render.Silhouette;
 import net.m1227.ui.Gfx;
+import net.m1227.vfx.AuraShapes;
+import net.m1227.vfx.ParticleSystem;
+import net.m1227.vfx.Sprite;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.entity.AbstractClientPlayer;
 import net.minecraft.client.renderer.GlStateManager;
@@ -23,31 +27,40 @@ import net.minecraftforge.client.event.RenderWorldLastEvent;
 import net.minecraftforge.event.entity.player.AttackEntityEvent;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import org.lwjgl.opengl.GL11;
+import org.lwjgl.opengl.GL14;
 
 /**
- * Aim Helper: a visual reference ON the target. A ring that slides along the target's body, a
- * reference point (chest, head or the spot of the hitbox nearest your crosshair), a small card
- * next to the target (face, name, distance, health) and marks where your hits landed.
+ * Aim Helper: a visual reference ON the target. A thick glowing ring that slides up and down the
+ * target's body, a glow on the body itself (a soft colour over the whole body plus a brighter
+ * band that travels with the ring), a reference point (chest, head or the spot of the hitbox
+ * nearest your crosshair), a small card next to the target (face, name, distance, health) and
+ * marks where your hits landed.
  *
  * Purely visual: it never moves the camera, aims, attacks or changes reach. It only marks the
  * player you are fighting (your current target, or the one under the crosshair) and only while
  * you can actually see them; everything is depth-tested, so nothing shows through walls.
  */
 public final class AimHelperModule extends Module {
-    private final Setting.Mode marker, point;
-    private final Setting.Col color;
-    private final Setting.Num speed, ringSize;
-    private final Setting.Bool card, hitMarks;
+    private final Setting.Mode marker, point, bodyGlow;
+    private final Setting.Col color, glowColor;
+    private final Setting.Num speed, ringSize, thickness, tilt, glowStrength;
+    private final Setting.Bool card, hitMarks, rimGlow;
     private final List<double[]> marks = new ArrayList<double[]>();
 
     public AimHelperModule() {
-        super("Aim Helper", "A reference ring and point on your target, a target card and hit marks.", Category.COMBAT, false);
+        super("Aim Helper", "A glowing ring and body glow on your target, a reference point, a card and hit marks.", Category.COMBAT, false);
         marker = add(new Setting.Mode("Marker", "Ring", "Ring", "Point", "Ring + Point", "Brackets"));
         point = add(new Setting.Mode("Reference point", "Nearest to crosshair", "Nearest to crosshair", "Chest", "Head"))
                 .showIf(() -> marker.get().contains("Point"));
         color = add(new Setting.Col("Color", 0xFFFFFF));
         speed = add(new Setting.Num("Ring speed", 1.0, 0.2, 3.0, 0.1, "x")).showIf(() -> marker.get().contains("Ring"));
         ringSize = add(new Setting.Num("Ring size", 1.0, 0.6, 1.6, 0.05, "x")).showIf(() -> marker.get().contains("Ring"));
+        thickness = add(new Setting.Num("Ring thickness", 1.0, 0.4, 2.5, 0.05, "x")).showIf(() -> marker.get().contains("Ring"));
+        tilt = add(new Setting.Num("Ring tilt", 10, 0, 30, 1, " deg")).showIf(() -> marker.get().contains("Ring"));
+        bodyGlow = add(new Setting.Mode("Body glow", "Glow + Scan band", "Off", "Glow", "Scan band", "Glow + Scan band"));
+        glowColor = add(new Setting.Col("Glow color", 0x8B5CFF)).showIf(() -> !bodyGlow.is("Off"));
+        glowStrength = add(new Setting.Num("Glow strength", 0.7, 0.1, 1.5, 0.05, "x")).showIf(() -> !bodyGlow.is("Off"));
+        rimGlow = add(new Setting.Bool("Glow around the body", true)).showIf(() -> !bodyGlow.is("Off"));
         card = add(new Setting.Bool("Card next to the target", true));
         hitMarks = add(new Setting.Bool("Hit marks", true));
     }
@@ -102,18 +115,18 @@ public final class AimHelperModule extends Module {
         int c = color.rgb();
         double t = System.nanoTime() / 1e9;
         EntityLivingBase tg = target(mc);
-        state(true);
         if (tg != null) {
             AxisAlignedBB bb = box(tg, pt);
             double cx = (bb.minX + bb.maxX) / 2, cz = (bb.minZ + bb.maxZ) / 2;
             String m = marker.get();
+            // the ring slides from the feet to the head and back, easing at both ends
+            double k = 0.5 - 0.5 * Math.cos(t * 2.2 * speed.get());
+            double ringY = bb.minY + 0.12 + (bb.maxY - bb.minY - 0.24) * k;
+            if (!bodyGlow.is("Off")) bodyGlow(mc, tg, bb, pt, ringY, t);
+            state(true);
             if (m.contains("Ring")) {
-                // slides from the feet to the head and back
-                double k = 0.5 - 0.5 * Math.cos(t * 2.2 * speed.get());
-                double y = bb.minY + 0.1 + (bb.maxY - bb.minY - 0.2) * k;
-                float r = (float) ((bb.maxX - bb.minX) * 0.5 + 0.18) * ringSize.f();
-                ring(cx - rm.viewerPosX, y - rm.viewerPosY, cz - rm.viewerPosZ, r, 0.045f, c, 0.95f);
-                ring(cx - rm.viewerPosX, y - rm.viewerPosY, cz - rm.viewerPosZ, r, 0.16f, c, 0.18f);
+                float r = (float) ((bb.maxX - bb.minX) * 0.5 + 0.2) * ringSize.f();
+                thickRing(cx - rm.viewerPosX, ringY - rm.viewerPosY, cz - rm.viewerPosZ, r, thickness.f(), c, t);
             }
             if (m.contains("Point")) {
                 Vec3 p = point.is("Chest") ? new Vec3(cx, bb.minY + (bb.maxY - bb.minY) * 0.68, cz)
@@ -126,6 +139,8 @@ public final class AimHelperModule extends Module {
             }
             if (m.equals("Brackets")) brackets(rm, bb, c);
             if (card.on()) card(mc, rm, tg, bb, pt);
+        } else {
+            state(true);
         }
         // hit marks: a small X where each hit landed, fading in 0.6 s
         long now = System.currentTimeMillis();
@@ -146,6 +161,131 @@ public final class AimHelperModule extends Module {
         state(false);
     }
 
+    private final java.nio.DoubleBuffer plane = org.lwjgl.BufferUtils.createDoubleBuffer(4);
+
+    /**
+     * Light on the target's body. The body is drawn again with additive "constant colour"
+     * blending, so its own texture gets lit in the glow colour; depth-tested at the same depth,
+     * so only the parts you can see light up. The scan band is the same thing limited by two
+     * clip planes to a slice around the ring, in three nested slices for a soft falloff.
+     */
+    private void bodyGlow(Minecraft mc, EntityLivingBase tg, AxisAlignedBB bb, float pt, double ringY, double t) {
+        int gc = glowColor.rgb();
+        float gr = ((gc >> 16) & 255) / 255f, gg = ((gc >> 8) & 255) / 255f, gb = (gc & 255) / 255f;
+        float str = glowStrength.f();
+        float pulse = 0.8f + 0.2f * (float) Math.sin(t * 3.2);
+        boolean soft = bodyGlow.get().startsWith("Glow"), band = bodyGlow.get().contains("Scan");
+        RenderManager rm = mc.getRenderManager();
+        Silhouette.entityState(true);
+        GlStateManager.enableBlend();
+        GlStateManager.depthMask(false);
+        GlStateManager.depthFunc(GL11.GL_LEQUAL);
+        try {
+            if (soft) {
+                float a = 0.55f * str * pulse;
+                GL14.glBlendColor(Math.min(1f, gr * a), Math.min(1f, gg * a), Math.min(1f, gb * a), 1f);
+                GlStateManager.blendFunc(0x8001 /* GL_CONSTANT_COLOR */, GL11.GL_ONE);
+                Silhouette.render(tg, pt, 0, 0, 0);
+            }
+            if (band) {
+                double y = ringY - rm.viewerPosY;
+                float[] half = {0.34f, 0.2f, 0.09f};
+                float[] amt = {0.45f, 0.6f, 0.8f};
+                GL11.glEnable(GL11.GL_CLIP_PLANE0);
+                GL11.glEnable(GL11.GL_CLIP_PLANE1);
+                for (int i = 0; i < 3; i++) {
+                    clip(GL11.GL_CLIP_PLANE0, 0, 1, 0, -(y - half[i]));
+                    clip(GL11.GL_CLIP_PLANE1, 0, -1, 0, y + half[i]);
+                    float a = amt[i] * str;
+                    GL14.glBlendColor(Math.min(1f, (gr + 0.25f) * a), Math.min(1f, (gg + 0.25f) * a), Math.min(1f, (gb + 0.25f) * a), 1f);
+                    GlStateManager.blendFunc(0x8001 /* GL_CONSTANT_COLOR */, GL11.GL_ONE);
+                    Silhouette.render(tg, pt, 0, 0, 0);
+                }
+            }
+        } finally {
+            GL11.glDisable(GL11.GL_CLIP_PLANE0);
+            GL11.glDisable(GL11.GL_CLIP_PLANE1);
+            GL14.glBlendColor(0f, 0f, 0f, 0f);
+            GlStateManager.blendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
+            GlStateManager.depthMask(true);
+            Silhouette.entityState(false);
+        }
+        if (rimGlow.on()) {
+            // soft light around the silhouette: large glow sprites inside the body, the body hides their centre
+            ParticleSystem ps = ParticleSystem.INSTANCE;
+            double cx = (bb.minX + bb.maxX) / 2, cz = (bb.minZ + bb.maxZ) / 2, h = bb.maxY - bb.minY;
+            float a = 0.35f * str * pulse;
+            AuraShapes.sprite(ps, Sprite.GLOW, cx, bb.minY + h * 0.82, cz, 0.6f, 0f, false, gc, a);
+            AuraShapes.sprite(ps, Sprite.GLOW, cx, bb.minY + h * 0.5, cz, 0.85f, 0f, false, gc, a);
+            AuraShapes.sprite(ps, Sprite.GLOW, cx, bb.minY + h * 0.18, cz, 0.65f, 0f, false, gc, a * 0.8f);
+            AuraShapes.sprite(ps, Sprite.GLOW, cx, ringY, cz, 1.0f, 0f, false, gc, a * 0.9f);
+        }
+    }
+
+    private void clip(int which, double a, double b, double c, double d) {
+        plane.clear();
+        plane.put(a).put(b).put(c).put(d).flip();
+        GL11.glClipPlane(which, plane);
+    }
+
+    /**
+     * The ring: a short glowing tube (a wall you see from the side plus a flat band you see from
+     * above) with a soft halo on both sides, gently tilting as it moves. Camera-relative.
+     */
+    private void thickRing(double x, double y, double z, float r, float thick, int c, double t) {
+        float cr = ((c >> 16) & 255) / 255f, cg = ((c >> 8) & 255) / 255f, cb = (c & 255) / 255f;
+        float hh = 0.035f * thick, w = 0.05f * thick, halo = 0.14f * thick;
+        GlStateManager.pushMatrix();
+        GlStateManager.translate(x, y, z);
+        float tl = tilt.f();
+        if (tl > 0f) {
+            double dir = t * 0.9;
+            GlStateManager.rotate(tl * (float) Math.sin(t * 1.7), (float) Math.cos(dir), 0f, (float) Math.sin(dir));
+        }
+        int n = 72;
+        // halo on the flat ring, inside and outside
+        for (int side = -1; side <= 1; side += 2) {
+            GL11.glBegin(GL11.GL_QUAD_STRIP);
+            for (int i = 0; i <= n; i++) {
+                double an = Math.PI * 2 * i / n;
+                float co = (float) Math.cos(an), si = (float) Math.sin(an);
+                GL11.glColor4f(cr, cg, cb, 0.3f);
+                GL11.glVertex3f(co * r, 0f, si * r);
+                GL11.glColor4f(cr, cg, cb, 0f);
+                GL11.glVertex3f(co * (r + side * halo), 0f, si * (r + side * halo));
+            }
+            GL11.glEnd();
+        }
+        // halo above and below the tube wall
+        for (int side = -1; side <= 1; side += 2) {
+            GL11.glBegin(GL11.GL_QUAD_STRIP);
+            for (int i = 0; i <= n; i++) {
+                double an = Math.PI * 2 * i / n;
+                float co = (float) Math.cos(an), si = (float) Math.sin(an);
+                GL11.glColor4f(cr, cg, cb, 0.28f);
+                GL11.glVertex3f(co * r, side * hh, si * r);
+                GL11.glColor4f(cr, cg, cb, 0f);
+                GL11.glVertex3f(co * r, side * (hh + halo * 0.8f), si * r);
+            }
+            GL11.glEnd();
+        }
+        // the solid tube: outer wall, inner wall, top and bottom bands
+        float[][] walls = {{r + w / 2, -hh, r + w / 2, hh}, {r - w / 2, -hh, r - w / 2, hh}, {r - w / 2, hh, r + w / 2, hh}, {r - w / 2, -hh, r + w / 2, -hh}};
+        float br = Math.min(1f, cr + 0.15f), bg = Math.min(1f, cg + 0.15f), bb2 = Math.min(1f, cb + 0.15f);
+        for (float[] wl : walls) {
+            GL11.glBegin(GL11.GL_QUAD_STRIP);
+            for (int i = 0; i <= n; i++) {
+                double an = Math.PI * 2 * i / n;
+                float co = (float) Math.cos(an), si = (float) Math.sin(an);
+                GL11.glColor4f(br, bg, bb2, 0.95f);
+                GL11.glVertex3f(co * wl[0], wl[1], si * wl[0]);
+                GL11.glVertex3f(co * wl[2], wl[3], si * wl[2]);
+            }
+            GL11.glEnd();
+        }
+        GlStateManager.popMatrix();
+    }
+
     private static void state(boolean on) {
         if (on) {
             GlStateManager.disableLighting();
@@ -163,20 +303,6 @@ public final class AimHelperModule extends Module {
             GlStateManager.color(1f, 1f, 1f, 1f);
             GL11.glColor4f(1f, 1f, 1f, 1f);
         }
-    }
-
-    /** Horizontal ring band around (x, y, z), camera-relative. */
-    private static void ring(double x, double y, double z, float r, float w, int c, float a) {
-        float cr = ((c >> 16) & 255) / 255f, cg = ((c >> 8) & 255) / 255f, cb = (c & 255) / 255f;
-        GL11.glBegin(GL11.GL_QUAD_STRIP);
-        for (int i = 0; i <= 64; i++) {
-            double an = Math.PI * 2 * i / 64;
-            double co = Math.cos(an), si = Math.sin(an);
-            GL11.glColor4f(cr, cg, cb, a);
-            GL11.glVertex3d(x + co * (r - w / 2), y, z + si * (r - w / 2));
-            GL11.glVertex3d(x + co * (r + w / 2), y, z + si * (r + w / 2));
-        }
-        GL11.glEnd();
     }
 
     /** Pushes a matrix facing the camera at a world point; 1 unit = 1/40 block. Caller pops. */

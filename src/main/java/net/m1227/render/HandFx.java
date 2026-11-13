@@ -61,17 +61,20 @@ public final class HandFx {
         return (w != null && w.firstPersonActive(mc.thePlayer)) || (g != null && g.isEnabled() && held != null && g.applies(held));
     }
 
-    /** Called right after the held item is drawn, with the hand transform still applied. */
-    void afterItem(Minecraft mc, EntityPlayerSP p, ItemStack stack) {
+    /**
+     * Called right before the held item is drawn, with the hand transform applied. Glow, outline
+     * and blade aura go here: they write no depth, so the real item drawn afterwards covers them
+     * and they only show around its edges, never on top of the blade.
+     */
+    void beforeItem(Minecraft mc, EntityPlayerSP p, ItemStack stack) {
         WeaponEffectsModule w = WeaponEffectsModule.INSTANCE;
         ItemGlowModule g = ItemGlowModule.INSTANCE;
-        boolean weapon = w != null && w.firstPersonActive(p);
+        boolean weapon = w != null && w.firstPersonActive(p) && w.bladeGlow();
         net.m1227.module.WeaponModelsModule wm = net.m1227.module.WeaponModelsModule.INSTANCE;
-        // glow copies redraw the vanilla model, which would show through a custom 3D model
-        boolean glow = g != null && g.isEnabled() && g.applies(stack) && (wm == null || !wm.replaces(stack));
-        weaponThisFrame = weapon;
-        boolean arcs = (weapon && w.lightningArcs()) || (wm != null && wm.lightning() && wm.replaces(stack));
-        if (!weapon && !glow && !arcs) return;
+        boolean custom = wm != null && wm.replaces(stack);
+        // glow copies redraw the vanilla model, which would not match a custom 3D model
+        boolean glow = g != null && g.isEnabled() && g.applies(stack) && !custom;
+        if (!weapon && !glow) return;
         IBakedModel model = mc.getRenderItem().getItemModelMesher().getItemModel(stack);
         if (model == null) return;
         GlStateManager.pushMatrix();
@@ -79,8 +82,29 @@ public final class HandFx {
         // then 0.5x and a -0.5 offset into the model's 0..1 space
         if (!model.isGui3d()) GlStateManager.scale(2.0F, 2.0F, 2.0F);
         model.getItemCameraTransforms().applyTransform(ItemCameraTransforms.TransformType.FIRST_PERSON);
-        if (glow && g.outlineOn()) outlineCopies(mc, stack, model, g);
         if (glow && g.glowOn()) glowCopies(mc, stack, model, g);
+        if (glow && g.outlineOn()) outlineCopies(mc, stack, model, g);
+        if (weapon && !custom) {
+            GlStateManager.scale(0.5F, 0.5F, 0.5F);
+            GlStateManager.translate(-0.5F, -0.5F, -0.5F);
+            bladeAura(w, w.bladeStart(), w.bladeEnd());
+        }
+        GlStateManager.popMatrix();
+    }
+
+    /** Called right after the held item is drawn, with the hand transform still applied. */
+    void afterItem(Minecraft mc, EntityPlayerSP p, ItemStack stack) {
+        WeaponEffectsModule w = WeaponEffectsModule.INSTANCE;
+        boolean weapon = w != null && w.firstPersonActive(p);
+        net.m1227.module.WeaponModelsModule wm = net.m1227.module.WeaponModelsModule.INSTANCE;
+        weaponThisFrame = weapon;
+        boolean arcs = (weapon && w.lightningArcs()) || (wm != null && wm.lightning() && wm.replaces(stack));
+        if (!weapon && !arcs) return;
+        IBakedModel model = mc.getRenderItem().getItemModelMesher().getItemModel(stack);
+        if (model == null) return;
+        GlStateManager.pushMatrix();
+        if (!model.isGui3d()) GlStateManager.scale(2.0F, 2.0F, 2.0F);
+        model.getItemCameraTransforms().applyTransform(ItemCameraTransforms.TransformType.FIRST_PERSON);
         GlStateManager.scale(0.5F, 0.5F, 0.5F);
         GlStateManager.translate(-0.5F, -0.5F, -0.5F);
         if (arcs) {
@@ -94,11 +118,7 @@ public final class HandFx {
             arcColor = weapon ? w.col0() : wm.glowColor();
             arcsNow = true;
         }
-        if (weapon) {
-            float b0 = w.bladeStart(), b1 = w.bladeEnd();
-            if (w.bladeGlow()) bladeAura(w, b0, b1);
-            record(w, b0, b1, p.getSwingProgress(0f));
-        }
+        if (weapon) record(w, w.bladeStart(), w.bladeEnd(), p.getSwingProgress(0f));
         GlStateManager.popMatrix();
     }
 
@@ -106,7 +126,7 @@ public final class HandFx {
 
     /**
      * Contour around the held item: solid-colour silhouettes of the item shifted in 8 directions
-     * in its own plane, pushed behind the real item with polygon offset so only the rim shows.
+     * in its own plane. Drawn before the real item, which then covers the middle: only the rim shows.
      */
     private void outlineCopies(Minecraft mc, ItemStack stack, IBakedModel model, ItemGlowModule g) {
         int c = g.color(time);
@@ -117,8 +137,6 @@ public final class HandFx {
         GlStateManager.enableBlend();
         GlStateManager.tryBlendFuncSeparate(770, 771, 1, 0);
         GlStateManager.depthMask(false);
-        GL11.glEnable(GL11.GL_POLYGON_OFFSET_FILL);
-        GL11.glPolygonOffset(2f, 4f);
         Silhouette.begin(c, a);
         for (int i = 0; i < 8; i++) {
             double ang = Math.PI * 2 * i / 8;
@@ -128,13 +146,16 @@ public final class HandFx {
             GlStateManager.popMatrix();
         }
         Silhouette.end();
-        GL11.glPolygonOffset(0f, 0f);
-        GL11.glDisable(GL11.GL_POLYGON_OFFSET_FILL);
         GlStateManager.depthMask(true);
         GlStateManager.enableLighting();
         GlStateManager.color(1f, 1f, 1f, 1f);
     }
 
+    /**
+     * Soft glow around the item: rings of tinted copies shifted outwards in the item's plane
+     * (8 directions per ring, fainter the further out), added on top of what is behind the
+     * hand. Drawn before the real item, so the glow only shows around the blade's edges.
+     */
     private void glowCopies(Minecraft mc, ItemStack stack, IBakedModel model, ItemGlowModule g) {
         int layers = g.layers();
         float pulse = g.pulse(time);
@@ -142,17 +163,21 @@ public final class HandFx {
         float r = ((c >> 16) & 255) / 255f, gr = ((c >> 8) & 255) / 255f, b = (c & 255) / 255f;
         mc.getTextureManager().bindTexture(TextureMap.locationBlocksTexture);
         GlStateManager.disableLighting();
-        for (int k = 1; k <= layers; k++) {
-            float s = 1f + g.spread() * k / layers;
-            float a = g.intensity() * pulse * (1.15f - k / (float) (layers + 1));
-            GlStateManager.enableBlend();
-            GlStateManager.depthMask(false);
+        GlStateManager.enableBlend();
+        GlStateManager.depthMask(false);
+        GlStateManager.blendFunc(0x8001 /* GL_CONSTANT_COLOR */, GL11.GL_ONE);
+        float reach = 0.02f + g.spread() * 0.3f; // 0.12 spread ~ 2 item pixels
+        for (int k = layers; k >= 1; k--) {
+            float rad = reach * k / layers;
+            float a = g.intensity() * pulse * (1.1f - k / (float) (layers + 1)) * 0.3f;
             GL14.glBlendColor(r * a, gr * a, b * a, 1f);
-            GlStateManager.blendFunc(0x8001 /* GL_CONSTANT_COLOR */, GL11.GL_ONE);
-            GlStateManager.pushMatrix();
-            GlStateManager.scale(s, s, s);
-            mc.getRenderItem().renderItem(stack, model);
-            GlStateManager.popMatrix();
+            for (int i = 0; i < 8; i++) {
+                double ang = Math.PI * 2 * (i + (k & 1) * 0.5) / 8;
+                GlStateManager.pushMatrix();
+                GlStateManager.translate((float) Math.cos(ang) * rad, (float) Math.sin(ang) * rad, 0f);
+                mc.getRenderItem().renderItem(stack, model);
+                GlStateManager.popMatrix();
+            }
         }
         GL14.glBlendColor(0f, 0f, 0f, 0f);
         GlStateManager.blendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
@@ -171,7 +196,7 @@ public final class HandFx {
         float x0 = bx(b0), x1 = bx(b1);
         float pulse = 0.75f + 0.25f * (float) Math.sin(time * 4f);
         float a = w.bladeGlowAlpha() * pulse;
-        float wd = 0.12f + 0.04f * (float) Math.sin(time * 3f);
+        float wd = 0.14f + 0.03f * (float) Math.sin(time * 3f);
         int c0 = w.col0(), c1 = w.col1();
         ParticleSystem.INSTANCE.bindAtlas();
         GlStateManager.enableTexture2D();
@@ -188,7 +213,7 @@ public final class HandFx {
         GL11.glBegin(GL11.GL_QUADS);
         for (int pass = 0; pass < 2; pass++) {
             float w0 = pass == 0 ? wd : wd * 0.35f;
-            float al = pass == 0 ? a : Math.min(1f, a * 1.6f);
+            float al = pass == 0 ? a : Math.min(1f, a * 0.8f);
             int cb = pass == 0 ? c0 : 0xFFFFFF, ct = pass == 0 ? c1 : ParticleSystem.mix(c1, 0xFFFFFF, 0.5f);
             // in-plane quad
             vtx(cb, al, uv[0], uv[3], x0 - ex + nx * w0, x0 - ey + ny * w0, 0.5f);
