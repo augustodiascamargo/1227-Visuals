@@ -115,3 +115,49 @@ Para testar no jogo:
     - Em terceira pessoa, o seu personagem ainda pisca vermelho (se "Keep red flash" estiver
       ligado).
     - O Hit Color e o Target HUD continuam funcionando.
+
+## v1.21.0
+
+Feito aqui:
+- **Compilação de checagem** de todo o código (222 arquivos), com a análise de fluxo do javac.
+  Nenhum erro do código do 1227. Sobram só os de classes do Minecraft/Forge, ausentes fora do
+  Gradle.
+- **APIs novas de rede, pacotes, entidades e opções:** conferidas nos fontes do MCP 1.8.9 e do
+  Forge 1.8.9.
+- **Testes:**
+  - `PvpPerfTest`, 8 testes novos: percentis, 1% low, jitter RFC 3550, janelas de tempo, regras de
+    classificação dos hits, taxa de feedback, e o status ping contra um servidor local de teste que
+    fala o protocolo 1.8;
+  - `LyricsTest` (15) e `SettingTest` + `PureLogicTest` (12) passaram de novo.
+- **Busca por opções usadas antes de serem criadas:** nenhum caso.
+
+**Não feito aqui:** nenhum benchmark dentro do jogo, porque não dá para rodar o Minecraft neste
+ambiente. Por isso não há números de antes e depois.
+
+### Para testar no jogo
+
+Registre sempre: configuração, cenário, duração, FPS, frame time, 1% low, memória e latência.
+
+29. **Mesmo lugar, mesma direção, A/B de 2 x 20 s.** Rode em quatro cenários: mundo vazio, muitos
+    blocos, muitas entidades, muitas partículas e cosméticos.
+    - Compare cada preset PvP contra a sua configuração.
+    - O resultado deve dizer "scene changed" se você se mexer.
+30. **FPS limitado e ilimitado, VSync ligado e desligado** (Low Latency Mode). Depois "Measure
+    stable frame time" e compare o 1% low com e sem o limite medido.
+31. **Background FPS:** troque de janela durante a partida e volte. O jogo deve responder no
+    primeiro frame.
+32. **Servidor PvP com poucos e com muitos jogadores:**
+    - Combat tab: tentativas e níveis;
+    - um amigo batendo no mesmo alvo deve gerar "Weak";
+    - bater durante a imunidade deve gerar "Unknown".
+33. **Latency Monitor:**
+    - ping baixo e alto (servidor distante);
+    - variação (um download rodando);
+    - queda de conexão (desligue o Wi-Fi por alguns segundos): deve aparecer uma "stall" e,
+      depois, uma desconexão.
+34. **Troca rápida de alvos, combos, W-tap e blockhit:** confira a Timeline e o W-Tap Trainer.
+35. **Input Monitor:** o "wait for tick" deve ficar em média perto de 25 ms em qualquer FPS.
+36. **Competitive Mode:** abra o Preview, desmarque um módulo, ligue, reinicie o jogo e desligue.
+    Tudo deve voltar como era.
+37. **PC fraco (CPU e GPU):** o Low-End PvP e a Dynamic Quality. O Overview deve mostrar a
+    qualidade cosmética baixando nas lutas.

@@ -61,8 +61,13 @@ public final class ShockwaveModule extends Module {
 
     @SubscribeEvent
     public void onKillEvent(CombatTracker.KillEvent e) {
-        if (!onKill.on()) return;
-        trigger(e.target.posX, e.target.posY, e.target.posZ, 0.6f);
+        net.m1227.vfx.ParticleSystem.beginCombat();
+        try {
+            if (!onKill.on()) return;
+            trigger(e.target.posX, e.target.posY, e.target.posZ, 0.6f);
+        } finally {
+            net.m1227.vfx.ParticleSystem.endCombat();
+        }
     }
 
     @SubscribeEvent

@@ -162,7 +162,7 @@ public final class WeaponEffectsModule extends Module {
             List<EntityPlayer> list = mc.theWorld.playerEntities;
             for (int i = 0; i < list.size(); i++) {
                 EntityPlayer o = list.get(i);
-                if (o == mc.thePlayer || o.isInvisible() || !holding(o)) continue;
+                if (o == mc.thePlayer || o.isInvisible() || !holding(o) || !net.m1227.client.perf.EffectBudget.allow(net.m1227.client.perf.EffectBudget.Kind.WEAPON, o)) continue;
                 blade(o, e.partialTicks, false);
                 if (ps.inRange(tip[0], tip[1], tip[2])) idle(ps, 0.6f);
             }
@@ -329,24 +329,29 @@ public final class WeaponEffectsModule extends Module {
 
     @SubscribeEvent
     public void onHitEvent(CombatTracker.HitEvent e) {
-        if (!onHit.on()) return;
-        ParticleSystem ps = ParticleSystem.INSTANCE;
-        EntityLivingBase tgt = e.target;
-        double x = tgt.posX - e.dx * tgt.width * 0.5, y = tgt.posY + tgt.height * 0.6, z = tgt.posZ - e.dz * tgt.width * 0.5;
-        if (!ps.inRange(x, y, z)) return;
-        int t = type() / 4, c0 = c0(), c1 = c1();
-        float b = boost();
-        int n = Math.round(10 * b * PerformanceModule.qualityScale());
-        for (int i = 0; i < n; i++) {
-            float vx = e.dx * 2f + ps.rand(-1.5f, 1.5f), vy = ps.rand(0f, 2f), vz = e.dz * 2f + ps.rand(-1.5f, 1.5f);
-            emit(ps, t, x, y, z, vx, vy, vz, fx.size.f() * 1.2f, fx.duration.f(), c0, c1, fx.alpha());
-        }
-        if (t == 5) {
-            Arcs.INSTANCE.spawn(x, y + 0.6, z, x + ps.rand(-0.6f, 0.6f), y - 0.6, z + ps.rand(-0.6f, 0.6f), 0.2f, 0.15f, c0, fx.alpha());
-        }
-        if (CombatTracker.combo() >= 3) {
-            Particle ring = ps.glow(x, y, z, 0f, 0f, 0f, 0.35f, 0.2f, 0.9f * b, c1, c0, fx.alpha());
-            if (ring != null) ring.sprite = Sprite.HALO;
+        net.m1227.vfx.ParticleSystem.beginCombat();
+        try {
+            if (!onHit.on()) return;
+            ParticleSystem ps = ParticleSystem.INSTANCE;
+            EntityLivingBase tgt = e.target;
+            double x = tgt.posX - e.dx * tgt.width * 0.5, y = tgt.posY + tgt.height * 0.6, z = tgt.posZ - e.dz * tgt.width * 0.5;
+            if (!ps.inRange(x, y, z)) return;
+            int t = type() / 4, c0 = c0(), c1 = c1();
+            float b = boost();
+            int n = Math.round(10 * b * PerformanceModule.qualityScale());
+            for (int i = 0; i < n; i++) {
+                float vx = e.dx * 2f + ps.rand(-1.5f, 1.5f), vy = ps.rand(0f, 2f), vz = e.dz * 2f + ps.rand(-1.5f, 1.5f);
+                emit(ps, t, x, y, z, vx, vy, vz, fx.size.f() * 1.2f, fx.duration.f(), c0, c1, fx.alpha());
+            }
+            if (t == 5) {
+                Arcs.INSTANCE.spawn(x, y + 0.6, z, x + ps.rand(-0.6f, 0.6f), y - 0.6, z + ps.rand(-0.6f, 0.6f), 0.2f, 0.15f, c0, fx.alpha());
+            }
+            if (CombatTracker.combo() >= 3) {
+                Particle ring = ps.glow(x, y, z, 0f, 0f, 0f, 0.35f, 0.2f, 0.9f * b, c1, c0, fx.alpha());
+                if (ring != null) ring.sprite = Sprite.HALO;
+            }
+        } finally {
+            net.m1227.vfx.ParticleSystem.endCombat();
         }
     }
 

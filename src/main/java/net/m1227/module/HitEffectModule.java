@@ -47,10 +47,16 @@ public final class HitEffectModule extends Module {
 
     @SubscribeEvent
     public void onHit(CombatTracker.HitEvent e) {
-        EntityLivingBase t = e.target;
-        play(t.posX - e.dx * t.width * 0.5, t.posY + t.height * 0.65, t.posZ - e.dz * t.width * 0.5,
-                e.dx, e.dy, e.dz, t.posY);
-        if (e.critical && critFx.on()) crit(t.posX, t.posY + t.height * 0.8, t.posZ, e.dx, e.dz);
+        if (!net.m1227.client.perf.EffectBudget.hitEffect()) return; // Max hit effects per second (PvP Visual Optimization)
+        net.m1227.vfx.ParticleSystem.beginCombat();
+        try {
+            EntityLivingBase t = e.target;
+            play(t.posX - e.dx * t.width * 0.5, t.posY + t.height * 0.65, t.posZ - e.dz * t.width * 0.5,
+                    e.dx, e.dy, e.dz, t.posY);
+            if (e.critical && critFx.on()) crit(t.posX, t.posY + t.height * 0.8, t.posZ, e.dx, e.dz);
+        } finally {
+            net.m1227.vfx.ParticleSystem.endCombat();
+        }
     }
 
     /** Gold star burst plus a bright ring, only for real critical hits (falling, not on ground). */

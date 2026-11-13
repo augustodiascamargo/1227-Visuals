@@ -1,61 +1,70 @@
 package net.m1227.hud;
 
+import net.m1227.combat.HitEvidence;
+import net.m1227.core.CombatTracker;
 import net.m1227.core.Setting;
 import net.m1227.ui.Gfx;
-import net.minecraft.client.Minecraft;
-import net.minecraft.entity.EntityLivingBase;
-import net.minecraft.util.AxisAlignedBB;
-import net.minecraft.util.Vec3;
-import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.event.entity.player.AttackEntityEvent;
-import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 
 /**
- * Reach Display: the distance of your last hit, from your eyes to the target's hitbox (measured
- * the way Minecraft measures reach). Information only.
+ * Reach Analysis (1.21). Separates what used to be one number:
+ * <ul>
+ * <li>Attempt: eye to the target's hitbox (with the 0.1 border Minecraft adds for aiming) when
+ * you attacked, measured on your screen's positions;</li>
+ * <li>At feedback: the same distance when the damage feedback arrived (the target has moved by
+ * then, and the server judged the hit somewhere between the two);</li>
+ * <li>the attempt's classification from the Hit Registration Monitor (likely hit, weak,
+ * unconfirmed, unknown).</li>
+ * </ul>
+ * An analysis tool only: it never changes reach or hitboxes.
  */
 public final class ReachHud extends HudModule {
-    private double last = -1;
-    private long at;
-    private final Setting.Bool fade;
+    private final Setting.Bool fade, detail;
 
     public ReachHud() {
-        super("Reach Display", "Distance of your last hit.", 0.02, 0.62);
+        super("Reach Display", "Distance at your attack and at the damage feedback.", 0.02, 0.62);
         fade = add(new Setting.Bool("Fade after 3 s", false));
-        MinecraftForge.EVENT_BUS.register(new Object() {
-            @SubscribeEvent
-            public void onAttack(AttackEntityEvent e) {
-                Minecraft mc = Minecraft.getMinecraft();
-                if (!isEnabled() || e.entityPlayer != mc.thePlayer || !(e.target instanceof EntityLivingBase)) return;
-                Vec3 eye = mc.thePlayer.getPositionEyes(1f);
-                EntityLivingBase t = (EntityLivingBase) e.target;
-                float b = t.getCollisionBorderSize();
-                AxisAlignedBB bb = t.getEntityBoundingBox().expand(b, b, b);
-                double cx = Math.max(bb.minX, Math.min(eye.xCoord, bb.maxX)), cy = Math.max(bb.minY, Math.min(eye.yCoord, bb.maxY)),
-                        cz = Math.max(bb.minZ, Math.min(eye.zCoord, bb.maxZ));
-                last = Math.sqrt((cx - eye.xCoord) * (cx - eye.xCoord) + (cy - eye.yCoord) * (cy - eye.yCoord) + (cz - eye.zCoord) * (cz - eye.zCoord));
-                at = System.currentTimeMillis();
-            }
-        });
+        detail = add(new Setting.Bool("Show feedback distance and result", true));
     }
 
     @Override
     public float width() {
-        return 64;
+        return detail.on() ? 112 : 64;
     }
 
     @Override
     public float height() {
-        return 16;
+        return detail.on() ? 26 : 16;
     }
 
     @Override
     protected void draw(float x, float y, boolean editing) {
-        double v = editing && last < 0 ? 2.87 : last;
-        if (!editing && fade.on() && System.currentTimeMillis() - at > 3000) v = -1;
+        CombatTracker.Attempt a = CombatTracker.attempts > 0 ? CombatTracker.attempt(0) : null;
+        float v = a == null ? -1f : a.reachAttempt;
+        long age = a == null ? Long.MAX_VALUE : (System.nanoTime() - a.at) / 1_000_000L;
+        if (editing && v < 0) v = 2.87f;
+        if (!editing && fade.on() && age > 3000) v = -1f;
         panel(x, y, width(), height());
         String s = v < 0 ? "-- m" : String.format("%.2f m", v);
-        Gfx.text("Reach", x + 5, y + 4, LABEL);
+        Gfx.text(detail.on() ? "Attempt" : "Reach", x + 5, y + 4, LABEL);
         Gfx.text(s, x + width() - 5 - Gfx.textWidth(s), y + 4, 0xFFFFFFFF);
+        if (!detail.on()) return;
+        String fb;
+        int col = LABEL;
+        if (editing && a == null) {
+            fb = "3.05 m  ·  likely hit";
+            col = 0xFF3DDC97;
+        } else if (a == null || v < 0) {
+            fb = "-";
+        } else if (!a.finished) {
+            fb = a.reachFeedback >= 0 ? String.format("%.2f m  ·  checking", a.reachFeedback) : "checking...";
+        } else {
+            String r = a.level.likely() ? "likely hit" : a.level == HitEvidence.Level.WEAK ? "uncertain"
+                    : a.level == HitEvidence.Level.NONE ? "unconfirmed" : "unknown";
+            col = a.level.likely() ? 0xFF3DDC97 : a.level == HitEvidence.Level.WEAK ? 0xFFFFC24A
+                    : a.level == HitEvidence.Level.NONE ? 0xFFFF6B6B : LABEL;
+            fb = (a.reachFeedback >= 0 ? String.format("%.2f m  ·  ", a.reachFeedback) : "") + r;
+        }
+        Gfx.textScaled("Feedback", x + 5, y + 15, 0.82f, LABEL);
+        Gfx.textScaled(fb, x + width() - 5 - Gfx.textWidth(fb, 0.82f), y + 15, 0.82f, col);
     }
 }

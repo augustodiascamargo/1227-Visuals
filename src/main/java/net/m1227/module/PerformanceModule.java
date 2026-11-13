@@ -23,7 +23,7 @@ public final class PerformanceModule extends Module {
     public final Setting.Num particleCap, particleDistance;
     /** 1.20: separate distances and optional occlusion culling. 256 / 64 = off (vanilla). */
     public final Setting.Num playerDistance, itemDistance, blockEntityDistance;
-    public final Setting.Bool hideOccludedMobs, hideOccludedBlockEntities;
+    public final Setting.Bool hideOccludedMobs, hideOccludedBlockEntities, cullModBlockEntities;
     public final Setting.Mode compareWith;
     public final Setting.Bool backgroundLimit;
     public final Setting.Num backgroundFps;
@@ -42,14 +42,19 @@ public final class PerformanceModule extends Module {
         hideOccludedMobs = add(new Setting.Bool("Skip mobs hidden behind blocks", false));
         blockEntityDistance = add(new Setting.Num("Chest / sign / banner distance", 64, 8, 64, 4, "m"));
         hideOccludedBlockEntities = add(new Setting.Bool("Skip chests and signs hidden behind blocks", false));
+        cullModBlockEntities = add(new Setting.Bool("Also cull other mods' block entities", false))
+                .showIf(() -> hideOccludedBlockEntities.on() || blockEntityDistance.get() < 64);
         particleCap = add(new Setting.Num("Minecraft particle limit", 4000, 100, 4000, 100, ""));
         particleDistance = add(new Setting.Num("Minecraft particle distance", 64, 8, 64, 4, "m"));
         backgroundLimit = add(new Setting.Bool("Limit FPS when the game is in the background", true));
         backgroundFps = add(new Setting.Num("Background FPS", 15, 5, 60, 5, "")).showIf(() -> backgroundLimit.on());
         activePreset = add(new Setting.Mode("Active preset", "Custom", net.m1227.client.perf.PerfPresets.NAMES_WITH_CUSTOM)).showIf(() -> false);
+        add(new Setting.Action("Open Performance Dashboard", () -> net.m1227.client.menu.PerfDashboardScreen.open(0)));
+        // 1.21: every preset opens a preview of what it changes first
         for (final String n : net.m1227.client.perf.PerfPresets.NAMES) {
-            add(new Setting.Action("Preset: " + n, () -> net.m1227.client.perf.PerfPresets.apply(n)));
+            add(new Setting.Action("Preset: " + n, () -> net.m1227.client.perf.PerfPresets.preview(n)));
         }
+        add(new Setting.Action("Restore settings from before the last preset", net.m1227.client.perf.PerfPresets::restorePrevious));
         add(new Setting.Action("Run 30 s benchmark", () -> net.m1227.client.perf.Benchmark.start(30)));
         compareWith = add(new Setting.Mode("Compare with", "High FPS", net.m1227.client.perf.PerfPresets.NAMES));
         add(new Setting.Action("Compare current vs that preset (2 x 20 s)", net.m1227.client.perf.Benchmark::compareStart));
@@ -60,9 +65,13 @@ public final class PerformanceModule extends Module {
         return false;
     }
 
-    /** Multiplier applied to particle counts. */
+    /**
+     * Multiplier applied to particle counts: the Quality setting, times Dynamic Quality for
+     * cosmetic effects (combat feedback is never scaled down by Dynamic Quality).
+     */
     public static float qualityScale() {
         String q = INSTANCE.quality.get();
-        return q.equals("Low") ? 0.35f : q.equals("Medium") ? 0.7f : q.equals("Ultra") ? 1.35f : 1f;
+        float base = q.equals("Low") ? 0.35f : q.equals("Medium") ? 0.7f : q.equals("Ultra") ? 1.35f : 1f;
+        return net.m1227.vfx.ParticleSystem.inCombatContext() ? base : base * net.m1227.client.perf.DynamicQuality.factor();
     }
 }

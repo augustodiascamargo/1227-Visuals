@@ -27,11 +27,16 @@ public final class HitParticlesModule extends Module {
 
     @SubscribeEvent
     public void onAttack(AttackEntityEvent e) {
-        Minecraft mc = Minecraft.getMinecraft();
-        if (e.entityPlayer != mc.thePlayer || !(e.target instanceof EntityLivingBase)) return;
-        // vanilla already emits one burst when the hit is a real critical / enchanted; these are extra
-        int n = multiplier.i() - 1 + (alwaysCrit.on() ? 1 : 0);
-        for (int i = 0; i < n; i++) mc.effectRenderer.emitParticleAtEntity(e.target, EnumParticleTypes.CRIT);
-        if (alwaysSharp.on()) for (int i = 0; i < multiplier.i(); i++) mc.effectRenderer.emitParticleAtEntity(e.target, EnumParticleTypes.CRIT_MAGIC);
+        net.m1227.vfx.ParticleSystem.beginCombat();
+        try {
+            Minecraft mc = Minecraft.getMinecraft();
+            if (e.entityPlayer != mc.thePlayer || !(e.target instanceof EntityLivingBase)) return;
+            // vanilla already emits one burst when the hit is a real critical / enchanted; these are extra
+            int n = multiplier.i() - 1 + (alwaysCrit.on() ? 1 : 0);
+            for (int i = 0; i < n; i++) mc.effectRenderer.emitParticleAtEntity(e.target, EnumParticleTypes.CRIT);
+            if (alwaysSharp.on()) for (int i = 0; i < multiplier.i(); i++) mc.effectRenderer.emitParticleAtEntity(e.target, EnumParticleTypes.CRIT_MAGIC);
+        } finally {
+            net.m1227.vfx.ParticleSystem.endCombat();
+        }
     }
 }

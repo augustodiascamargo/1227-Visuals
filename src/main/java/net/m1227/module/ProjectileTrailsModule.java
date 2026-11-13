@@ -72,7 +72,9 @@ public final class ProjectileTrailsModule extends Module {
             return;
         }
         ParticleSystem ps = ParticleSystem.INSTANCE;
-        Map<Integer, double[]> seen = new HashMap<Integer, double[]>();
+        // 1.21: no new map or arrays every tick; each projectile keeps its own [x, y, z, tick]
+        tickNo++;
+        int budget = net.m1227.client.perf.EffectBudget.maxTrails();
         List<Entity> list = mc.theWorld.loadedEntityList;
         for (int i = 0; i < list.size(); i++) {
             Entity en = list.get(i);
@@ -80,20 +82,32 @@ public final class ProjectileTrailsModule extends Module {
             if (who.is("Only me") && owner(en) != mc.thePlayer) continue;
             if (!ps.inRange(en.posX, en.posY, en.posZ)) continue;
             double[] prev = last.get(en.getEntityId());
-            seen.put(en.getEntityId(), new double[]{en.posX, en.posY, en.posZ});
-            if (prev == null) continue;
-            double dx = en.posX - prev[0], dy = en.posY - prev[1], dz = en.posZ - prev[2];
+            if (prev == null) {
+                last.put(en.getEntityId(), new double[]{en.posX, en.posY, en.posZ, tickNo});
+                continue;
+            }
+            double px = prev[0], py = prev[1], pz = prev[2];
+            prev[0] = en.posX;
+            prev[1] = en.posY;
+            prev[2] = en.posZ;
+            prev[3] = tickNo;
+            double dx = en.posX - px, dy = en.posY - py, dz = en.posZ - pz;
             double d = Math.sqrt(dx * dx + dy * dy + dz * dz);
             if (d < 0.08) continue; // landed / stuck: no trail
+            if (budget-- <= 0) continue; // Maximum Trails (PvP Visual Optimization)
             int n = Math.max(1, Math.min(12, (int) Math.round(d * fx.amount.f() / 3.0)));
             for (int k = 0; k < n; k++) {
                 double t = k / (double) n;
-                spawn(ps, prev[0] + dx * t, prev[1] + dy * t + en.height * 0.5, prev[2] + dz * t, (float) (ps.time + i * 0.1 + t));
+                spawn(ps, px + dx * t, py + dy * t + en.height * 0.5, pz + dz * t, (float) (ps.time + i * 0.1 + t));
             }
         }
-        last.clear();
-        last.putAll(seen);
+        // forget projectiles not seen this tick
+        for (Iterator<double[]> it = last.values().iterator(); it.hasNext(); ) {
+            if (it.next()[3] != tickNo) it.remove();
+        }
     }
+
+    private long tickNo;
 
     private void spawn(ParticleSystem ps, double x, double y, double z, float phase) {
         String st = style.get();

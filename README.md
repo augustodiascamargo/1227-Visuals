@@ -183,6 +183,57 @@ nada depende de Lunar ou de outro launcher.
 O modelo do Tung Sahur (ZAHUR.fbx + textura) e a butterfly knife (.blend) foram enviados pelo usuário. Antes de
 publicar o 1227, confira a licença de cada um (por exemplo, se exigem crédito ao autor) e coloque o crédito aqui.
 
+## Mudanças na v1.21.0: PvP Performance
+
+Detalhes técnicos em `docs/PVP-PERFORMANCE.md`. Tudo é do lado do cliente: nada atrasa, descarta,
+altera ou cria pacotes, e nada muda alcance, hitbox, velocidade ou ping.
+
+- **Nova categoria PvP Performance:**
+  - **Competitive Mode:** desliga os visuais que você escolher, mostra a lista antes e devolve
+    tudo ao desligar.
+  - **Low Latency Mode:** limite de FPS (ilimitado, refresh, 2× refresh, custom ou "stable frame
+    time" medido), VSync e um modo opcional que limita a fila de frames do driver.
+  - **PvP Visual Optimization:** Dynamic Quality, reserva de partículas para efeitos de combate,
+    distância dos cosméticos e limites por tipo.
+  - **Latency Monitor** e **Input Monitor.**
+- **Performance Dashboard** (`/1227 perf`): Overview, Network, Combat, Input, Benchmark e Analyzer.
+  Cada valor diz se é medido, estimado, enviado pelo servidor ou indisponível.
+- **Hit Registration Monitor:**
+  - tentativas classificadas por evidência (Strong, Moderate, Weak, No confirmation, Unknown);
+  - Estimated Hit Feedback Rate;
+  - Combat Timeline;
+  - Hit Timing Analyzer.
+  - Substitui o antigo "hurtTime em 700 ms".
+- **Latency Monitor:**
+  - ping da tab (com idade), round trip medido por status ping, jitter (RFC 3550) e jitter do
+    keep-alive;
+  - TPS estimado, travadas, correções de posição;
+  - gráfico de 30 s, 60 s e 5 min.
+  - Perda de pacotes: N/A (TCP), explicado.
+- **HUDs novos:** PvP Performance HUD (17 itens, 4 layouts, 8 alertas) e Latency Graph.
+- **HUDs melhorados:**
+  - Reach Display separa a tentativa do feedback;
+  - W-Tap usa os pacotes de sprint enviados de verdade;
+  - Hit Delay mostra também o intervalo entre hits prováveis.
+- **Presets PvP:** Competitive, Low Latency, Maximum FPS, Low-End PvP, Balanced PvP e Visual PvP.
+  Todo preset abre uma prévia, e dá para restaurar o que havia antes.
+- **Benchmark:**
+  - P50, P95, P99 e o pior frame;
+  - gráfico de frame time;
+  - aviso quando a cena muda;
+  - metadados (resolução, VSync, limite, partículas separadas, módulos visuais);
+  - aquecimento maior depois de um preset.
+  - O A/B agora devolve também as opções de vídeo do Minecraft (antes elas ficavam com os valores
+    do preset B).
+- **Correções da auditoria:**
+  - o Background FPS não usa mais `Thread.sleep` no render;
+  - a Occlusion conta o limite por frame real (antes por fatias de 8 ms) e limpa o cache ao trocar
+    de mundo;
+  - o limitador de partículas pesa menos;
+  - o block entity culling não embrulha mais renderizadores de outros mods por padrão;
+  - menos alocações nos rastros de projétil e nos HUDs;
+  - cada HUD mede o próprio custo.
+
 ## Mudanças na v1.20.2
 
 - **Player FX e Arrival Effects viraram um módulo só:** o Player FX ganhou a opção "Style"

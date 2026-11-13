@@ -56,7 +56,7 @@ public final class WingsModule extends Module {
             List<EntityPlayer> list = mc.theWorld.playerEntities;
             for (int i = 0; i < list.size(); i++) {
                 EntityPlayer p = list.get(i);
-                if (p == mc.thePlayer || p.isInvisible() || p.getDistanceSqToEntity(mc.thePlayer) > 64 * 64) continue;
+                if (p == mc.thePlayer || p.isInvisible() || p.getDistanceSqToEntity(mc.thePlayer) > 64 * 64 || !net.m1227.client.perf.EffectBudget.allow(net.m1227.client.perf.EffectBudget.Kind.AURA, p)) continue;
                 if (!any) {
                     begin();
                     any = true;

@@ -162,14 +162,52 @@ public final class ParticleSystem {
         double dx = x - camX, dy = y - camY, dz = z - camZ;
         if (stage) return true;
         double d = PerformanceModule.INSTANCE.distance.get();
+        // PvP Visual Optimization: cosmetics have their own (shorter) distance, combat effects not
+        net.m1227.module.PvpVisualModule pv = net.m1227.module.PvpVisualModule.INSTANCE;
+        if (combatDepth == 0 && pv != null && pv.isEnabled()) d = Math.min(d, pv.cosmeticDistance());
         return dx * dx + dy * dy + dz * dz <= d * d;
+    }
+
+    // -------------------------------------------------------------- priority (1.21)
+
+    private static int combatDepth;
+    /** Spawns refused because of the budget since start (combat / cosmetic), for the dashboard. */
+    public static int refusedCombat, refusedCosmetic;
+
+    /**
+     * Marks the particles spawned until {@link #endCombat()} as combat feedback (hit, critical,
+     * kill): they may use the share of the particle budget kept free for them and are never
+     * reduced by Dynamic Quality. Main thread only; always pair with endCombat in a finally block.
+     */
+    public static void beginCombat() {
+        combatDepth++;
+    }
+
+    public static void endCombat() {
+        if (combatDepth > 0) combatDepth--;
+    }
+
+    public static boolean inCombatContext() {
+        return combatDepth > 0;
+    }
+
+    /** Most particles allowed for the current context. */
+    private int capNow() {
+        int cap = Math.min(pool.length, PerformanceModule.INSTANCE.maxParticles.i());
+        net.m1227.module.PvpVisualModule pv = net.m1227.module.PvpVisualModule.INSTANCE;
+        if (combatDepth == 0 && pv != null && pv.isEnabled() && pv.combatFirst()) cap = Math.round(cap * (1f - pv.combatReserve()));
+        return cap;
     }
 
     // -------------------------------------------------------------- spawn
 
     /** Returns a reset particle at the position, or null if capped or too far. */
     public Particle spawn(double x, double y, double z) {
-        if (count >= (stage ? pool.length : Math.min(pool.length, PerformanceModule.INSTANCE.maxParticles.i()))) return null;
+        if (count >= (stage ? pool.length : capNow())) {
+            if (combatDepth > 0) refusedCombat++;
+            else refusedCosmetic++;
+            return null;
+        }
         if (!inRange(x, y, z)) return null;
         Particle p = pool[count++];
         p.reset();

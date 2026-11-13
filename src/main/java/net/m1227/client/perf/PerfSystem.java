@@ -24,15 +24,25 @@ import org.lwjgl.opengl.Display;
  * - Minecraft particle limit and distance: the oldest particles above the cap and the ones beyond
  *   the distance are removed each tick (the internal particle lists are found by type and checked
  *   before use; if they do not look as expected the limiter switches itself off);
- * - Background FPS: while the window is not focused, frames are paced to the chosen FPS (never
- *   while focused, so it cannot add input lag).
+ * - FPS control (1.21): one place decides Minecraft's frame cap each frame: Background FPS while
+ *   the window is not focused, the Low Latency mode's cap while it is on, otherwise your own
+ *   setting. It only changes the value Minecraft's own limiter reads (Display.sync after the
+ *   buffer swap), so nothing sleeps inside our events any more; before 1.21 Background FPS
+ *   called Thread.sleep in the render event. The moment the window gets focus back, the next
+ *   frame already uses your normal cap.
  * All of it only affects drawing on your screen.
  */
 public final class PerfSystem {
     public static final PerfSystem INSTANCE = new PerfSystem();
     private Field fxLayers;
     private boolean fxFailed;
-    private long lastFrame;
+    private int limiterTick;
+    /** Minecraft particles alive at the last limiter pass (-1 = unknown). */
+    public static volatile int vanillaParticles = -1;
+    // FPS control
+    private int userLimit = -1, applied = -1;
+    private boolean userVsync, vsyncApplied;
+    private boolean vsyncOverride;
 
     private PerfSystem() {}
 
@@ -133,7 +143,12 @@ public final class PerfSystem {
         double d2 = dist * dist;
         int total = 0;
         for (List<EntityFX>[] row : l) for (List<EntityFX> list : row) total += list.size();
+        vanillaParticles = total;
         int over = Math.max(0, total - cap);
+        // 1.21: the distance pass walks every particle, so it runs every 5th tick (4 per second);
+        // the over-the-cap pass only runs when there is something to remove
+        boolean distPass = dist < 64 && (++limiterTick % 5) == 0;
+        if (over == 0 && !distPass) return;
         for (List<EntityFX>[] row : l) {
             for (List<EntityFX> list : row) {
                 for (int i = 0; i < list.size(); i++) {
@@ -144,7 +159,7 @@ public final class PerfSystem {
                         // oldest first: lists are in spawn order
                         fx.setDead();
                         over--;
-                    } else if (dist < 64 && fx.getDistanceSqToEntity(view) > d2) {
+                    } else if (distPass && fx.getDistanceSqToEntity(view) > d2) {
                         fx.setDead();
                     }
                 }
@@ -152,24 +167,80 @@ public final class PerfSystem {
         }
     }
 
+    @SubscribeEvent(priority = EventPriority.HIGHEST)
+    public void onFrameStart(TickEvent.RenderTickEvent e) {
+        if (e.phase != TickEvent.Phase.START) return;
+        Occlusion.newFrame();
+        net.m1227.module.LowLatencyModule ll = net.m1227.module.LowLatencyModule.INSTANCE;
+        // caps above Minecraft's limiter range (260+ = "unlimited" for Minecraft) use the same
+        // LWJGL limiter Minecraft uses, here at the start of the frame
+        int extra = ll != null ? ll.extraCap() : 0;
+        if (extra > 0 && Display.isActive()) Display.sync(extra);
+    }
+
     @SubscribeEvent
     public void onFrame(TickEvent.RenderTickEvent e) {
         if (e.phase != TickEvent.Phase.END) return;
         Benchmark.frame();
+        applyFpsControl();
+        net.m1227.module.LowLatencyModule ll = net.m1227.module.LowLatencyModule.INSTANCE;
+        if (ll != null && ll.finishFrames()) org.lwjgl.opengl.GL11.glFinish();
+    }
+
+    /** The cap Minecraft should use right now. */
+    private int wantedLimit(Minecraft mc, int user) {
         PerformanceModule p = p();
-        long now = System.nanoTime();
-        if (p.backgroundLimit.on() && !Display.isActive() && !Benchmark.running()) {
-            long frame = (long) (1e9 / Math.max(5, p.backgroundFps.get()));
-            long wait = Math.min(200_000_000L, frame - (now - lastFrame));
-            if (wait > 0) {
-                try {
-                    Thread.sleep(wait / 1000000L, (int) (wait % 1000000L));
-                } catch (InterruptedException ignored) {
-                    Thread.currentThread().interrupt();
-                }
-            }
-            now = System.nanoTime();
+        if (p.backgroundLimit.on() && !Display.isActive() && !Benchmark.running()) return Math.max(5, p.backgroundFps.i());
+        // the video settings screen shows and saves your own value
+        if (mc.currentScreen instanceof net.minecraft.client.gui.GuiVideoSettings) return user;
+        net.m1227.module.LowLatencyModule ll = net.m1227.module.LowLatencyModule.INSTANCE;
+        if (ll != null && ll.isEnabled()) {
+            int c = ll.vanillaCap();
+            if (c > 0) return c;
         }
-        lastFrame = now;
+        return user;
+    }
+
+    private void applyFpsControl() {
+        Minecraft mc = Minecraft.getMinecraft();
+        net.minecraft.client.settings.GameSettings gs = mc.gameSettings;
+        // anything that changed the value since we last set it (you, a preset, another mod) is
+        // the new "own" value
+        if (applied < 0 || gs.limitFramerate != applied) userLimit = gs.limitFramerate;
+        int want = wantedLimit(mc, userLimit);
+        if (gs.limitFramerate != want) gs.limitFramerate = want;
+        applied = want;
+        // VSync from the Low Latency mode (restored when it is off)
+        net.m1227.module.LowLatencyModule ll = net.m1227.module.LowLatencyModule.INSTANCE;
+        Boolean v = ll != null && ll.isEnabled() && !(mc.currentScreen instanceof net.minecraft.client.gui.GuiVideoSettings) ? ll.vsyncWanted() : null;
+        if (v != null) {
+            if (!vsyncOverride) {
+                userVsync = gs.enableVsync;
+                vsyncOverride = true;
+            }
+            if (gs.enableVsync != v || !vsyncApplied) {
+                gs.enableVsync = v;
+                Display.setVSyncEnabled(v);
+                vsyncApplied = true;
+            }
+        } else if (vsyncOverride) {
+            vsyncOverride = false;
+            vsyncApplied = false;
+            gs.enableVsync = userVsync;
+            Display.setVSyncEnabled(userVsync);
+        }
+    }
+
+    /** Your own frame cap and VSync (not the temporary ones), e.g. for presets and reports. */
+    public static int userFrameLimit() {
+        return INSTANCE.userLimit < 0 ? Minecraft.getMinecraft().gameSettings.limitFramerate : INSTANCE.userLimit;
+    }
+
+    /** Puts your own values back before anything saves options.txt. */
+    public static void restoreUserVideo() {
+        Minecraft mc = Minecraft.getMinecraft();
+        if (INSTANCE.userLimit >= 0) mc.gameSettings.limitFramerate = INSTANCE.userLimit;
+        if (INSTANCE.vsyncOverride) mc.gameSettings.enableVsync = INSTANCE.userVsync;
+        INSTANCE.applied = -1;
     }
 }

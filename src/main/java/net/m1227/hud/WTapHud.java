@@ -1,156 +1,86 @@
 package net.m1227.hud;
 
+import net.m1227.combat.CombatLog;
 import net.m1227.core.Setting;
+import net.m1227.net.NetObserver;
 import net.m1227.ui.Gfx;
-import net.minecraft.client.Minecraft;
-import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.event.entity.player.AttackEntityEvent;
-import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
-import net.minecraftforge.fml.common.gameevent.TickEvent;
 
 /**
- * W-Tap Indicator: feedback on your sprint resets. In 1.8 the server stops your sprint after a
- * sprint hit; the next hit only gets the extra knockback if you reset sprint in between (release
- * W or stop sprinting for at least one tick, then sprint again). This HUD estimates that from your
- * own sprint state at the end of each tick (the state the game sends) and grades every hit:
- * Perfect (1-2 tick reset), Good (3-5), Slow (6+), No reset, No sprint.
+ * W-Tap Trainer (1.21; was W-Tap Indicator). In 1.8 the server ends your sprint after a sprint
+ * hit; the next hit only gets the sprint knockback if a new "start sprinting" reaches the server
+ * first. This HUD reads the sprint packets your game actually sent, in the exact order they were
+ * sent with your attacks:
+ * <ul>
+ * <li>observed: when "stop sprinting" and "start sprinting" were sent, and when the attack was
+ * sent;</li>
+ * <li>inferred: whether the server counted the attack as a sprint hit (it assumes the server ended
+ * the sprint after your previous sprint hit).</li>
+ * </ul>
+ * Grades: Perfect (reset of 2 ticks or less), Good (up to ~5 ticks), Slow, No reset, No sprint.
+ * Also shows the last resets and how consistent they were.
  *
- * Read-only practice tool: it only watches your keys and sprint state; it never presses, releases
- * or changes anything.
+ * Read-only practice tool: it only watches; it never presses, releases or sends anything.
  */
 public final class WTapHud extends HudModule {
-    private static final int HIST = 40;
-    private final byte[] hist = new byte[HIST]; // bit0 sprinting, bit1 forward held, bit2 hit
-    private int head;
-    private boolean lastSent, serverSprint, pendingHit;
-    private int sinceHit = 999, resetLen, releaseDelay = -1;
-    private String grade = "";
-    private int gradeColor = 0xFFFFFFFF;
-    private long gradeAt;
-    private int hits, sprintHits, perfect;
     private final Setting.Bool timeline, stats;
 
     public WTapHud() {
-        super("W-Tap Indicator", "Grades your sprint resets (W-taps) between hits.", 0.44, 0.70);
-        timeline = add(new Setting.Bool("Timeline", true));
+        super("W-Tap Indicator", "Grades your sprint resets from the sprint packets you sent.", 0.44, 0.70);
+        timeline = add(new Setting.Bool("Last resets", true));
         stats = add(new Setting.Bool("Session stats", true));
-        MinecraftForge.EVENT_BUS.register(new Object() {
-            @SubscribeEvent
-            public void onAttack(AttackEntityEvent e) {
-                if (!isEnabled() || e.entityPlayer != Minecraft.getMinecraft().thePlayer) return;
-                hit(e.entityPlayer.isSprinting());
-            }
-
-            @SubscribeEvent
-            public void onTick(TickEvent.ClientTickEvent e) {
-                if (e.phase == TickEvent.Phase.END && isEnabled()) tick();
-            }
-        });
-    }
-
-    private void tick() {
-        Minecraft mc = Minecraft.getMinecraft();
-        if (mc.thePlayer == null) return;
-        boolean sprint = mc.thePlayer.isSprinting();
-        boolean fwd = mc.gameSettings.keyBindForward.isKeyDown();
-        // the game sends a sprint change only when the state at the end of the tick differs from the last one sent
-        if (sprint != lastSent) {
-            lastSent = sprint;
-            serverSprint = sprint;
-        }
-        if (sinceHit < 999) sinceHit++;
-        if (!sprint) {
-            if (resetLen == 0) releaseDelay = sinceHit;
-            resetLen++;
-        }
-        hist[head] = (byte) ((sprint ? 1 : 0) | (fwd ? 2 : 0) | (pendingHit ? 4 : 0));
-        head = (head + 1) % HIST;
-        pendingHit = false;
-    }
-
-    private void hit(boolean clientSprinting) {
-        boolean effective = serverSprint;
-        boolean chained = sinceHit <= 30; // previous hit within 1.5 s
-        hits++;
-        if (effective) {
-            sprintHits++;
-            if (!chained) {
-                set("Sprint hit", 0xFF3DDC97);
-            } else if (resetLen <= 2) {
-                perfect++;
-                set("Perfect", 0xFF3DDC97);
-            } else if (resetLen <= 5) {
-                set("Good", 0xFFB6E35A);
-            } else {
-                set("Slow", 0xFFFFC24A);
-            }
-            serverSprint = false; // the server stops your sprint after a sprint hit
-        } else if (clientSprinting) {
-            set("No reset", 0xFFFF6B6B);
-        } else {
-            set("No sprint", 0xFF9AA0AE);
-        }
-        lastResetLen = resetLen;
-        lastDelay = releaseDelay;
-        sinceHit = 0;
-        resetLen = 0;
-        releaseDelay = -1;
-        pendingHit = true;
-    }
-
-    private int lastResetLen, lastDelay = -1;
-
-    private void set(String g, int c) {
-        grade = g;
-        gradeColor = c;
-        gradeAt = System.currentTimeMillis();
     }
 
     @Override
     public float width() {
-        return 124;
+        return 132;
     }
 
     @Override
     public float height() {
-        return 30 + (timeline.on() ? 9 : 0) + (stats.on() ? 10 : 0);
+        return 30 + (timeline.on() ? 10 : 0) + (stats.on() ? 10 : 0);
     }
 
     @Override
     protected void draw(float x, float y, boolean editing) {
         panel(x, y, width(), height());
-        String g = grade;
-        int gc = gradeColor;
-        if (editing && g.isEmpty()) {
+        CombatLog log = CombatLog.INSTANCE;
+        CombatLog.Reset r = log.resetCount() > 0 ? log.reset(0) : null;
+        String g = r == null ? "" : r.grade;
+        int gc = r == null ? 0xFFFFFFFF : r.color;
+        if (editing && r == null) {
             g = "Perfect";
             gc = 0xFF3DDC97;
         }
-        long age = System.currentTimeMillis() - gradeAt;
+        long age = r == null ? Long.MAX_VALUE : (System.nanoTime() - r.at) / 1_000_000L;
         float pop = editing ? 1f : Math.max(0f, 1f - age / 2500f);
         Gfx.text("W-Tap", x + 5, y + 4, LABEL);
         if (!g.isEmpty() && pop > 0f) {
             int alpha = (int) (80 + 175 * pop);
             Gfx.textScaled(g, x + width() - 5 - Gfx.textWidth(g, 1.25f), y + 3, 1.25f, (alpha << 24) | (gc & 0xFFFFFF));
         }
-        String detail = lastResetLen > 0 || editing
-                ? "reset " + (editing ? 2 : lastResetLen) + "t" + (lastDelay >= 0 || editing ? "  after " + (editing ? 1 : lastDelay) + "t" : "")
-                : "-";
-        Gfx.text(detail, x + 5, y + 17, 0xFFFFFFFF);
+        String detail;
+        if (!NetObserver.INSTANCE.attached() && !editing) detail = "waiting for a server connection";
+        else if (editing && r == null) detail = "reset 95 ms  ·  start→hit 140 ms";
+        else if (r == null) detail = "-";
+        else detail = (r.resetMs >= 0 ? "reset " + Math.round(r.resetMs) + " ms" : "no reset")
+                + (r.startToAttackMs >= 0 ? "  ·  start→hit " + Math.round(r.startToAttackMs) + " ms" : "");
+        Gfx.textScaled(detail, x + 5, y + 17, 0.86f, 0xFFFFFFFF);
         float cy = y + 29;
         if (timeline.on()) {
-            float bw = (width() - 10) / HIST;
-            for (int i = 0; i < HIST; i++) {
-                int b = editing ? (i % 9 == 0 ? 4 : 0) | (i % 9 == 1 || i % 9 == 2 ? 0 : 1) : hist[(head + i) % HIST];
-                int col = (b & 1) != 0 ? (accent() & 0x00FFFFFF) | 0xC0000000 : 0x40FFFFFF;
-                Gfx.rect(x + 5 + i * bw, cy, Math.max(1f, bw - 0.6f), 4, col);
-                if ((b & 4) != 0) Gfx.rect(x + 5 + i * bw, cy - 1.5f, Math.max(1f, bw - 0.6f), 7, 0xFFFFFFFF);
+            int n = Math.min(12, log.resetCount());
+            float bw = (width() - 10) / 12f;
+            for (int i = 0; i < 12; i++) {
+                int col = editing ? (i % 4 == 3 ? 0xFFFFC24A : 0xFF3DDC97) : i < n ? log.reset(n - 1 - i).color : 0x30FFFFFF;
+                Gfx.roundedRect(x + 5 + i * bw, cy, bw - 1.5f, 5, 1.5f, col);
             }
-            cy += 9;
+            cy += 10;
         }
         if (stats.on()) {
-            int h = editing ? 24 : hits, s = editing ? 19 : sprintHits, p = editing ? 11 : perfect;
-            String st = h == 0 ? "no hits yet" : Math.round(100f * s / h) + "% sprint hits  ·  " + p + " perfect";
-            Gfx.text(st, x + 5, cy, LABEL);
+            int h = editing ? 24 : log.attacks, s = editing ? 19 : log.sprintAttacks, p = editing ? 11 : log.perfect;
+            double c = editing ? 18 : log.resetConsistency();
+            String st = h == 0 ? "no attacks yet" : Math.round(100f * s / h) + "% sprint  ·  " + p + " perfect"
+                    + (Double.isNaN(c) ? "" : "  ·  ±" + Math.round(c) + " ms");
+            Gfx.textScaled(st, x + 5, cy, 0.82f, LABEL);
         }
     }
 }

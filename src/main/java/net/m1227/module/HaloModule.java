@@ -70,7 +70,7 @@ public final class HaloModule extends Module {
             List<EntityPlayer> list = mc.theWorld.playerEntities;
             for (int i = 0; i < list.size(); i++) {
                 EntityPlayer p = list.get(i);
-                if (p != mc.thePlayer && !p.isInvisible()) draw(p, e.partialTicks);
+                if (p != mc.thePlayer && !p.isInvisible() && net.m1227.client.perf.EffectBudget.allow(net.m1227.client.perf.EffectBudget.Kind.AURA, p)) draw(p, e.partialTicks);
             }
         }
     }

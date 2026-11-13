@@ -43,17 +43,22 @@ public final class KillEffectModule extends Module {
 
     @SubscribeEvent
     public void onKill(CombatTracker.KillEvent e) {
-        EntityLivingBase t = e.target;
-        net.minecraft.client.entity.EntityPlayerSP me = net.minecraft.client.Minecraft.getMinecraft().thePlayer;
-        float dx = 0f, dz = 1f;
-        if (me != null) {
-            double ddx = t.posX - me.posX, ddz = t.posZ - me.posZ, l = Math.sqrt(ddx * ddx + ddz * ddz);
-            if (l > 1e-3) {
-                dx = (float) (ddx / l);
-                dz = (float) (ddz / l);
+        net.m1227.vfx.ParticleSystem.beginCombat();
+        try {
+            EntityLivingBase t = e.target;
+            net.minecraft.client.entity.EntityPlayerSP me = net.minecraft.client.Minecraft.getMinecraft().thePlayer;
+            float dx = 0f, dz = 1f;
+            if (me != null) {
+                double ddx = t.posX - me.posX, ddz = t.posZ - me.posZ, l = Math.sqrt(ddx * ddx + ddz * ddz);
+                if (l > 1e-3) {
+                    dx = (float) (ddx / l);
+                    dz = (float) (ddz / l);
+                }
             }
+            play(t.posX, t.posY, t.posZ, t.width, t.height, t, t.renderYawOffset, dx, dz);
+        } finally {
+            net.m1227.vfx.ParticleSystem.endCombat();
         }
-        play(t.posX, t.posY, t.posZ, t.width, t.height, t, t.renderYawOffset, dx, dz);
     }
 
     /** feetY is the y of the ground under the target. */

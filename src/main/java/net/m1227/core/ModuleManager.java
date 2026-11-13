@@ -54,6 +54,11 @@ public final class ModuleManager {
         register(new CinematicModule());
         register(new LowFireModule());
         register(new AnimationsModule());
+        register(new CompetitiveModule());
+        register(new LowLatencyModule());
+        register(new PvpVisualModule());
+        register(new LatencyMonitorModule());
+        register(new InputMonitorModule());
         register(new ToggleSprintModule());
         register(new AlertsModule());
         register(new SmartArmorModule());
@@ -96,6 +101,8 @@ public final class ModuleManager {
         register(new net.m1227.hud.KeybindsHud());
         register(new net.m1227.hud.PackDisplayHud());
         register(new net.m1227.hud.FoodHud());
+        register(new net.m1227.hud.PvpPerfHud());
+        register(new net.m1227.hud.LatencyGraphHud());
         register(new TabListModule());
         register(new BossBarModule());
         register(new MenuStyleModule());

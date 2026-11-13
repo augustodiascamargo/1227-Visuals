@@ -70,7 +70,7 @@ public final class PlayerAuraModule extends Module {
             List<EntityPlayer> list = mc.theWorld.playerEntities;
             for (int i = 0; i < list.size(); i++) {
                 EntityPlayer o = list.get(i);
-                if (o != mc.thePlayer && !o.isInvisible()) AuraLibrary.draw(style.get(), o, e.partialTicks, theirs, p);
+                if (o != mc.thePlayer && !o.isInvisible() && net.m1227.client.perf.EffectBudget.allow(net.m1227.client.perf.EffectBudget.Kind.AURA, o)) AuraLibrary.draw(style.get(), o, e.partialTicks, theirs, p);
             }
         }
     }

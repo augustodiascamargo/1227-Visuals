@@ -12,7 +12,7 @@ public final class Command1227 extends CommandBase {
 
     @Override
     public String getCommandUsage(ICommandSender sender) {
-        return "/1227 [hud|export|import] - menu, HUD editor, clipboard config";
+        return "/1227 [hud|perf|export|import] - menu, HUD editor, Performance Dashboard, clipboard config";
     }
 
     @Override
@@ -20,6 +20,8 @@ public final class Command1227 extends CommandBase {
         String a = args.length > 0 ? args[0].toLowerCase(java.util.Locale.ROOT) : "";
         if (a.equals("hud")) {
             InputManager.INSTANCE.requestScreen(new net.m1227.hud.HudEditorScreen());
+        } else if (a.equals("perf") || a.equals("performance")) {
+            net.m1227.client.menu.PerfDashboardScreen.open(-1);
         } else if (a.equals("export")) {
             ConfigManager.exportToClipboard();
         } else if (a.equals("import")) {

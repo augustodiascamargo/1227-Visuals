@@ -78,7 +78,7 @@ public final class AfterimageModule extends Module {
         java.util.Set<Integer> alive = new java.util.HashSet<Integer>();
         for (int i = 0; i < list.size(); i++) {
             EntityPlayer p = list.get(i);
-            if (!tracked(mc, p) || p.isDead) continue;
+            if (!tracked(mc, p) || p.isDead || !net.m1227.client.perf.EffectBudget.allow(net.m1227.client.perf.EffectBudget.Kind.AURA, p)) continue;
             alive.add(p.getEntityId());
             ArrayDeque<Snap> q = trails.get(p.getEntityId());
             if (q == null) trails.put(p.getEntityId(), q = new ArrayDeque<Snap>());
