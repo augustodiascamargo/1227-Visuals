@@ -8,16 +8,23 @@ import net.minecraft.client.renderer.RenderHelper;
 import net.minecraft.init.Items;
 import net.minecraft.item.ItemStack;
 
-/** Worn armour and held item with durability. */
+/**
+ * Armor status: worn armor and the held item with durability as a number, a percentage, a bar
+ * or both, in a row or a column, with a blinking warning when a piece is about to break.
+ */
 public final class ArmorHud extends HudModule {
-    private final Setting.Bool held, percent;
-    private final Setting.Mode layout;
+    private final Setting.Bool held, percent, blink;
+    private final Setting.Mode layout, style;
+    private final Setting.Num warn;
 
     public ArmorHud() {
         super("Armor", "Armor and held item durability.", 0.40, 0.80);
         layout = add(new Setting.Mode("Layout", "Row", "Row", "Column"));
         held = add(new Setting.Bool("Held item", true));
         percent = add(new Setting.Bool("Durability as %", false));
+        style = add(new Setting.Mode("Style", "Number", "Number", "Bar", "Number + bar"));
+        warn = add(new Setting.Num("Warn below", 15, 0, 50, 1, "%"));
+        blink = add(new Setting.Bool("Blink when low", true));
     }
 
     private int count() {
@@ -69,6 +76,16 @@ public final class ArmorHud extends HudModule {
                 float f = left / (float) max;
                 txt = percent.on() ? Math.round(f * 100) + "%" : String.valueOf(left);
                 col = f > 0.5f ? 0xFF3DDC84 : f > 0.2f ? 0xFFFFC857 : 0xFFFF5A6A;
+                boolean low = f * 100 < warn.f();
+                if (low && blink.on() && System.currentTimeMillis() / 400 % 2 == 0) {
+                    Gfx.roundedRect(ix - 1, iy - 1, 18, 18, 2, 0x60FF3B4E);
+                }
+                if (!style.is("Number")) {
+                    float bw = 16;
+                    Gfx.rect(ix, iy + 15, bw, 1.5f, 0x80000000);
+                    Gfx.rect(ix, iy + 15, bw * f, 1.5f, col);
+                }
+                if (style.is("Bar")) txt = null;
             } else if (st.stackSize > 1) {
                 txt = String.valueOf(st.stackSize);
             }

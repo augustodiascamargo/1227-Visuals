@@ -51,12 +51,18 @@ public final class ModuleManager {
         register(new FovModule());
         register(new ZoomModule());
         register(new CameraFxModule());
+        register(new CinematicModule());
         register(new LowFireModule());
         register(new AnimationsModule());
         register(new ToggleSprintModule());
+        register(new AlertsModule());
+        register(new SmartArmorModule());
+        register(new WaypointsModule());
         register(new EmotesModule());
         register(new HitSoundsModule());
         register(new MusicModule());
+        register(new FloatingLyricsModule());
+        register(new MusicAtmosphereModule());
         register(new DiscordPresenceModule());
         register(new DynamicIslandModule());
         register(new HitMarkerModule());
@@ -84,15 +90,23 @@ public final class ModuleManager {
         register(new net.m1227.hud.ReachHud());
         register(new net.m1227.hud.AimHelperHud());
         register(new net.m1227.hud.MusicHud());
+        register(new net.m1227.hud.VisualizerHud());
+        register(new net.m1227.hud.InventoryHud());
+        register(new net.m1227.hud.KeybindsHud());
         register(new TabListModule());
         register(new BossBarModule());
         register(new MenuStyleModule());
         register(new InterfaceModule());
         register(new ClientModule());
         register(new PresetsModule());
+        register(new ServerProfilesModule());
         register(PerformanceModule.INSTANCE);
         for (Module m : ALL) {
             if (m.toggleable() && m.defaultEnabled) m.setEnabled(true);
+            // always-on groups (Music Player, Interface, Client, Performance...) never go through
+            // setEnabled, so they are put on the event bus here; before 1.20 their key and tick
+            // handlers (music keys, window title) never ran
+            if (!m.toggleable()) net.minecraftforge.common.MinecraftForge.EVENT_BUS.register(m);
         }
     }
 

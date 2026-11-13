@@ -148,6 +148,7 @@ public final class DynamicIslandModule extends Module {
     @SubscribeEvent
     public void onOverlay(RenderGameOverlayEvent.Post e) {
         if (e.type != RenderGameOverlayEvent.ElementType.ALL) return;
+        if (CinematicModule.hideNotifications()) return;
         Minecraft mc = Minecraft.getMinecraft();
         if (mc.thePlayer == null || mc.gameSettings.showDebugInfo) return;
 

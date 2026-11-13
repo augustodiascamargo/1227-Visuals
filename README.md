@@ -183,6 +183,71 @@ nada depende de Lunar ou de outro launcher.
 O modelo do Tung Sahur (ZAHUR.fbx + textura) e a butterfly knife (.blend) foram enviados pelo usuário. Antes de
 publicar o 1227, confira a licença de cada um (por exemplo, se exigem crédito ao autor) e coloque o crédito aqui.
 
+## Mudanças na v1.20.0: Floating Lyrics, música, QoL e performance
+
+Auditoria completa em `docs/AUDIT-1.20.md` (arquitetura, problemas corrigidos, comparação com
+outros clients, pendências). Guia das letras em `docs/LYRICS.md`. Testes em
+`docs/TEST-REPORT-1.20.md`.
+
+- **1227 Floating Lyrics** (Music):
+  - letras sincronizadas flutuando no mundo, em quatro modos: World Floating, Player Follow,
+    World Anchor e Screen Overlay;
+  - 8 presets, 8 animações, destaque por palavra ou karaokê e contagem nas pausas
+    instrumentais;
+  - glow, contorno, sombra e fundo;
+  - ajuste de sincronia global e por música.
+- **Fontes das letras:**
+  - `.lrc` locais, inclusive Enhanced LRC, UTF-8 ou Windows-1252;
+  - LRCLIB, com User-Agent, uma requisição por vez, respeito ao 429/Retry-After, cache e
+    conferência de título/artista/duração;
+  - escolha manual quando não há certeza.
+- **Relógio das letras:**
+  - player local, exato: posição da placa de som;
+  - Spotify e YouTube pelos controles de mídia do Windows (script PowerShell opcional que vai
+    no jar, só leitura);
+  - relógio manual quando não há linha do tempo.
+- **Tela Lyrics e editor:** cronometrar com Espaço, ajustar, editar, salvar `.lrc`.
+- **Now Playing:**
+  - capa quadrada, redonda ou vinil girando;
+  - álbum, origem, tempos e estado;
+  - botões clicáveis com o chat aberto e posições prontas;
+  - aparece e some suavemente.
+- **Audio Visualizer:** 8 estilos, FFT real do player do 1227. Para Spotify/YouTube, dispositivo
+  de captura (Stereo Mix) só com consentimento; sem dados, modo "simulated" com etiqueta.
+- **Music Atmosphere:** anéis no chão a cada batida e luzes subindo com a energia da música.
+- **Cinematic Mode** (Camera): esconde o HUD, a mira, o chat e a mão, mas mantém letras e
+  música; tem Photo mode.
+- **HUD e QoL:**
+  - Inventory Counter;
+  - Armor com barra e aviso;
+  - Keybinds HUD;
+  - Alerts: vida, comida, durabilidade, poções, inventário cheio, alvo perdido e kill;
+  - Smart Armor;
+  - Waypoints, com tela própria e import/export;
+  - dia do jogo no Clock.
+- **Telas:**
+  - Resource packs: verificação, ordem, importação e backup;
+  - Screenshots: filtros por data, grupos por dia, busca e copiar caminho.
+- **Server Profiles:** vincula um perfil salvo a um servidor (ou ao singleplayer) e aplica ou
+  sugere ao entrar.
+- **Performance:**
+  - distâncias separadas para jogadores, mobs e itens;
+  - oclusão opcional de mobs (nunca de jogadores) e de baús/placas atrás de blocos;
+  - a reflexão das partículas é validada antes de usar.
+- **Benchmark:** 0,1% low, frame time médio e máximo, memória, entidades, partículas, gráficos e
+  versão; comparação A/B entre as configurações atuais e um preset.
+- **Correções:**
+  - Música:
+    - teclas e tick dos módulos sempre ativos (M, play/pause, volume, título da janela) nunca
+      rodavam; agora rodam;
+    - texturas de capa vazavam, e capas e títulos de janela eram lidos na thread de render;
+    - posição do player adiantada pelo buffer;
+    - loop de arquivos quebrados.
+  - Config:
+    - o salvamento perdia mudanças se a gravação falhasse;
+    - um config corrompido voltava aos padrões (agora restaura o backup);
+    - agora há migração de formato.
+
 ## Mudanças na v1.19.0: chuva de verdade, brilho no alvo e espadas animadas
 
 - **Instalador no Windows:** o download agora traz `Instalar 1227.bat` junto do jar. Ele abre o

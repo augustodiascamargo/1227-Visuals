@@ -17,11 +17,15 @@ import org.lwjgl.opengl.Display;
 
 /**
  * Performance System, the parts that change what Minecraft draws:
- * - Entity render distance: living entities farther than the limit are skipped (players only
- *   when chosen; never you, your mount or what you are riding);
+ * - Entity render distance, with separate limits for players, mobs and dropped items (players
+ *   are never hidden unless you lower their own limit; never you, your mount or your rider);
+ * - optional occlusion culling of mobs hidden behind blocks (never players), see {@link Occlusion};
+ * - block entity culling (chests, signs...), see {@link BlockEntityCulling};
  * - Minecraft particle limit and distance: the oldest particles above the cap and the ones beyond
- *   the distance are removed each tick;
- * - Background FPS: while the window is not focused, frames are paced to the chosen FPS.
+ *   the distance are removed each tick (the internal particle lists are found by type and checked
+ *   before use; if they do not look as expected the limiter switches itself off);
+ * - Background FPS: while the window is not focused, frames are paced to the chosen FPS (never
+ *   while focused, so it cannot add input lag).
  * All of it only affects drawing on your screen.
  */
 public final class PerfSystem {
@@ -36,16 +40,24 @@ public final class PerfSystem {
         return PerformanceModule.INSTANCE;
     }
 
-    /** True when an entity at this distance should not be drawn (also used for dropped items). */
+    /** True when this entity should not be drawn this frame (also used for dropped items). */
     public static boolean cull(Entity e) {
         PerformanceModule p = p();
-        double d = p.entityDistance.get();
-        if (d >= 256) return false;
         Minecraft mc = Minecraft.getMinecraft();
         Entity view = mc.getRenderViewEntity();
         if (view == null || e == view || e == view.ridingEntity || e.riddenByEntity == view) return false;
-        if (e instanceof EntityPlayer && !p.cullPlayers.on()) return false;
-        return e.getDistanceSqToEntity(view) > d * d;
+        double d;
+        if (e instanceof EntityPlayer) {
+            d = p.playerDistance.get();
+            if (p.cullPlayers.on()) d = Math.min(d, p.entityDistance.get());
+        } else if (e instanceof net.minecraft.entity.item.EntityItem) {
+            d = Math.min(p.itemDistance.get(), p.entityDistance.get());
+        } else {
+            d = p.entityDistance.get();
+        }
+        if (d < 256 && e.getDistanceSqToEntity(view) > d * d) return true;
+        // occlusion: mobs only, never players (they matter in PvP)
+        return p.hideOccludedMobs.on() && !(e instanceof EntityPlayer) && e instanceof net.minecraft.entity.EntityLiving && Occlusion.hidden(e);
     }
 
     @SubscribeEvent(priority = EventPriority.HIGH)
@@ -64,7 +76,9 @@ public final class PerfSystem {
         try {
             if (fxLayers == null) {
                 for (Field f : EffectRenderer.class.getDeclaredFields()) {
-                    if (f.getType().isArray() && f.getType().getComponentType().isArray()) {
+                    // List[][]: the 4 layers x 2 (normal / no depth) particle lists of 1.8.9
+                    if (f.getType().isArray() && f.getType().getComponentType().isArray()
+                            && List.class.isAssignableFrom(f.getType().getComponentType().getComponentType())) {
                         fxLayers = f;
                         fxLayers.setAccessible(true);
                         break;
@@ -72,10 +86,30 @@ public final class PerfSystem {
                 }
                 if (fxLayers == null) {
                     fxFailed = true;
+                    Mod1227.LOGGER.warn("1227 particle limiter: particle lists not found, limiter off");
                     return null;
                 }
             }
-            return (List<EntityFX>[][]) fxLayers.get(r);
+            Object v = fxLayers.get(r);
+            if (!(v instanceof List[][])) {
+                fxFailed = true;
+                return null;
+            }
+            List<EntityFX>[][] l = (List<EntityFX>[][]) v;
+            for (List<EntityFX>[] row : l) {
+                if (row == null) {
+                    fxFailed = true;
+                    Mod1227.LOGGER.warn("1227 particle limiter: unexpected particle layout, limiter off");
+                    return null;
+                }
+                for (List<EntityFX> list : row) {
+                    if (list == null) {
+                        fxFailed = true;
+                        return null;
+                    }
+                }
+            }
+            return l;
         } catch (Throwable t) {
             fxFailed = true;
             Mod1227.LOGGER.warn("1227 particle limiter unavailable", t);
@@ -86,6 +120,7 @@ public final class PerfSystem {
     @SubscribeEvent
     public void onTick(TickEvent.ClientTickEvent e) {
         if (e.phase != TickEvent.Phase.END) return;
+        BlockEntityCulling.ensureWrapped();
         Minecraft mc = Minecraft.getMinecraft();
         if (mc.theWorld == null || mc.effectRenderer == null || mc.getRenderViewEntity() == null) return;
         PerformanceModule p = p();
@@ -102,7 +137,9 @@ public final class PerfSystem {
         for (List<EntityFX>[] row : l) {
             for (List<EntityFX> list : row) {
                 for (int i = 0; i < list.size(); i++) {
-                    EntityFX fx = list.get(i);
+                    Object o = list.get(i);
+                    if (!(o instanceof EntityFX)) continue;
+                    EntityFX fx = (EntityFX) o;
                     if (over > 0) {
                         // oldest first: lists are in spawn order
                         fx.setDead();
@@ -121,9 +158,9 @@ public final class PerfSystem {
         Benchmark.frame();
         PerformanceModule p = p();
         long now = System.nanoTime();
-        if (p.backgroundLimit.on() && !Display.isActive()) {
+        if (p.backgroundLimit.on() && !Display.isActive() && !Benchmark.running()) {
             long frame = (long) (1e9 / Math.max(5, p.backgroundFps.get()));
-            long wait = frame - (now - lastFrame);
+            long wait = Math.min(200_000_000L, frame - (now - lastFrame));
             if (wait > 0) {
                 try {
                     Thread.sleep(wait / 1000000L, (int) (wait % 1000000L));

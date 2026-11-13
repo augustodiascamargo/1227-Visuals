@@ -21,10 +21,18 @@ import net.minecraftforge.client.event.RenderGameOverlayEvent;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 
 /**
- * In-game benchmark: measures every frame for N seconds (after 2 s of warm-up) and saves the
- * average FPS, the 1% low and the worst frame with the preset and render distance in use, in
- * config/1227/benchmarks.json. Run it before and after changing a preset, in the same spot, to
- * compare. Nothing is estimated: the numbers are measured frame times.
+ * In-game benchmark: measures every frame for N seconds (after 2 s of warm-up) and saves, in
+ * config/1227/benchmarks.json:
+ * <ul>
+ * <li>average FPS (frames / time) and average frame time;</li>
+ * <li>1% low and 0.1% low (the average FPS of the slowest 1% / 0.1% of frames: how stable it
+ * is, not how fast; 0.1% only when there are at least 1000 frames);</li>
+ * <li>worst frame time;</li>
+ * <li>memory in use, entities and particles (averaged), render distance, graphics mode, the
+ * preset and the 1227 version.</li>
+ * </ul>
+ * "Compare" measures the current settings, then a chosen preset, in the same spot, and puts the
+ * results side by side; your settings are restored afterwards. Nothing is estimated.
  */
 public final class Benchmark {
     public static final Benchmark INSTANCE = new Benchmark();
@@ -32,10 +40,20 @@ public final class Benchmark {
     private static final int WARMUP_NS = 2000000000;
 
     public static final class Result {
-        public String label, date;
-        public double avgFps, low1Fps, worstMs;
-        public int renderDistance, seconds, frames;
+        public String label, date, version, graphics;
+        public double avgFps, low1Fps, low01Fps, avgMs, worstMs;
+        public int renderDistance, seconds, frames, memoryMb, entities, particles;
     }
+
+    // averages sampled once per second while measuring
+    private static long sampleAt;
+    private static double sumMem, sumEnt, sumPart;
+    private static int samples;
+    // compare: phase 0 none, 1 measuring A, 2 measuring B
+    private static int comparePhase;
+    private static String compareWith;
+    private static java.io.File compareBackup;
+    private static Result compareA;
 
     private static boolean running;
     private static long start, last;
@@ -58,6 +76,9 @@ public final class Benchmark {
         start = System.nanoTime();
         last = 0L;
         n = 0;
+        sumMem = sumEnt = sumPart = 0;
+        samples = 0;
+        sampleAt = 0L;
         running = true;
         Minecraft.getMinecraft().displayGuiScreen(null);
         Notifier.post(Notifier.Kind.SYSTEM, "Benchmark", "Measuring for " + secs + " s, keep still", Notifier.INFO, 2200);
@@ -68,11 +89,28 @@ public final class Benchmark {
         long now = System.nanoTime();
         if (Minecraft.getMinecraft().theWorld == null) {
             running = false;
+            if (comparePhase != 0 && compareBackup != null) net.m1227.core.ConfigManager.importFrom(compareBackup);
+            comparePhase = 0;
             Notifier.post(Notifier.Kind.SYSTEM, "Benchmark", "Stopped (left the world)", Notifier.WARN, 1800);
             return;
         }
         if (now - start > WARMUP_NS) {
             if (last != 0L && n < times.length) times[n++] = (now - last) / 1e6f;
+            if (now - sampleAt > 1_000_000_000L) {
+                sampleAt = now;
+                Minecraft mc = Minecraft.getMinecraft();
+                Runtime rt = Runtime.getRuntime();
+                sumMem += (rt.totalMemory() - rt.freeMemory()) / 1048576.0;
+                sumEnt += mc.theWorld.loadedEntityList.size();
+                int fx = 0;
+                try {
+                    fx = Integer.parseInt(mc.effectRenderer.getStatistics().trim());
+                } catch (RuntimeException ignored) {
+                    // unknown format
+                }
+                sumPart += fx + net.m1227.vfx.ParticleSystem.INSTANCE.alive();
+                samples++;
+            }
             if (now - start > WARMUP_NS + seconds * 1000000000L) finish();
         }
         last = now;
@@ -92,17 +130,74 @@ public final class Benchmark {
         Result r = new Result();
         r.avgFps = Math.round(n / (sum / 1000.0) * 10) / 10.0;
         r.low1Fps = Math.round(1000.0 / worst1 * 10) / 10.0;
+        if (n >= 1000) {
+            int k01 = Math.max(1, n / 1000);
+            double w01 = 0;
+            for (int i = n - k01; i < n; i++) w01 += t[i];
+            r.low01Fps = Math.round(1000.0 / (w01 / k01) * 10) / 10.0;
+        }
+        r.avgMs = Math.round(sum / n * 100) / 100.0;
         r.worstMs = Math.round(t[n - 1] * 10) / 10.0;
         r.frames = n;
         r.seconds = seconds;
-        r.renderDistance = Minecraft.getMinecraft().gameSettings.renderDistanceChunks;
-        r.label = PerformanceModule.INSTANCE.activePreset.get();
+        Minecraft mc = Minecraft.getMinecraft();
+        r.renderDistance = mc.gameSettings.renderDistanceChunks;
+        r.graphics = mc.gameSettings.fancyGraphics ? "Fancy" : "Fast";
+        r.version = Mod1227.VERSION;
+        if (samples > 0) {
+            r.memoryMb = (int) Math.round(sumMem / samples);
+            r.entities = (int) Math.round(sumEnt / samples);
+            r.particles = (int) Math.round(sumPart / samples);
+        }
+        r.label = (comparePhase == 1 ? "A: " : comparePhase == 2 ? "B: " : "") + PerformanceModule.INSTANCE.activePreset.get();
         r.date = new java.text.SimpleDateFormat("dd/MM HH:mm").format(new java.util.Date());
         List<Result> all = results();
         all.add(0, r);
         while (all.size() > 30) all.remove(all.size() - 1);
         save(all);
-        Notifier.post(Notifier.Kind.SYSTEM, "Benchmark", r.avgFps + " FPS avg, " + r.low1Fps + " 1% low", Notifier.GOOD, 5000);
+        if (comparePhase == 1) {
+            compareA = r;
+            comparePhase = 2;
+            PerfPresets.apply(compareWith);
+            start(seconds);
+            return;
+        }
+        if (comparePhase == 2) {
+            comparePhase = 0;
+            if (compareBackup != null) {
+                net.m1227.core.ConfigManager.importFrom(compareBackup);
+                compareBackup.delete();
+                compareBackup = null;
+            }
+            Result a = compareA;
+            double dAvg = r.avgFps - a.avgFps, dLow = r.low1Fps - a.low1Fps;
+            Notifier.post(Notifier.Kind.SYSTEM, "Compare: " + compareWith, String.format("avg %+.1f FPS, 1%% low %+.1f FPS (B vs A)", dAvg, dLow),
+                    Notifier.INFO, 8000);
+            return;
+        }
+        Notifier.post(Notifier.Kind.SYSTEM, "Benchmark", r.avgFps + " FPS avg, " + r.low1Fps + " 1% low"
+                + (r.low01Fps > 0 ? ", " + r.low01Fps + " 0.1% low" : ""), Notifier.GOOD, 5000);
+    }
+
+    /**
+     * Measures the current settings (A), then the preset chosen in Performance > "Compare with"
+     * (B), 20 s each, then restores your settings.
+     */
+    public static void compareStart() {
+        if (Minecraft.getMinecraft().theWorld == null) {
+            Notifier.post(Notifier.Kind.SYSTEM, "Benchmark", "Join a world first", Notifier.WARN, 1800);
+            return;
+        }
+        try {
+            compareBackup = java.io.File.createTempFile("1227-compare", ".json");
+            compareBackup.deleteOnExit();
+            net.m1227.core.ConfigManager.exportTo(compareBackup);
+        } catch (Exception e) {
+            compareBackup = null;
+        }
+        compareWith = PerformanceModule.INSTANCE.compareWith.get();
+        comparePhase = 1;
+        start(20);
     }
 
     private static File file() {

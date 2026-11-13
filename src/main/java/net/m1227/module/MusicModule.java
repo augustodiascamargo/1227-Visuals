@@ -34,6 +34,8 @@ public final class MusicModule extends Module {
     public final Setting.Bool shuffle;
     public final Setting.Mode repeat;
     public final Setting.Text spotifyLink, youtubeLink;
+    /** Read Spotify / YouTube through the Windows media controls (title, artist, timeline). */
+    public final Setting.Bool windowsMedia;
     private final Setting.Key openKey, playKey, nextKey, prevKey;
 
     public final AudioPlayer player = new AudioPlayer(this::finished);
@@ -56,6 +58,7 @@ public final class MusicModule extends Module {
         playKey = add(new Setting.Key("Play / pause key", 0));
         nextKey = add(new Setting.Key("Next track key", 0));
         prevKey = add(new Setting.Key("Previous track key", 0));
+        windowsMedia = add(new Setting.Bool("Read Spotify / YouTube from Windows media controls", true));
         add(new Setting.Action("Open music folder", () -> openFolder(Library.folder())));
         add(new Setting.Action("Rescan music folder", this::rescan));
     }
@@ -162,10 +165,23 @@ public final class MusicModule extends Module {
         if (t != null) player.play(t, Math.max(0f, seconds));
     }
 
+    private int failStreak;
+
     /** Called on the player thread when a song ends. */
-    private void finished(Track t) {
+    private void finished(Track t, boolean failed) {
         Minecraft.getMinecraft().addScheduledTask(() -> {
-            if (repeat.is("One")) {
+            if (failed) {
+                failStreak++;
+                Notifier.post(Notifier.Kind.SYSTEM, "Music", "Could not play " + t.title, Notifier.BAD, 2500);
+                // several broken files in a row (or no sound device): stop instead of skipping forever
+                if (failStreak >= 3 || queue.size() <= 1) {
+                    failStreak = 0;
+                    return;
+                }
+            } else {
+                failStreak = 0;
+            }
+            if (repeat.is("One") && !failed) {
                 start(t);
             } else if (queuePos + 1 < queue.size()) {
                 queuePos++;
@@ -179,15 +195,35 @@ public final class MusicModule extends Module {
 
     // ------------------------------------------------------------- Spotify / YouTube
 
-    private String[] external;
-    private long externalAt;
+    private volatile String[] external;
+    private volatile long externalAt;
 
-    /** {source, title} of what Spotify / YouTube is playing right now (refreshed every second), or null. */
+    private volatile Thread externalPoll;
+
+    /**
+     * {source, title} of what Spotify / YouTube is playing (window titles), or null. Read about
+     * once a second on a background thread while something keeps asking; never on the render
+     * thread.
+     */
     public String[] external() {
-        long now = System.currentTimeMillis();
-        if (now - externalAt > 1000L) {
-            externalAt = now;
-            external = External.nowPlaying();
+        externalAt = System.currentTimeMillis();
+        if (externalPoll == null && External.available()) {
+            Thread t = new Thread(() -> {
+                try {
+                    while (System.currentTimeMillis() - externalAt < 10000L) {
+                        external = External.nowPlaying();
+                        Thread.sleep(1000L);
+                    }
+                } catch (InterruptedException ignored) {
+                    // stopping
+                } finally {
+                    external = null;
+                    externalPoll = null;
+                }
+            }, "1227-window-titles");
+            t.setDaemon(true);
+            externalPoll = t;
+            t.start();
         }
         return external;
     }
@@ -199,24 +235,48 @@ public final class MusicModule extends Module {
 
     // ------------------------------------------------------------- covers
 
-    private final Map<String, ResourceLocation> covers = new HashMap<String, ResourceLocation>();
+    private final Map<String, ResourceLocation> covers = new java.util.LinkedHashMap<String, ResourceLocation>(16, 0.75f, true);
+    private final java.util.Set<String> loading = new java.util.HashSet<String>();
     private final Map<String, String[]> embeds = new HashMap<String, String[]>();
 
-    /** Texture of a local cover file (cached, max 48), or null. */
+    /**
+     * Texture of a local cover file, or null while it loads (read and scaled on a background
+     * thread, uploaded on the game thread). At most 48 are kept; the least recently used one is
+     * freed from the GPU when a new one comes in.
+     */
     public ResourceLocation cover(File f) {
         if (f == null) return null;
-        String k = f.getAbsolutePath();
+        final String k = f.getAbsolutePath();
         if (covers.containsKey(k)) return covers.get(k);
-        ResourceLocation r = null;
-        try {
-            java.awt.image.BufferedImage img = javax.imageio.ImageIO.read(f);
-            if (img != null) r = upload("m1227_cover", scale(img));
-        } catch (Exception ignored) {
-            // unreadable image
+        if (loading.add(k)) {
+            final File file = f;
+            Thread t = new Thread(() -> {
+                java.awt.image.BufferedImage img = null;
+                try {
+                    java.awt.image.BufferedImage raw = javax.imageio.ImageIO.read(file);
+                    if (raw != null) img = square(raw, 128);
+                } catch (Exception ignored) {
+                    // unreadable image
+                }
+                final java.awt.image.BufferedImage fi = img;
+                Minecraft.getMinecraft().addScheduledTask(() -> {
+                    loading.remove(k);
+                    putCover(k, fi == null ? null : upload("m1227_cover", fi));
+                });
+            }, "1227-cover");
+            t.setDaemon(true);
+            t.start();
         }
-        if (covers.size() > 48) covers.clear();
+        return null;
+    }
+
+    private void putCover(String k, ResourceLocation r) {
+        while (covers.size() >= 48) {
+            String oldest = covers.keySet().iterator().next();
+            ResourceLocation old = covers.remove(oldest);
+            if (old != null) Minecraft.getMinecraft().getTextureManager().deleteTexture(old);
+        }
         covers.put(k, r);
-        return r;
     }
 
     /** {title, coverTexture-key} of a playlist link from oEmbed (fetched once in the background). */
@@ -242,9 +302,9 @@ public final class MusicModule extends Module {
             }
             final java.awt.image.BufferedImage fimg = img;
             Minecraft.getMinecraft().addScheduledTask(() -> {
-                ResourceLocation r = fimg == null ? null : upload("m1227_playlist", scale(fimg));
+                ResourceLocation r = fimg == null ? null : upload("m1227_playlist", square(fimg, 128));
                 embeds.put(link, new String[]{info[0], r == null ? null : r.toString()});
-                if (r != null) covers.put("embed:" + link, r);
+                if (r != null) putCover("embed:" + link, r);
             });
         }, "1227-oembed");
         t.setDaemon(true);
@@ -256,8 +316,8 @@ public final class MusicModule extends Module {
         return covers.get("embed:" + link);
     }
 
-    private static java.awt.image.BufferedImage scale(java.awt.image.BufferedImage src) {
-        int s = 128;
+    /** Centre square of an image, scaled to s x s. */
+    public static java.awt.image.BufferedImage square(java.awt.image.BufferedImage src, int s) {
         java.awt.image.BufferedImage out = new java.awt.image.BufferedImage(s, s, java.awt.image.BufferedImage.TYPE_INT_ARGB);
         java.awt.Graphics2D g = out.createGraphics();
         g.setRenderingHint(java.awt.RenderingHints.KEY_INTERPOLATION, java.awt.RenderingHints.VALUE_INTERPOLATION_BILINEAR);

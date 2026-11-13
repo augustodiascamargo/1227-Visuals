@@ -120,6 +120,11 @@ public final class MusicScreen extends GuiScreen {
         boolean ih = in(mx, my, x + W - 46, y + 8, 18, 16);
         net.m1227.ui.Icons.gear(x + W - 37, y + 16, ih ? 0xFFFFFFFF : 0xFF8A8F9C);
         click(x + W - 46, y + 8, 18, 16, () -> mc.displayGuiScreen(new net.m1227.client.settings.SettingsScreen(this, "Audio")));
+        // lyrics screen
+        boolean lh = mx >= x + W - 92 && mx < x + W - 50 && my >= y + 8 && my < y + 24;
+        Gfx.roundedRect(x + W - 92, y + 8, 42, 16, 4, lh ? 0x30FFFFFF : 0x18FFFFFF);
+        Gfx.textScaled("Lyrics", x + W - 86, y + 12, 0.8f, lh ? 0xFFFFFFFF : 0xFF8A8F9C);
+        click(x + W - 92, y + 8, 42, 16, () -> mc.displayGuiScreen(new net.m1227.client.menu.LyricsScreen(this)));
         // close
         int xc = in(mx, my, x + W - 22, y + 8, 16, 16) ? 0xFFFFFFFF : 0xFF8A8F9C;
         Gfx.line(x + W - 18, y + 12, x + W - 10, y + 20, 1.2f, xc);

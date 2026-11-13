@@ -276,7 +276,9 @@ public final class SettingsScreen extends UiScreen {
                 r.button("Language", I18n.format("options.language") + ": " + mc.getLanguageManager().getCurrentLanguage().toString(), "Change",
                         Ui.SECONDARY, () -> mc.displayGuiScreen(new GuiLanguage(this, gs, mc.getLanguageManager())));
                 vanilla(r, GameSettings.Options.FOV, null);
-                r.button("Resource packs", "Add, remove and order resource packs", "Open", Ui.SECONDARY, () -> mc.displayGuiScreen(new GuiScreenResourcePacks(this)));
+                r.button("Resource packs", "Packs with icons, checks, order, import and backup", "Open", Ui.PRIMARY,
+                        () -> mc.displayGuiScreen(new net.m1227.client.menu.ResourcePackScreen(this)));
+                r.button("Classic resource pack screen", "Minecraft's own screen", "Open", Ui.SECONDARY, () -> mc.displayGuiScreen(new GuiScreenResourcePacks(this)));
                 r.button("Mods", "Mods installed with Forge", "Open", Ui.SECONDARY, () -> mc.displayGuiScreen(new net.minecraftforge.fml.client.GuiModList(this)));
                 r.section("Skin layers");
                 for (final EnumPlayerModelParts part : EnumPlayerModelParts.values()) {
@@ -343,6 +345,8 @@ public final class SettingsScreen extends UiScreen {
                 r.section("Combat");
                 modules(r, Category.COMBAT);
                 r.section("Gameplay");
+                r.button("Waypoints", "Your waypoints in this world or server", "Open", Ui.SECONDARY,
+                        () -> mc.displayGuiScreen(new net.m1227.client.menu.WaypointsScreen(this)));
                 modules(r, Category.GAMEPLAY);
                 r.section("Hit sounds");
                 modules(r, Category.HITSOUNDS);
@@ -361,6 +365,9 @@ public final class SettingsScreen extends UiScreen {
                 }
                 r.section("Music and integrations");
                 r.button("Music player", "Local music, Spotify and YouTube playlists", "Open", Ui.PRIMARY, () -> mc.displayGuiScreen(new net.m1227.ui.MusicScreen()));
+                r.button("Lyrics", "Floating Lyrics: what is found, results to choose, sync and the editor", "Open", Ui.PRIMARY,
+                        () -> mc.displayGuiScreen(new net.m1227.client.menu.LyricsScreen(this)));
+                r.info("Windows media link", "Reads Spotify / YouTube title and timeline (read only, no network)", net.m1227.music.MediaBridge.status());
                 modules(r, Category.MUSIC);
                 break;
             case "Performance":
@@ -429,9 +436,17 @@ public final class SettingsScreen extends UiScreen {
         r.buttons("Run benchmark", mc.theWorld == null ? "Join a world first" : null, new String[]{"30 s", "60 s"},
                 new int[]{Ui.SECONDARY, Ui.SECONDARY},
                 new Runnable[]{mc.theWorld == null ? null : (Runnable) () -> Benchmark.start(30), mc.theWorld == null ? null : (Runnable) () -> Benchmark.start(60)});
+        PerformanceModule pm = PerformanceModule.INSTANCE;
+        r.setting(pm.compareWith);
+        r.buttons("Compare", "Current settings (A) vs that preset (B), 20 s each; your settings come back after",
+                new String[]{"Run A / B"}, new int[]{Ui.SECONDARY},
+                new Runnable[]{mc.theWorld == null ? null : (Runnable) Benchmark::compareStart});
         List<Benchmark.Result> res = Benchmark.results();
         for (Benchmark.Result b : res) {
-            r.info(b.date + "  ·  " + b.label + "  ·  " + b.renderDistance + " chunks", null, b.avgFps + " avg  ·  " + b.low1Fps + " 1% low");
+            String detail = b.renderDistance + " chunks" + (b.graphics != null ? " " + b.graphics : "")
+                    + (b.avgMs > 0 ? "  ·  " + b.avgMs + " ms avg, " + b.worstMs + " ms worst" : "")
+                    + (b.memoryMb > 0 ? "  ·  " + b.memoryMb + " MB, " + b.entities + " entities, " + b.particles + " particles" : "");
+            r.info(b.date + "  ·  " + b.label, detail, b.avgFps + " avg  ·  " + b.low1Fps + " 1%" + (b.low01Fps > 0 ? "  ·  " + b.low01Fps + " 0.1%" : ""));
         }
         if (!res.isEmpty()) {
             Object ck = "clearBench";

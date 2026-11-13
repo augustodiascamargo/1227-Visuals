@@ -1,5 +1,5 @@
+Floating Lyrics, audio visualizer, waypoints, alerts and smarter performance
 Real rain and puddles, Aim Helper body glow, sword animations
 Sky gallery, installer in the jar, automated tests
 Cosmetics preview in 3D, Weapon editor, Arrival effects
 Aim Helper ring on the target, Fog, Block Overlay, Wet World rain
-Press to enter opening, your character walks into the menu, Comet and Thorn Crown

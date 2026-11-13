@@ -21,6 +21,10 @@ public final class PerformanceModule extends Module {
     public final Setting.Bool cullPlayers;
     /** Cap and distance for Minecraft's own particles (4000 / 64 = vanilla behaviour). */
     public final Setting.Num particleCap, particleDistance;
+    /** 1.20: separate distances and optional occlusion culling. 256 / 64 = off (vanilla). */
+    public final Setting.Num playerDistance, itemDistance, blockEntityDistance;
+    public final Setting.Bool hideOccludedMobs, hideOccludedBlockEntities;
+    public final Setting.Mode compareWith;
     public final Setting.Bool backgroundLimit;
     public final Setting.Num backgroundFps;
     /** Name of the last preset applied ("Custom" after manual changes made through presets). */
@@ -33,6 +37,11 @@ public final class PerformanceModule extends Module {
         distance = add(new Setting.Num("Render distance", 48, 8, 128, 4, "m"));
         entityDistance = add(new Setting.Num("Entity render distance", 256, 16, 256, 8, "m"));
         cullPlayers = add(new Setting.Bool("Entity distance also hides players", false));
+        playerDistance = add(new Setting.Num("Player render distance", 256, 16, 256, 8, "m"));
+        itemDistance = add(new Setting.Num("Dropped item render distance", 256, 8, 256, 8, "m"));
+        hideOccludedMobs = add(new Setting.Bool("Skip mobs hidden behind blocks", false));
+        blockEntityDistance = add(new Setting.Num("Chest / sign / banner distance", 64, 8, 64, 4, "m"));
+        hideOccludedBlockEntities = add(new Setting.Bool("Skip chests and signs hidden behind blocks", false));
         particleCap = add(new Setting.Num("Minecraft particle limit", 4000, 100, 4000, 100, ""));
         particleDistance = add(new Setting.Num("Minecraft particle distance", 64, 8, 64, 4, "m"));
         backgroundLimit = add(new Setting.Bool("Limit FPS when the game is in the background", true));
@@ -42,6 +51,8 @@ public final class PerformanceModule extends Module {
             add(new Setting.Action("Preset: " + n, () -> net.m1227.client.perf.PerfPresets.apply(n)));
         }
         add(new Setting.Action("Run 30 s benchmark", () -> net.m1227.client.perf.Benchmark.start(30)));
+        compareWith = add(new Setting.Mode("Compare with", "High FPS", net.m1227.client.perf.PerfPresets.NAMES));
+        add(new Setting.Action("Compare current vs that preset (2 x 20 s)", net.m1227.client.perf.Benchmark::compareStart));
     }
 
     @Override

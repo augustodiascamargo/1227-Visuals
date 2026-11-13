@@ -5,11 +5,11 @@ import java.util.Date;
 import net.m1227.core.Setting;
 import net.m1227.ui.Gfx;
 
-/** Real-world clock, optional date and how long this session has been running. */
+/** Real-world clock, optional date, session time, and the in-game day and time of day. */
 public final class ClockHud extends HudModule {
     private static final long START = System.currentTimeMillis();
     private final Setting.Mode format;
-    private final Setting.Bool seconds, date, session;
+    private final Setting.Bool seconds, date, session, gameDay;
 
     public ClockHud() {
         super("Clock", "Local time, date and session time.", 0.86, 0.01);
@@ -17,10 +17,11 @@ public final class ClockHud extends HudModule {
         seconds = add(new Setting.Bool("Seconds", false));
         date = add(new Setting.Bool("Date", false));
         session = add(new Setting.Bool("Session time", true));
+        gameDay = add(new Setting.Bool("In-game day and time", false));
     }
 
     private int rows() {
-        return 1 + (date.on() ? 1 : 0) + (session.on() ? 1 : 0);
+        return 1 + (date.on() ? 1 : 0) + (session.on() ? 1 : 0) + (gameDay.on() ? 1 : 0);
     }
 
     @Override
@@ -48,6 +49,15 @@ public final class ClockHud extends HudModule {
             ry += 10;
             long s = (System.currentTimeMillis() - START) / 1000L;
             row(x, ry, "Session", String.format(java.util.Locale.ROOT, "%d:%02d:%02d", s / 3600, (s / 60) % 60, s % 60));
+        }
+        if (gameDay.on()) {
+            ry += 10;
+            net.minecraft.client.Minecraft mc = net.minecraft.client.Minecraft.getMinecraft();
+            // the world clock as shown (the World module can change the time of day you see); day 1 = tick 0
+            long t = mc.theWorld == null ? 0 : mc.theWorld.getWorldTime();
+            long day = t / 24000L + 1;
+            int tod = (int) ((t + 6000L) % 24000L); // tick 0 = 06:00
+            row(x, ry, "Day " + day, String.format(java.util.Locale.ROOT, "%02d:%02d", tod / 1000, (tod % 1000) * 60 / 1000));
         }
     }
 

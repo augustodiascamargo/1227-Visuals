@@ -84,6 +84,7 @@ public abstract class HudModule extends Module {
         if (e.type != RenderGameOverlayEvent.ElementType.ALL) return;
         Minecraft mc = Minecraft.getMinecraft();
         if (mc.gameSettings.showDebugInfo || mc.currentScreen instanceof HudEditorScreen) return;
+        if (net.m1227.module.CinematicModule.hidesHud(this)) return;
         render(e.resolution, false);
     }
 
