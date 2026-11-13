@@ -299,6 +299,13 @@ public abstract class Setting<T> {
             this.placeholder = placeholder;
         }
 
+        /** Never longer than maxLength, whoever sets it (UI, profile, clipboard import). */
+        @Override
+        public void set(String v) {
+            String s = v == null ? "" : v;
+            super.set(s.length() > maxLength ? s.substring(0, maxLength) : s);
+        }
+
         @Override
         public JsonElement toJson() {
             return new JsonPrimitive(value);

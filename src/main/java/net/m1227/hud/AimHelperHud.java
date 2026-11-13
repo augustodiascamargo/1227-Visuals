@@ -18,7 +18,7 @@ public final class AimHelperHud extends HudModule {
     private final Setting.Num reachRef;
 
     public AimHelperHud() {
-        super("Aim Helper", "Distance, speed and jump state of the player you are looking at.", 0.44, 0.55);
+        super("Target Info", "Distance, speed and jump state of the player you are looking at.", 0.44, 0.55);
         speed = add(new Setting.Bool("Movement speed", true));
         air = add(new Setting.Bool("Jump / fall state", true));
         bar = add(new Setting.Bool("Distance bar", true));

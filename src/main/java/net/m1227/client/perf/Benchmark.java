@@ -111,7 +111,20 @@ public final class Benchmark {
         return new File(d, "benchmarks.json");
     }
 
+    private static List<Result> cache;
+    private static long cacheStamp = -1;
+
+    /** Saved results (cached; re-read only when the file changes). */
     public static List<Result> results() {
+        File cf = file();
+        long stamp = cf.isFile() ? cf.lastModified() ^ cf.length() : 0;
+        if (cache != null && stamp == cacheStamp) return new ArrayList<Result>(cache);
+        cache = read();
+        cacheStamp = stamp;
+        return new ArrayList<Result>(cache);
+    }
+
+    private static List<Result> read() {
         List<Result> out = new ArrayList<Result>();
         try {
             File f = file();

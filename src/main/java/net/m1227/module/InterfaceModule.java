@@ -16,7 +16,10 @@ public final class InterfaceModule extends Module {
     public static InterfaceModule INSTANCE;
     public final Setting.Bool mainMenu, pauseMenu, servers, worlds, character, walkIn, options, death, disconnect, restyle, parallax, changelog, pauseBlur;
     public final Setting.Mode background, layout, intro, introWhen;
-    public final Setting.Text image;
+    public final Setting.Text image, title;
+    public final Setting.Bool customTitle;
+    private String appliedTitle;
+    private int titleTicks;
     public final Setting.Num dim;
 
     public InterfaceModule() {
@@ -45,6 +48,21 @@ public final class InterfaceModule extends Module {
         parallax = add(new Setting.Bool("Background follows the mouse", true));
         changelog = add(new Setting.Bool("Show what's new on the main menu", true));
         pauseBlur = add(new Setting.Bool("Blur the game behind the pause menu", true));
+        customTitle = add(new Setting.Bool("Custom window title", true));
+        title = add(new Setting.Text("Window title", "1227 Client \u00b7 Minecraft 1.8.9", 60, "text of the game window's title bar"))
+                .showIf(() -> customTitle.on());
+    }
+
+    /** Keeps the game window's title in sync with the setting (checked once a second). */
+    @net.minecraftforge.fml.common.eventhandler.SubscribeEvent
+    public void onTick(net.minecraftforge.fml.common.gameevent.TickEvent.ClientTickEvent e) {
+        if (e.phase != net.minecraftforge.fml.common.gameevent.TickEvent.Phase.END || ++titleTicks % 20 != 0) return;
+        String want = customTitle.on() ? title.get().trim() : "Minecraft 1.8.9";
+        if (want.isEmpty()) want = "Minecraft 1.8.9";
+        if (!want.equals(appliedTitle)) {
+            org.lwjgl.opengl.Display.setTitle(want);
+            appliedTitle = want;
+        }
     }
 
     @Override

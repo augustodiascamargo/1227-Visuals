@@ -54,17 +54,17 @@
 | # | Etapa | Estado |
 |---|---|---|
 | 1 | Auditoria | **Feita** (este documento) |
-| 2 | Arquitetura compartilhada (`common`, eventos próprios) | A fazer, junto com a etapa 9 |
+| 2 | Arquitetura compartilhada (`common`, eventos próprios) | **Cancelada** junto com o Fabric (só existia para ele) |
 | 3 | Melhorias nos módulos existentes | Contínuo |
-| 4 | Céus, clima e ambiente: céus elétricos, aurora verde, Picture Sky, chuva com poças e ondulações | **Começou nesta entrega** |
-| 5 | Espadas, armas e cosméticos (editor, prévia em personagem 3D) | A fazer |
+| 4 | Céus, clima e ambiente: céus elétricos, aurora verde, Picture Sky, chuva com poças e ondulações | **Feita (v1.18.0):** Wet World com poças, reflexo do céu e ondulações; Fog |
+| 5 | Espadas, armas e cosméticos (editor, prévia em personagem 3D) | **Feita (v1.18.0):** Weapon editor, Cosmetics com personagem 3D, Arrival Effects |
 | 6 | Pearl Helper e Aim Helper (informativo) | **Feita nesta entrega** |
 | 7 | Discord (Rich Presence "Jogando 1227Visuals") e Music Player (local + controle de Spotify/YouTube) | **Feita (v1.16.0)** |
-| 8 | Nova interface (menus de céus, espadas, cosméticos, música e integrações) | A fazer |
-| 9 | Fabric 1.8.9 | A fazer (exige a etapa 2) |
+| 8 | Nova interface (menus de céus, espadas, cosméticos, música e integrações) | **Feita (v1.18.0):** Sky gallery, Weapon editor, Cosmetics 3D, Music com o mesmo visual e atalho para Discord |
+| 9 | Fabric 1.8.9 | **Cancelada** (13/11/2026, a pedido) |
 | 10 | Launcher desktop | **Cancelada** (12/11/2026): ver decisões abaixo |
 | 11 | Integração launcher + Forge + Fabric | **Cancelada** junto com a etapa 10 |
-| 12 | Testes, otimização e instaladores | A fazer |
+| 12 | Testes, otimização e instaladores | **Feita (v1.18.0):** testes JUnit no build, cache nas telas que liam o disco a cada frame, instalador dentro do jar |
 
 **Limite de testes:** este ambiente não roda o Minecraft nem tem internet para baixar dependências. Tudo é compilado aqui contra o próprio código e no GitHub Actions contra o Forge e o Fabric reais. O teste dentro do jogo depende de você.
 
@@ -73,3 +73,5 @@
 - **Sem launcher próprio** (pedido do usuário: o launcher oficial não deve precisar ser aberto). Um launcher que abre o jogo sozinho exige login Microsoft próprio, e sem Azure isso não existe. O 1227 continua como mod: o `.jar` vai na pasta `mods` de qualquer instalação Forge 1.8.9 (launcher oficial, Lunar com Forge, Prism, MultiMC etc.).
 - **Discord:** só Rich Presence ("Jogando 1227Visuals").
 - **Música:** arquivos locais e playlists do Spotify/YouTube, tocando nos apps oficiais e controladas pelo 1227.
+
+- **Fabric cancelado (13/11/2026):** o 1227 é só Forge 1.8.9.

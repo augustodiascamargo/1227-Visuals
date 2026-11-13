@@ -331,9 +331,12 @@ public final class SettingsScreen extends UiScreen {
                 r.section("Trails and jumps");
                 modules(r, Category.MOVEMENT);
                 r.section("Weapons");
+                r.button("Weapon editor", "Model, finish and colours of your sword with a 3D preview", "Open", Ui.PRIMARY,
+                        () -> mc.displayGuiScreen(new WeaponEditorScreen(this)));
                 modules(r, Category.WEAPONS);
                 break;
             case "Cosmetics":
+                r.button("Cosmetics preview", "See them on your character in 3D", "Open", Ui.PRIMARY, () -> mc.displayGuiScreen(new CosmeticsScreen(this)));
                 modules(r, Category.COSMETICS);
                 break;
             case "PvP":
@@ -375,6 +378,8 @@ public final class SettingsScreen extends UiScreen {
                         () -> ClickGui.open(null, this));
                 break;
             case "World":
+                r.button("Sky gallery", "All 58 skies as live previews, with collections and favorites", "Open", Ui.PRIMARY,
+                        () -> mc.displayGuiScreen(new SkyGalleryScreen(this)));
                 r.section("Skies");
                 modules(r, Category.SKY);
                 r.section("Ambience and world");

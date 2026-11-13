@@ -17,6 +17,30 @@ archivesBaseName = "1227"
 sourceCompatibility = targetCompatibility = "1.8"
 compileJava.options.encoding = 'UTF-8'
 
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    // automated tests (src/test): run by "gradle build" in CI
+    testCompile 'junit:junit:4.12'
+}
+
+test {
+    testLogging {
+        events "passed", "failed"
+        exceptionFormat "full"
+    }
+}
+
+// double-clicking the jar opens the 1227 installer (net.m1227.installer.InstallerMain);
+// in the mods folder Forge loads it as a normal mod
+jar {
+    manifest {
+        attributes 'Main-Class': 'net.m1227.installer.InstallerMain'
+    }
+}
+
 minecraft {
     version = "1.8.9-11.15.1.2318-1.8.9"
     runDir = "run"

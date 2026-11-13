@@ -262,6 +262,23 @@ public final class Ui {
         }
     }
 
+    /** Clips drawing to (x, y, w, h) inside the current scroll area; undo with reclip(). */
+    public void clipTo(float x, float y, float w, float h) {
+        if (clip != null) {
+            float x0 = Math.max(x, clip[0]), y0 = Math.max(y, clip[1]);
+            float x1 = Math.min(x + w, clip[0] + clip[2]), y1 = Math.min(y + h, clip[1] + clip[3]);
+            Gfx.scissorOn(x0, y0, Math.max(0f, x1 - x0), Math.max(0f, y1 - y0));
+        } else {
+            Gfx.scissorOn(x, y, w, h);
+        }
+    }
+
+    /** Back to the clip of the current scroll area (or none). */
+    public void reclip() {
+        if (clip != null) Gfx.scissorOn(clip[0], clip[1], clip[2], clip[3]);
+        else Gfx.scissorOff();
+    }
+
     public void resetScroll(Object id) {
         Scroll s = scrolls.get(id);
         if (s != null) {

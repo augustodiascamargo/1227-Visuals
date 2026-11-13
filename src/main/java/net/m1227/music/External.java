@@ -138,25 +138,18 @@ public final class External {
 
     // ------------------------------------------------------------- links
 
-    /** Accepts open.spotify.com links and spotify: URIs for playlists/albums/tracks. */
+    /** Accepts open.spotify.com links and spotify: URIs for playlists/albums/tracks (see Links). */
     public static String spotifyUri(String link) {
-        String l = link.trim();
-        if (l.startsWith("spotify:")) return l.matches("spotify:(playlist|album|track|artist):[A-Za-z0-9]+") ? l : null;
-        java.util.regex.Matcher m = java.util.regex.Pattern.compile("^https://open\\.spotify\\.com/(?:intl-[a-z]+/)?(playlist|album|track|artist)/([A-Za-z0-9]+)").matcher(l);
-        return m.find() ? "spotify:" + m.group(1) + ":" + m.group(2) : null;
+        return Links.spotifyUri(link);
     }
 
     public static String spotifyWeb(String uri) {
-        String[] p = uri.split(":");
-        return "https://open.spotify.com/" + p[1] + "/" + p[2];
+        return Links.spotifyWeb(uri);
     }
 
-    /** Accepts youtube.com / music.youtube.com playlist or video links. */
+    /** Accepts youtube.com / music.youtube.com playlist or video links (see Links). */
     public static String youtubeUrl(String link) {
-        String l = link.trim();
-        if (l.matches("^https://(www\\.|music\\.)?youtube\\.com/(playlist|watch)\\?[A-Za-z0-9_=&%.-]+$")) return l;
-        if (l.matches("^https://youtu\\.be/[A-Za-z0-9_-]+(\\?[A-Za-z0-9_=&%.-]+)?$")) return l;
-        return null;
+        return Links.youtubeUrl(link);
     }
 
     /** Opens the Spotify link in the Spotify app (falls back to the web player), or the YouTube link in the browser. */

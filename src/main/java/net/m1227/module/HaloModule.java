@@ -199,6 +199,39 @@ public final class HaloModule extends Module {
         GlStateManager.popMatrix();
     }
 
+    /**
+     * Draws the halo cosmetic on a preview character at the origin (cosmetics screen): china hat,
+     * angel halo (as a ring), thorn crown, star crown and orbs. The comet is drawn by the screen in
+     * 2D (it is made of world particles in game). Returns true when the style is a comet.
+     */
+    public boolean renderPreview(float t, float yawDeg) {
+        if (!isEnabled()) return false;
+        net.minecraft.client.renderer.entity.RenderManager rm = Minecraft.getMinecraft().getRenderManager();
+        double ox = rm.viewerPosX, oy = rm.viewerPosY, oz = rm.viewerPosZ; // meshAt subtracts the camera: this puts it at the origin
+        float yaw = (float) Math.toRadians(yawDeg);
+        int c0 = fx.color1.rgb(), c1 = fx.color2.rgb();
+        float size = fx.size.f(), alpha = Math.max(0.6f, fx.alpha());
+        double head = 1.85;
+        String st = style.get();
+        if (st.equals("China Hat")) {
+            meshAt(ox, oy + head + 0.02 + height.get() * 0.15, oz, yaw, 0f, t * fx.speed.f(), c0, c1, alpha, true, size * 2f);
+        } else if (st.startsWith("Comet") || st.equals("Thorn Crown")) {
+            if (!st.equals("Comet")) thornCrown(ox, oy + head - 0.05, oz, yaw, t, c0, alpha);
+            return st.startsWith("Comet");
+        } else if (st.equals("Orbiting Orbs") || st.equals("Orbiting Badges")) {
+            int n = Math.max(1, Math.min(6, fx.amount.i()));
+            for (int i = 0; i < n; i++) {
+                double a = t * 1.4 * fx.speed.f() + i * (Math.PI * 2 / n);
+                meshAt(ox + Math.cos(a) * 0.75, oy + 0.95 + Math.sin(t * 1.9 + i) * 0.05, oz + Math.sin(a) * 0.75, 0f, 0f, t,
+                        ParticleSystem.mix(c0, c1, i / (float) n), c1, alpha, false, 0.35f);
+            }
+        } else {
+            // angel halo and star crown: a ring above the head
+            meshAt(ox, oy + head + 0.25 + height.get() + Math.sin(t * 2.2) * 0.03, oz, yaw, 0f, t, c0, c1, alpha, false, size);
+        }
+        return false;
+    }
+
     /** The thorn crown around the origin (ring in the XZ plane); caller sets the GL state. */
     public static void thornGeometry(float t, int c0, float a) {
         float cr = ((c0 >> 16) & 255) / 255f, cg = ((c0 >> 8) & 255) / 255f, cb = (c0 & 255) / 255f;

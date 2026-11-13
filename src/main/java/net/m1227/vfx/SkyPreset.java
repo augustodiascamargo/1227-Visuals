@@ -135,6 +135,15 @@ public final class SkyPreset {
         return out;
     }
 
+    /** Gallery collection of a sky, from what it contains: Neon, Aurora, Space, Sunset or Night. */
+    public static String collection(SkyPreset s) {
+        if (s.codeRain || s.grid || s.celestial == RETRO || s.lines > 0) return "Neon";
+        if (s.aurora > 0 || s.shader == 10) return "Aurora";
+        if (s.galaxy > 0.2f || s.nebula > 0.2f || s.celestial == PLANET) return "Space";
+        if (s.glow > 0.25f || s.celestial == SUN) return "Sunset";
+        return "Night";
+    }
+
     public static SkyPreset byName(String n) {
         for (SkyPreset s : ALL) {
             if (s.name.equals(n)) return s;

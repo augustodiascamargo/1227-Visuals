@@ -173,6 +173,70 @@ public final class WeaponModelsModule extends Module {
             GlStateManager.popMatrix();
             return;
         }
+        models(md, b, h, g);
+        hands(mc);
+        GlStateManager.shadeModel(GL11.GL_FLAT);
+        GlStateManager.enableTexture2D();
+        GlStateManager.enableLighting();
+        GlStateManager.enableCull();
+        GlStateManager.disableBlend();
+        GlStateManager.color(1f, 1f, 1f, 1f);
+        GL11.glColor4f(1f, 1f, 1f, 1f);
+        GlStateManager.popMatrix();
+    }
+
+    /**
+     * Draws the chosen model alone, centred on the middle of the weapon, with the current colours,
+     * finish, size and width: the preview of the Weapon editor. No hands, no animation except the
+     * butterfly knife opening and closing.
+     */
+    public void renderPreview() {
+        thick = size.f();
+        len = 1.30f * length.f() * (knife() ? 0.8f : 1f);
+        String md = model.get();
+        int b = primary.rgb(), h = secondary.rgb(), g = glowRgb();
+        tipColor = -1;
+        int fi = java.util.Arrays.asList(FINISHES).indexOf(finish.get());
+        if (fi > 0) {
+            int[] fc = FINISH_COLORS[fi];
+            b = fc[0];
+            tipColor = fc[1];
+            h = fc[2];
+            if (!matchWeaponFx.on()) g = fc[3];
+        }
+        widthBoost = md.equals("Cleaver") ? 0f : (md.equals("Rune Greatsword") || md.equals("Holy Claymore") || md.equals("Obsidian Edge")) ? 0.4f : 1f;
+        GlStateManager.pushMatrix();
+        float sa = scaleAll.f();
+        GlStateManager.scale(sa, sa, sa);
+        GlStateManager.translate(-(OX + AX * len * 0.5f), -(OY + AY * len * 0.5f), -OZ);
+        GlStateManager.disableTexture2D();
+        GlStateManager.disableLighting();
+        GlStateManager.disableCull();
+        GlStateManager.enableDepth();
+        GlStateManager.depthMask(true);
+        GlStateManager.depthFunc(GL11.GL_LEQUAL);
+        GlStateManager.enableBlend();
+        GlStateManager.tryBlendFuncSeparate(770, 771, 1, 0);
+        GlStateManager.shadeModel(GL11.GL_SMOOTH);
+        if (md.equals("Butterfly Knife")) {
+            net.m1227.vfx.MeshAssets.Rigid k = net.m1227.vfx.MeshAssets.knife();
+            float t = (System.currentTimeMillis() % 3000) / 3000f;
+            float ft = 39f * (0.5f - 0.5f * (float) Math.cos(t * Math.PI * 2));
+            if (k != null) butterflyMesh(k, ft, b, h, g);
+            else katana(b, h, g);
+        } else {
+            models(md, b, h, g);
+        }
+        GlStateManager.shadeModel(GL11.GL_FLAT);
+        GlStateManager.enableTexture2D();
+        GlStateManager.enableCull();
+        GlStateManager.color(1f, 1f, 1f, 1f);
+        GL11.glColor4f(1f, 1f, 1f, 1f);
+        GlStateManager.popMatrix();
+    }
+
+    /** Model dispatch shared by the first-person view and the editor preview. */
+    private void models(String md, int b, int h, int g) {
         if (md.equals("Crystal Blade")) crystal(b, h, g);
         else if (md.equals("Energy Saber")) saber(h, g);
         else if (md.equals("Rune Greatsword")) rune(b, h, g);
@@ -190,15 +254,6 @@ public final class WeaponModelsModule extends Module {
         else if (md.equals("Skeleton Knife")) skeleton(b, h, g);
         else if (md.equals("Push Dagger")) push(b, h, g);
         else katana(b, h, g);
-        hands(mc);
-        GlStateManager.shadeModel(GL11.GL_FLAT);
-        GlStateManager.enableTexture2D();
-        GlStateManager.enableLighting();
-        GlStateManager.enableCull();
-        GlStateManager.disableBlend();
-        GlStateManager.color(1f, 1f, 1f, 1f);
-        GL11.glColor4f(1f, 1f, 1f, 1f);
-        GlStateManager.popMatrix();
     }
 
     // ------------------------------------------------------------- models
@@ -368,6 +423,11 @@ public final class WeaponModelsModule extends Module {
             else if (t < 1.05f) ft = 39f * (1f - (t - 0.5f) / 0.55f);
             else animKind = 0;
         }
+        butterflyMesh(k, ft, blade, hilt, glow);
+    }
+
+    /** The butterfly knife at animation frame ft (0 = open, 39 = closed). */
+    private void butterflyMesh(net.m1227.vfx.MeshAssets.Rigid k, float ft, int blade, int hilt, int glow) {
         final float kk = len / 2.84f;
         final float th = thick;
         net.m1227.vfx.MeshAssets.Mapper map = new net.m1227.vfx.MeshAssets.Mapper() {

@@ -53,12 +53,21 @@ public final class EnergyShellModule extends Module {
         }
     }
 
+    /** Draws the shell / rings on a preview character standing at the origin (cosmetics screen). */
+    public void renderPreview() {
+        if (!isEnabled()) return;
+        drawAt(0, 0, 0, 1.8f, System.nanoTime() / 1e9 * speed.get());
+    }
+
     private void draw(Minecraft mc, EntityPlayer p, float pt) {
         double x = p.lastTickPosX + (p.posX - p.lastTickPosX) * pt - mc.getRenderManager().viewerPosX;
         double y = p.lastTickPosY + (p.posY - p.lastTickPosY) * pt - mc.getRenderManager().viewerPosY;
         double z = p.lastTickPosZ + (p.posZ - p.lastTickPosZ) * pt - mc.getRenderManager().viewerPosZ;
-        double t = System.nanoTime() / 1e9 * speed.get() + p.getEntityId() * 0.37;
-        float sc = size.f(), a = opacity.f(), h = p.height + 0.15f;
+        drawAt(x, y, z, p.height, System.nanoTime() / 1e9 * speed.get() + p.getEntityId() * 0.37);
+    }
+
+    private void drawAt(double x, double y, double z, float height, double t) {
+        float sc = size.f(), a = opacity.f(), h = height + 0.15f;
         int c0 = color1.rgb(), c1 = color2.rgb();
         String st = style.get();
         float lx = OpenGlHelper.lastBrightnessX, ly = OpenGlHelper.lastBrightnessY;

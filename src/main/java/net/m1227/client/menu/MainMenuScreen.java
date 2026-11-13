@@ -191,7 +191,7 @@ public final class MainMenuScreen extends UiScreen {
                 ClickGui.open(null, this);
                 break;
             case 4:
-                mc.displayGuiScreen(new SettingsScreen(this, "Cosmetics"));
+                mc.displayGuiScreen(new net.m1227.client.settings.CosmeticsScreen(this));
                 break;
             case 5:
                 mc.displayGuiScreen(new SettingsScreen(this, "Profiles"));

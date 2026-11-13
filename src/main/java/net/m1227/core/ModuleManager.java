@@ -17,6 +17,9 @@ public final class ModuleManager {
         register(new AmbientModule());
         register(new WorldModule());
         register(new ItemPhysicsModule());
+        register(new FogModule());
+        register(new BlockOverlayModule());
+        register(new WetWorldModule());
         register(new TargetAuraModule());
         register(new PlayerAuraModule());
         register(new PlayerGlowModule());
@@ -24,6 +27,7 @@ public final class ModuleManager {
         register(new HaloModule());
         register(new WingsModule());
         register(new EnergyShellModule());
+        register(new ArrivalEffectsModule());
         register(new TrailsModule());
         register(new AfterimageModule());
         register(new JumpEffectModule());
@@ -35,6 +39,8 @@ public final class ModuleManager {
         register(new ProjectileTrailsModule());
         register(new PearlHelperModule());
         register(new SpacingCircleModule());
+        register(new AimHelperModule());
+        register(new HitParticlesModule());
         register(new DamageNumbersModule());
         register(new MatchFxModule());
         register(new WeaponEffectsModule());
@@ -75,6 +81,7 @@ public final class ModuleManager {
         register(new net.m1227.hud.ScoreboardHud());
         register(new net.m1227.hud.HitDelayHud());
         register(new net.m1227.hud.WTapHud());
+        register(new net.m1227.hud.ReachHud());
         register(new net.m1227.hud.AimHelperHud());
         register(new net.m1227.hud.MusicHud());
         register(new TabListModule());

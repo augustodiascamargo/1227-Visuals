@@ -1,16 +1,10 @@
 package net.m1227.client.menu;
 
-import com.mojang.authlib.GameProfile;
-import com.mojang.authlib.minecraft.MinecraftProfileTexture;
-import java.util.ArrayList;
-import java.util.List;
 import net.m1227.module.HaloModule;
 import net.m1227.ui.Gfx;
 import net.m1227.vfx.Puppet;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.GlStateManager;
-import net.minecraft.client.resources.DefaultPlayerSkin;
-import net.minecraft.client.resources.SkinManager;
 import net.minecraft.util.ResourceLocation;
 import org.lwjgl.opengl.GL11;
 
@@ -22,44 +16,18 @@ import org.lwjgl.opengl.GL11;
  * it.
  */
 final class MenuCharacter {
-    private static ResourceLocation skin;
-    private static boolean slim, requested;
 
     private float startT = -1f;
     private long last;
     private final Puppet.Pose pose = new Puppet.Pose();
-    private final List<float[]> tail = new ArrayList<float[]>();
+    private final net.m1227.client.ui.Comet2D comet = new net.m1227.client.ui.Comet2D();
     private float headYaw, headPitch;
 
     private static final float WALK = 1.7f, TURN = 0.4f;
 
-    /** Starts the skin download once per game session (falls back to the default skin). */
-    private static void requestSkin() {
-        if (requested) return;
-        requested = true;
-        Minecraft mc = Minecraft.getMinecraft();
-        try {
-            GameProfile profile = mc.getSession().getProfile();
-            skin = DefaultPlayerSkin.getDefaultSkin(profile.getId());
-            slim = "slim".equals(DefaultPlayerSkin.getSkinType(profile.getId()));
-            mc.getSkinManager().loadProfileTextures(profile, new SkinManager.SkinAvailableCallback() {
-                @Override
-                public void skinAvailable(MinecraftProfileTexture.Type type, ResourceLocation location, MinecraftProfileTexture tex) {
-                    if (type != MinecraftProfileTexture.Type.SKIN) return;
-                    skin = location;
-                    String model = tex == null ? null : tex.getMetadata("model");
-                    slim = "slim".equals(model);
-                }
-            }, false);
-        } catch (Throwable t) {
-            skin = DefaultPlayerSkin.getDefaultSkinLegacy();
-            slim = false;
-        }
-    }
-
     /** Starts the walk (call when the menu becomes visible). */
     void start(boolean walkIn) {
-        requestSkin();
+        net.m1227.client.ui.LocalSkin.request();
         startT = now() - (walkIn ? 0f : WALK + TURN);
     }
 
@@ -77,6 +45,8 @@ final class MenuCharacter {
 
     /** Draws the character with its feet at (feetX, feetY); size = screen units per block. */
     void draw(float feetX, float feetY, float size, int mx, int my, int screenW) {
+        ResourceLocation skin = net.m1227.client.ui.LocalSkin.skin();
+        boolean slim = net.m1227.client.ui.LocalSkin.slim();
         if (startT < 0f || skin == null) return;
         long n = System.nanoTime();
         float dt = last == 0 ? 0.016f : Math.min(0.1f, (n - last) / 1e9f);
@@ -136,7 +106,7 @@ final class MenuCharacter {
         GlStateManager.enableTexture2D();
         GlStateManager.color(1f, 1f, 1f, 1f);
 
-        if (cos != null && cos.startsWith("Comet")) comet(x, feetY - size * (2.25f + pose.lift), size, dt, t);
+        if (cos != null && cos.startsWith("Comet")) comet.draw(x, feetY - size * (2.25f + pose.lift), size, dt, t);
     }
 
     private void crown(float t, float yaw, float lift) {
@@ -157,34 +127,4 @@ final class MenuCharacter {
         GlStateManager.popMatrix();
     }
 
-    /** The comet in screen space: a bright core over the head and a tail streaming up and back. */
-    private void comet(float hx, float hy, float size, float dt, float t) {
-        int[] col = HaloModule.menuCometColors();
-        float cx = hx + (float) Math.sin(t * 1.3) * size * 0.05f, cy = hy + (float) Math.cos(t * 1.1) * size * 0.04f;
-        // emit
-        int count = (int) (dt * 90f) + (Math.random() < dt * 90f % 1f ? 1 : 0);
-        for (int i = 0; i < count; i++) {
-            tail.add(new float[]{cx + (float) (Math.random() - 0.5) * size * 0.05f, cy, size * (0.18f + (float) Math.random() * 0.12f),
-                    -size * (0.7f + (float) Math.random() * 0.4f), 0f});
-        }
-        for (int i = tail.size() - 1; i >= 0; i--) {
-            float[] p = tail.get(i);
-            p[4] += dt / 0.9f;
-            if (p[4] >= 1f) {
-                tail.remove(i);
-                continue;
-            }
-            p[0] += p[2] * dt;
-            p[1] += p[3] * dt;
-            p[2] += (float) Math.sin(t * 2 + i) * size * 0.08f * dt; // a little turbulence
-        }
-        for (float[] p : tail) {
-            float k = p[4];
-            int c = Gfx.mix(0xFF000000 | col[0], 0xFF000000 | col[1], k);
-            Gfx.glow(p[0], p[1], size * 0.16f * (1f - k * 0.8f), Gfx.alpha(c, 0.55f * (1f - k)));
-        }
-        Gfx.glow(cx, cy, size * 0.45f, Gfx.alpha(0xFF000000 | col[1], 0.45f));
-        Gfx.glow(cx, cy, size * 0.25f, Gfx.alpha(0xFF000000 | col[0], 0.9f));
-        Gfx.glow(cx, cy, size * 0.11f, 0xFFFFFFFF);
-    }
 }

@@ -70,6 +70,7 @@ public class Mod1227 {
         MinecraftForge.EVENT_BUS.register(net.m1227.client.menu.ServerStore.INSTANCE);
         MinecraftForge.EVENT_BUS.register(net.m1227.client.perf.PerfSystem.INSTANCE);
         MinecraftForge.EVENT_BUS.register(net.m1227.client.perf.Benchmark.INSTANCE);
+        MinecraftForge.EVENT_BUS.register(net.m1227.vfx.CubeBurst.INSTANCE);
         ClientCommandHandler.instance.registerCommand(new Command1227());
 
         Runtime.getRuntime().addShutdownHook(new Thread(new Runnable() {

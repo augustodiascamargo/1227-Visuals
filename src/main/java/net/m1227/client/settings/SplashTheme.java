@@ -30,8 +30,16 @@ public final class SplashTheme {
         return new File(Mod1227.configDir, "splash.properties.1227-absent");
     }
 
+    private static boolean appliedCache;
+    private static long appliedAt;
+
     public static boolean applied() {
-        return backup().isFile() || absentMarker().isFile();
+        long now = System.currentTimeMillis();
+        if (now - appliedAt > 1000) {
+            appliedCache = backup().isFile() || absentMarker().isFile();
+            appliedAt = now;
+        }
+        return appliedCache;
     }
 
     private static String hex(int rgb) {
@@ -63,6 +71,7 @@ public final class SplashTheme {
             try (FileOutputStream out = new FileOutputStream(f)) {
                 p.store(out, "Forge splash screen; colours set by 1227 (Settings > Advanced restores the original)");
             }
+            appliedAt = 0;
             Notifier.post(Notifier.Kind.SYSTEM, "Loading screen", "Themed from the next start", Notifier.GOOD, 2000);
         } catch (Exception e) {
             Mod1227.LOGGER.warn("Could not theme splash.properties", e);
@@ -78,6 +87,7 @@ public final class SplashTheme {
                 Files.deleteIfExists(file().toPath());
                 Files.deleteIfExists(absentMarker().toPath());
             }
+            appliedAt = 0;
             Notifier.post(Notifier.Kind.SYSTEM, "Loading screen", "Forge default from the next start", Notifier.GOOD, 2000);
         } catch (Exception e) {
             Mod1227.LOGGER.warn("Could not restore splash.properties", e);

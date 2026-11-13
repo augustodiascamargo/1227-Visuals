@@ -100,8 +100,8 @@ public final class PauseScreen extends UiScreen {
         float gx = x + colW + 28;
         float avail = w - gx - 16;
         if (avail < 150) return;
-        String[] names = {"HUD editor", "Modules", "Cosmetics", "Visuals", "Performance", "Profiles", "Keybinds", "Client", "Screenshots", "Music"};
-        int[] gl = {Glyph.HUD, Glyph.GEAR, Glyph.CROWN, Glyph.EYE, Glyph.BOLT, Glyph.PERSON, Glyph.KEY, Glyph.PALETTE, Glyph.CAMERA, Glyph.SOUND};
+        String[] names = {"HUD editor", "Modules", "Cosmetics", "Weapons", "Skies", "Visuals", "Performance", "Profiles", "Keybinds", "Client", "Screenshots", "Music"};
+        int[] gl = {Glyph.HUD, Glyph.GEAR, Glyph.CROWN, Glyph.SWORD, Glyph.WORLD, Glyph.EYE, Glyph.BOLT, Glyph.PERSON, Glyph.KEY, Glyph.PALETTE, Glyph.CAMERA, Glyph.SOUND};
         int cols = avail > 330 ? 5 : avail > 250 ? 4 : 2;
         float tw = Math.min(78, (avail - (cols - 1) * 6) / cols), th = 50;
         float ty = Math.max(16, h / 2f - 118) + 32;
@@ -133,24 +133,30 @@ public final class PauseScreen extends UiScreen {
                 ClickGui.open(null, this);
                 break;
             case 2:
-                mc.displayGuiScreen(new SettingsScreen(this, "Cosmetics"));
+                mc.displayGuiScreen(new net.m1227.client.settings.CosmeticsScreen(this));
                 break;
             case 3:
-                mc.displayGuiScreen(new SettingsScreen(this, "Visuals"));
+                mc.displayGuiScreen(new net.m1227.client.settings.WeaponEditorScreen(this));
                 break;
             case 4:
-                mc.displayGuiScreen(new SettingsScreen(this, "Performance"));
+                mc.displayGuiScreen(new net.m1227.client.settings.SkyGalleryScreen(this));
                 break;
             case 5:
-                mc.displayGuiScreen(new SettingsScreen(this, "Profiles"));
+                mc.displayGuiScreen(new SettingsScreen(this, "Visuals"));
                 break;
             case 6:
-                mc.displayGuiScreen(new GuiControls(this, mc.gameSettings));
+                mc.displayGuiScreen(new SettingsScreen(this, "Performance"));
                 break;
             case 7:
-                mc.displayGuiScreen(new SettingsScreen(this, "Interface"));
+                mc.displayGuiScreen(new SettingsScreen(this, "Profiles"));
                 break;
             case 8:
+                mc.displayGuiScreen(new GuiControls(this, mc.gameSettings));
+                break;
+            case 9:
+                mc.displayGuiScreen(new SettingsScreen(this, "Interface"));
+                break;
+            case 10:
                 mc.displayGuiScreen(new ScreenshotScreen(this));
                 break;
             default:

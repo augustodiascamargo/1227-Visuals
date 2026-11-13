@@ -231,6 +231,63 @@ Instalação: Minecraft 1.8.9, depois Forge 1.8.9, depois `1227.jar` na pasta `m
 - É desenhado só a partir da skin, sem mundo nem entidade falsa, então outros mods não são afetados.
 - "Character walks in" desligado faz ele já aparecer parado.
 
+**Aim Helper refeito** (Combat): agora marca o próprio alvo, como no vídeo do MoonDLC.
+- **Marcador:** anel que sobe e desce pelo corpo do alvo, ponto de referência (mais perto da mira, peito ou cabeça), anel + ponto, ou cantoneiras.
+- **Card ao lado do alvo:** rosto, nome, distância e anel de vida.
+- **Marcas de acerto:** um X onde cada golpe pegou.
+- Só aparece no alvo que você está vendo, nunca através de paredes, e não mexe na câmera nem mira por você.
+- O painel antigo continua, com o nome "Target Info".
+
+**Opções novas de client:**
+- **Fog:** sem neblina, leve, vanilla ou densa; água e lava limpas; cor de neblina própria (dá o ar verde do vídeo).
+- **Block Overlay:** cor, espessura, arco-íris e preenchimento do contorno do bloco.
+- **Hit Particles:** multiplicador das partículas de acerto, críticos e sharpness sempre visíveis.
+- **Reach Display:** distância do último golpe.
+- **Título da janela:** personalizável em Settings › Interface.
+- **Kill Effect "Pixel Burst":** cubinhos que explodem, caem e quicam no chão.
+
+**Etapa 8, menus novos:**
+- **Sky gallery:**
+  - os 58 céus em miniaturas animadas, desenhadas com as mesmas partes do céu real (degradê, estrelas, aurora, nebulosa, galáxia, sol ou lua, grade);
+  - coleções Night, Sunset, Space, Aurora e Neon, favoritos e busca;
+  - opções do céu ao lado. No mundo, o céu muda atrás da janela.
+  - Abre em Settings › World e pelo atalho Skies da pausa.
+- **Music:** o mesmo fundo dos outros menus, e a engrenagem abre Settings › Audio (Discord e opções de música).
+- **Weapon editor e Cosmetics** (etapa 5), agora também na pausa.
+
+**Etapa 12, testes, otimização e instalador:**
+- **Testes automáticos (JUnit, rodam no `gradle build` do GitHub Actions):**
+  - configurações (limites, passos, ciclos, cores, JSON com valores ruins);
+  - links do Spotify e do YouTube (inclusive tentativas de link malicioso);
+  - nomes de músicas, os 58 céus, leitura de campos por tipo e nomes de perfis seguros.
+  - Os testes acharam um erro real: o texto das configurações podia passar do limite quando vinha de fora do campo de texto. Corrigido.
+- **Otimização:** as páginas Performance e Profiles e o tema da tela de carregamento liam arquivos do disco a cada frame; agora usam cache (relido só quando o arquivo muda ou a cada 1 s).
+- **Instalador dentro do jar:** dois cliques no `1227-<versão>.jar` abrem o instalador. Ele:
+  - acha a pasta do Minecraft;
+  - confere se o Forge 1.8.9 está instalado (e abre a página do Forge se não estiver);
+  - copia o mod para `mods` e move as versões antigas do 1227 para `mods/1227-old`, sem apagar nada.
+  - Também funciona pela linha de comando: `java -jar 1227.jar --install [pasta]`.
+  - Na pasta `mods`, o mesmo jar continua funcionando como mod normal.
+- **Fabric:** cancelado a pedido; o 1227 é só Forge.
+
+**Etapa 5, armas, cosméticos e efeitos de entrada:**
+- **Cosmetics (tela nova):**
+  - seu personagem em 3D com o que está ligado: Halo (China Hat, anel, Thorn Crown, Comet, orbes), Wings e Energy Shell;
+  - gira sozinho ou arrastando com o mouse;
+  - ao lado, a lista de cosméticos para ligar e ajustar, com a prévia mudando na hora.
+  - Abre pelo menu principal, pela pausa e por Settings › Cosmetics.
+- **Weapon editor (tela nova):**
+  - a espada em 3D girando (arraste para virar);
+  - grade com os 18 modelos, mais acabamento, cores, brilho, comprimento, espessura, largura, tamanho e mãos;
+  - a butterfly abre e fecha na prévia.
+  - Abre pela pausa (Weapons), pela tela de cosméticos e por Settings › Visuals.
+- **Arrival Effects (Movement):**
+  - efeito quando um jogador aparece, sai ou teleporta (nos dois pontos), e também para você ao entrar, renascer ou teleportar;
+  - estilos Beam, Portal, Smoke, Pixels e Rift;
+  - limite de efeitos por tick para não pesar quando muita gente carrega de uma vez.
+
+**Etapa 4, Wet World** (World): na chuva, poças se formam aos poucos no chão aberto (e secam depois), refletem o céu (mais forte olhando de lado) e as gotas fazem ondinhas no chão e nas poças.
+
 **Fundo "Smoke"** no menu: névoa cinza suave.
 
 **Performance:**

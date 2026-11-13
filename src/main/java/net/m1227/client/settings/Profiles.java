@@ -31,7 +31,35 @@ public final class Profiles {
         return s.length() > 32 ? s.substring(0, 32).trim() : s;
     }
 
+    private static List<File> listCache, backupCache;
+    private static long listAt, backupAt;
+
+    /** Profiles (the folder is read at most once a second; the settings screen asks every frame). */
     public static List<File> list() {
+        long now = System.currentTimeMillis();
+        if (listCache == null || now - listAt > 1000) {
+            listCache = readList();
+            listAt = now;
+        }
+        return listCache;
+    }
+
+    public static List<File> backups() {
+        long now = System.currentTimeMillis();
+        if (backupCache == null || now - backupAt > 1000) {
+            backupCache = readBackups();
+            backupAt = now;
+        }
+        return backupCache;
+    }
+
+    /** Forgets the cached lists (after saving or deleting). */
+    static void changed() {
+        listCache = null;
+        backupCache = null;
+    }
+
+    private static List<File> readList() {
         File[] f = dir().listFiles((d, n) -> n.toLowerCase().endsWith(".json"));
         List<File> out = new ArrayList<File>();
         if (f == null) return out;
@@ -40,7 +68,7 @@ public final class Profiles {
         return out;
     }
 
-    public static List<File> backups() {
+    private static List<File> readBackups() {
         File[] f = backupsDir().listFiles((d, n) -> n.startsWith("1227-") && n.endsWith(".json"));
         List<File> out = new ArrayList<File>();
         if (f == null) return out;
@@ -61,6 +89,7 @@ public final class Profiles {
             return false;
         }
         boolean ok = ConfigManager.exportTo(new File(dir(), n + ".json"));
+        changed();
         Notifier.post(Notifier.Kind.SYSTEM, "Profile " + n, ok ? "Saved" : "Save failed", ok ? Notifier.GOOD : Notifier.BAD, 1600);
         return ok;
     }
@@ -73,6 +102,7 @@ public final class Profiles {
 
     public static void delete(File f) {
         boolean ok = f.delete();
+        changed();
         Notifier.post(Notifier.Kind.SYSTEM, "Profile " + name(f), ok ? "Deleted" : "Could not delete", ok ? Notifier.WARN : Notifier.BAD, 1600);
     }
 }

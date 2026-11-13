@@ -23,7 +23,7 @@ public final class KillEffectModule extends Module {
     public KillEffectModule() {
         super("Kill Effect", "Effect when you finish off a target.", Category.COMBAT, true);
         style = add(new Setting.Mode("Style", "Nova", "Nova", "Ascend", "Implode", "Lightning", "Cash",
-                "Ragdoll", "Decapitation", "Shatter", "Ice Shatter", "Executioner", "Tung Sahur"));
+                "Ragdoll", "Decapitation", "Shatter", "Ice Shatter", "Executioner", "Tung Sahur", "Pixel Burst"));
         fx = new FxSettings(this, 0x8B5CFF, 0x2DD4FF, 26, 1.0, 0.14, 1.0);
         red = add(new Setting.Bool("Red particles (Decapitation)", false)).showIf(() -> style.is("Decapitation"));
         sahurSize = add(new Setting.Num("Tung Sahur size", 2.1, 1.0, 3.0, 0.05, "x")).showIf(() -> style.is("Tung Sahur"));
@@ -88,6 +88,12 @@ public final class KillEffectModule extends Module {
         }
         if (s.equals("Executioner")) {
             bf.executioner(victim, x, feetY, z, yaw, height, dirX, dirZ, 0xFF000000 | c0, c1);
+            return;
+        }
+        if (s.equals("Pixel Burst")) {
+            // a burst of small cubes that falls and bounces, with a soft flash
+            net.m1227.vfx.CubeBurst.INSTANCE.spawn(x, feetY + 0.2, z, Math.max(20, (int) (fx.amount.f() * 6)), fx.size.f(), fx.speed.f(), c0, c1);
+            ps.glow(x, y, z, 0f, 0f, 0f, 0.3f, fx.size.f() * 6f, fx.size.f() * 14f, c1, c0, fx.alpha() * 0.6f);
             return;
         }
         if (s.equals("Nova")) nova(ps, x, y, z, feetY);

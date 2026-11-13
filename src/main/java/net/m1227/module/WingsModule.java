@@ -69,6 +69,24 @@ public final class WingsModule extends Module {
 
     private float lx, ly;
 
+    /**
+     * Draws the wings on a preview character standing at the origin and facing +Z (cosmetics
+     * screen). Uses the current style, colours, material and flap speed.
+     */
+    public void renderPreview(float t) {
+        if (!isEnabled()) return;
+        begin();
+        float bx = 0f, bz = -1f, sx = 1f, sz = 0f;
+        float open = (float) Math.toRadians(22f + 12f * (float) Math.sin(t * 2.4 * flap.f()));
+        double ox = bx * 0.16, oy = 1.3, oz = bz * 0.16;
+        for (int sgn = -1; sgn <= 1; sgn += 2) {
+            float c = (float) Math.cos(open), s = (float) Math.sin(open);
+            float ux = sx * sgn * c + bx * s, uz = sz * sgn * c + bz * s;
+            wing(ox + sx * sgn * 0.06, oy, oz + sz * sgn * 0.06, ux, uz, size.f());
+        }
+        end();
+    }
+
     private void begin() {
         lx = OpenGlHelper.lastBrightnessX;
         ly = OpenGlHelper.lastBrightnessY;

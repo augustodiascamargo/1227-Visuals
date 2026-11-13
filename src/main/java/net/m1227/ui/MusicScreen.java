@@ -95,7 +95,7 @@ public final class MusicScreen extends GuiScreen {
         areas.clear();
         MusicModule mod = m();
         int acc = 0xFF000000 | ClientModule.accent();
-        Gfx.rect(0, 0, width, height, 0x66000000);
+        net.m1227.client.menu.MenuBackground.draw(width, height, mx, my, mc.theWorld != null);
         float x = (width - W) / 2f, y = (height - H) / 2f;
         Gfx.roundedRect(x, y, W, H, 12, 0xF00E1016);
         Gfx.roundedOutline(x, y, W, H, 12, 0.8f, 0x22FFFFFF);
@@ -116,6 +116,10 @@ public final class MusicScreen extends GuiScreen {
             });
             tx += tw + 4;
         }
+        // Discord and the music options live in Settings › Audio
+        boolean ih = in(mx, my, x + W - 46, y + 8, 18, 16);
+        net.m1227.ui.Icons.gear(x + W - 37, y + 16, ih ? 0xFFFFFFFF : 0xFF8A8F9C);
+        click(x + W - 46, y + 8, 18, 16, () -> mc.displayGuiScreen(new net.m1227.client.settings.SettingsScreen(this, "Audio")));
         // close
         int xc = in(mx, my, x + W - 22, y + 8, 16, 16) ? 0xFFFFFFFF : 0xFF8A8F9C;
         Gfx.line(x + W - 18, y + 12, x + W - 10, y + 20, 1.2f, xc);
