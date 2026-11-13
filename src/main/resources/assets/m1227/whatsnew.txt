@@ -1,3 +1,4 @@
+Press to enter opening, your character walks into the menu, Comet and Thorn Crown
 1227 is now a full client inside the mod
 New main menu, pause menu, server list and world list
 One Settings screen for Minecraft and 1227 options

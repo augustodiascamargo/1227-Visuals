@@ -75,6 +75,8 @@ public final class MenuBackground {
                 aurora(w, h, t, px, py, acc);
                 Gfx.textScaled("Put a .png or .jpg in config/1227/backgrounds", 8, h - 12, DS.T_SMALL, DS.FAINT);
             }
+        } else if (mode.equals("Smoke")) {
+            smoke(w, h, t, px, 1f);
         } else if (mode.equals("Constellation")) {
             constellation(w, h, t, px, py, acc);
         } else if (mode.equals("Aurora")) {
@@ -96,6 +98,32 @@ public final class MenuBackground {
             float x = (SX[i] * w + px * SV[i] * 2 + w) % w, y = (SY[i] * h + py * SV[i] * 2 + h) % h;
             float tw = 0.35f + 0.35f * (float) Math.sin(t * 1.3 * SV[i] + i);
             Gfx.rect(x, y, 0.8f, 0.8f, Gfx.alpha(0xFFFFFFFF, tw * 0.6f));
+        }
+    }
+
+    /**
+     * Slow grey smoke: soft light from the top-left and a few wavy ribbons of haze rising on the
+     * right, each drawn as wide, very faint strokes. Also used behind the opening animation.
+     */
+    public static void smoke(int w, int h, double t, float px, float alpha) {
+        Gfx.gradient(0, 0, w, h, Gfx.alpha(0xFF3A3D45, alpha), Gfx.alpha(0xFF101116, alpha));
+        Gfx.glow(w * 0.25f, -h * 0.1f, Math.max(w, h) * 0.8f, Gfx.alpha(0xFF6B6F7A, 0.35f * alpha));
+        for (int k = 0; k < 4; k++) {
+            float base = w * (0.64f + k * 0.09f) + px * (1 + k * 0.4f);
+            float amp = 10f + k * 4f, freq = 0.012f + k * 0.002f, speed = 0.25f + k * 0.05f;
+            for (int layer = 0; layer < 3; layer++) {
+                float width = 26f + layer * 22f;
+                float a = (0.022f - layer * 0.006f) * alpha;
+                float prevX = 0, prevY = 0;
+                for (int i = 0; i <= 40; i++) {
+                    float y = h - i * (h / 40f);
+                    float x = base + (float) Math.sin(y * freq + t * speed + k * 1.7) * amp * (1 + i / 30f)
+                            + (float) Math.sin(y * freq * 2.3 - t * speed * 0.7) * amp * 0.4f;
+                    if (i > 0) Gfx.line(prevX, prevY, x, y, width, Gfx.alpha(0xFFD8DBE2, a * (0.4f + 0.6f * i / 40f)));
+                    prevX = x;
+                    prevY = y;
+                }
+            }
         }
     }
 

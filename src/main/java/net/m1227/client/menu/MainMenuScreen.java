@@ -29,9 +29,57 @@ import net.minecraft.util.ResourceLocation;
  */
 public final class MainMenuScreen extends UiScreen {
     private static List<String> whatsNew;
+    private static boolean introShown, forceIntro;
+    private Intro intro;
+    private boolean introChecked;
+    private final MenuCharacter character = new MenuCharacter();
 
     public MainMenuScreen() {
         super(null);
+    }
+
+    @Override
+    public void initGui() {
+        super.initGui();
+        if (introChecked) return; // resizes and returning from sub-screens never replay it
+        introChecked = true;
+        InterfaceModule m = InterfaceModule.INSTANCE;
+        String style = m == null ? "Press to enter" : m.intro.get();
+        boolean every = m != null && m.introWhen.get().startsWith("Every");
+        if (forceIntro && style.equals("Off")) style = "Press to enter";
+        if (!style.equals("Off") && (forceIntro || every || !introShown)) intro = new Intro(style);
+        introShown = true;
+        forceIntro = false;
+    }
+
+    /** Opens the main menu and plays the opening animation once (Settings › Interface). */
+    public static void preview() {
+        forceIntro = true;
+        net.minecraft.client.Minecraft mc = net.minecraft.client.Minecraft.getMinecraft();
+        if (mc.theWorld != null) {
+            forceIntro = false;
+            net.m1227.core.Notifier.post(net.m1227.core.Notifier.Kind.SYSTEM, "Opening animation", "Plays on the main menu", net.m1227.core.Notifier.INFO, 1800);
+            return;
+        }
+        mc.displayGuiScreen(new MainMenuScreen());
+    }
+
+    @Override
+    protected void mouseClicked(int mx, int my, int button) throws java.io.IOException {
+        if (intro != null && intro.menuAlpha() < 0.5f) {
+            intro.skip();
+            return;
+        }
+        super.mouseClicked(mx, my, button);
+    }
+
+    @Override
+    protected void keyTyped(char c, int key) throws java.io.IOException {
+        if (intro != null) {
+            intro.skip();
+            return;
+        }
+        super.keyTyped(c, key);
     }
 
     @Override
@@ -64,6 +112,7 @@ public final class MainMenuScreen extends UiScreen {
     protected void render(float pt) {
         int w = width, h = height;
         MenuBackground.draw(w, h, ui.mx, ui.my, false);
+        if (intro != null && intro.menuAlpha() <= 0f) open = 0f; // the menu builds up as the intro hands over
         float a = appear();
         boolean center = InterfaceModule.INSTANCE != null && InterfaceModule.INSTANCE.layout.is("Center");
         float colW = 168;
@@ -79,7 +128,7 @@ public final class MainMenuScreen extends UiScreen {
         float top = Math.max(64, (h - listH) / 2f + 12);
         // logo block
         float ly = top - 58;
-        Gfx.logo(x - 2, ly, 34, acc, 0.6f);
+        if (intro == null) Gfx.logo(x - 2, ly, 34, acc, 0.6f);
         Ui.textBold("1227", x + 38, ly + 6, 2.1f, Gfx.alpha(DS.TEXT, a));
         Ui.caption("Client  ·  Minecraft 1.8.9", x + 39, ly + 27);
 
@@ -96,11 +145,23 @@ public final class MainMenuScreen extends UiScreen {
         ui.iconButton("classic", x + 48, iy, 20, Glyph.EYE, "Classic Minecraft menu", true, () -> MenuSystem.openVanilla(new GuiMainMenu()));
         ui.iconButton("quit", x + 72, iy, 20, Glyph.POWER, "Quit game", true, () -> mc.shutdown());
 
-        if (!center && w > 420) sidePanel(w, h, a);
+        InterfaceModule im = InterfaceModule.INSTANCE;
+        boolean showChar = im != null && im.character.on() && w > 360;
+        if (!center && w > 420) sidePanel(w, h, a, showChar);
+        if (showChar) {
+            // the character walks in once the opening animation hands over to the menu
+            if (!character.started() && (intro == null || intro.menuAlpha() > 0f)) character.start(im.walkIn.on());
+            float size = h * 0.27f;
+            character.draw(center ? w * 0.82f : w * 0.78f, h * 0.97f, size, ui.mx, ui.my, w);
+        }
 
         // footer
         Ui.text("1227 v" + Mod1227.VERSION + "  ·  Minecraft 1.8.9  ·  Forge 11.15.1.2318", 8, h - 12, DS.T_SMALL, Gfx.alpha(DS.FAINT, a));
         Ui.textRight("Not affiliated with Mojang or Microsoft", w - 8, h - 12, DS.T_SMALL, Gfx.alpha(DS.FAINT, a));
+        if (intro != null) {
+            intro.draw(w, h, x - 2, ly, 34);
+            if (intro.done()) intro = null;
+        }
     }
 
     private void menuButton(String label, int glyph, float x, float y, float w, float h, float alpha, String tip, Runnable r) {
@@ -141,8 +202,8 @@ public final class MainMenuScreen extends UiScreen {
     }
 
     /** Account card and what's new. */
-    private void sidePanel(int w, int h, float a) {
-        float pw = Math.min(210, w * 0.3f), px = w - pw - 18, py = Math.max(18, h * 0.16f);
+    private void sidePanel(int w, int h, float a, boolean withCharacter) {
+        float pw = Math.min(210, w * 0.3f), px = w - pw - 18, py = withCharacter ? 12 : Math.max(18, h * 0.16f);
         String name = mc.getSession() == null ? "Player" : mc.getSession().getUsername();
         Ui.glassCard(px, py, pw, 44);
         face(name, px + 10, py + 10, 24);
@@ -150,7 +211,7 @@ public final class MainMenuScreen extends UiScreen {
         Ui.text("Signed in with the Minecraft launcher", px + 42, py + 24, 0.72f, DS.FAINT);
 
         List<String> news = whatsNew();
-        if (InterfaceModule.INSTANCE != null && !InterfaceModule.INSTANCE.changelog.on() || news.isEmpty()) return;
+        if (InterfaceModule.INSTANCE != null && !InterfaceModule.INSTANCE.changelog.on() || news.isEmpty() || withCharacter) return;
         float ny = py + 52;
         float nh = 30 + news.size() * 12;
         Ui.glassCard(px, ny, pw, nh);

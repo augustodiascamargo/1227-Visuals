@@ -14,8 +14,8 @@ import net.m1227.core.Setting;
  */
 public final class InterfaceModule extends Module {
     public static InterfaceModule INSTANCE;
-    public final Setting.Bool mainMenu, pauseMenu, servers, worlds, options, death, disconnect, restyle, parallax, changelog, pauseBlur;
-    public final Setting.Mode background, layout;
+    public final Setting.Bool mainMenu, pauseMenu, servers, worlds, character, walkIn, options, death, disconnect, restyle, parallax, changelog, pauseBlur;
+    public final Setting.Mode background, layout, intro, introWhen;
     public final Setting.Text image;
     public final Setting.Num dim;
 
@@ -31,7 +31,13 @@ public final class InterfaceModule extends Module {
         disconnect = add(new Setting.Bool("1227 disconnect screen", true));
         restyle = add(new Setting.Bool("Restyle connecting, loading and confirmation screens", true));
         layout = add(new Setting.Mode("Main menu layout", "Left", "Left", "Center"));
-        background = add(new Setting.Mode("Menu background", "Aurora", "Aurora", "Constellation", "Image", "Solid"));
+        character = add(new Setting.Bool("Your character on the main menu", true));
+        walkIn = add(new Setting.Bool("Character walks in", true)).showIf(() -> character.on());
+        intro = add(new Setting.Mode("Opening animation", "Press to enter", "Press to enter", "Converge", "Glitch", "Minimal", "Off"));
+        introWhen = add(new Setting.Mode("Play the animation", "When the game starts", "When the game starts", "Every time the menu opens"))
+                .showIf(() -> !intro.is("Off"));
+        add(new Setting.Action("Preview the opening animation", () -> net.m1227.client.menu.MainMenuScreen.preview()));
+        background = add(new Setting.Mode("Menu background", "Aurora", "Aurora", "Smoke", "Constellation", "Image", "Solid"));
         image = add(new Setting.Text("Background image file", "", 64, "empty = first image in config/1227/backgrounds"))
                 .showIf(() -> background.is("Image"));
         add(new Setting.Action("Open backgrounds folder", () -> net.m1227.client.menu.MenuBackground.openFolder()));

@@ -210,6 +210,29 @@ Instalação: Minecraft 1.8.9, depois Forge 1.8.9, depois `1227.jar` na pasta `m
 - **Outras telas do Minecraft com o visual do 1227:** Connecting, Loading terrain e as confirmações.
 - **Screenshot manager:** grade de miniaturas, visualizar, abrir, copiar a imagem, excluir e navegar com as setas.
 
+**Animação de abertura** (Settings › Interface › Opening animation; design próprio):
+- **Press to enter** (padrão): as faíscas montam o símbolo sobre um fundo de fumaça e aparece "Press any key to enter". Ao apertar uma tecla ou clicar, o símbolo gira, solta faíscas e voa para o canto do menu enquanto os botões entram;
+- **Converge:** centenas de faíscas voam em curva e montam o símbolo do 1227, seguidas de uma onda, de um brilho que atravessa o símbolo e do nome digitado letra por letra;
+- **Glitch:** o símbolo chega com separação RGB, fatias deslocadas e cintilação, e o nome se embaralha até ficar certo;
+- **Minimal:** aparece suave com um brilho atravessando.
+- No fim, o símbolo voa até o canto do menu enquanto os botões entram.
+- Toca só quando o jogo abre ou toda vez que o menu abrir (você escolhe). Clique ou tecla pula a animação, e "Preview" mostra de novo.
+
+**Cosméticos novos** (Cosmetics › Halo):
+- **Comet:** núcleo brilhante acima da cabeça com uma cauda longa que flui e balança quando você anda ou vira. Cores Blue, Red, Violet, Gold ou as suas, e cauda com comprimento ajustável;
+- **Thorn Crown:** coroa escura de espinhos com as pontas na sua cor;
+- **Comet + Crown:** os dois juntos;
+- **Orbiting Badges:** medalhas com o símbolo do 1227 girando em volta da cintura.
+
+**Seu personagem no menu principal** (Settings › Interface):
+- Com a sua skin, carregada pelo próprio Minecraft a partir da sua conta.
+- Depois da abertura, ele entra andando pela direita, para, vira de frente e passa a acompanhar o mouse com a cabeça, respirando.
+- Se o Halo estiver ligado com Comet ou Thorn Crown, o personagem usa o cosmético.
+- É desenhado só a partir da skin, sem mundo nem entidade falsa, então outros mods não são afetados.
+- "Character walks in" desligado faz ele já aparecer parado.
+
+**Fundo "Smoke"** no menu: névoa cinza suave.
+
 **Performance:**
 - **Presets Low End, Balanced, High FPS e Visual Quality:** mudam opções reais do Minecraft (distância, gráficos, iluminação suave, nuvens, partículas, sombras, VBO, FPS máximo e VSync) e os limites do 1227. Cada um pode ser salvo com os seus valores.
 - **Limites novos:** distância de entidades (jogadores só se você escolher), limite e distância das partículas do Minecraft, e FPS reduzido quando o jogo está em segundo plano.

@@ -53,7 +53,13 @@ public final class Puppet {
     /** Draws the player's skin in the given pose with feet at (x, y, z) (render-relative). */
     public static void render(AbstractClientPlayer p, double x, double y, double z, float bodyYawDeg, Pose pose, float partialTicks) {
         Minecraft mc = Minecraft.getMinecraft();
-        boolean slim = "slim".equals(p.getSkinType());
+        float light = Math.max(0.3f, mc.theWorld == null ? 1f : mc.theWorld.getLightBrightness(new BlockPos(p.posX, p.posY + 1, p.posZ)) * 1.1f);
+        render(p.getLocationSkin(), "slim".equals(p.getSkinType()), x, y, z, bodyYawDeg, pose, light);
+    }
+
+    /** Same drawing from a skin texture alone (no entity, no world): used by the main menu character. */
+    public static void render(net.minecraft.util.ResourceLocation skin, boolean slim, double x, double y, double z, float bodyYawDeg, Pose pose, float light) {
+        Minecraft mc = Minecraft.getMinecraft();
         int aw = slim ? 3 : 4;
         float ax = slim ? 5.5f : 6f;
         BodyFx.Box head = new BodyFx.Box(0, 28, 0, 8, 8, 8, 0, 0, 0);
@@ -73,9 +79,7 @@ public final class Puppet {
         float c = (float) Math.cos(yaw), s = (float) Math.sin(yaw);
         float[] world = {c, 0, s, 0, 1, 0, -s, 0, c};
         float[] rb = rot(pose.body);
-        float light = Math.max(0.3f, mc.theWorld == null ? 1f : mc.theWorld.getLightBrightness(new BlockPos(p.posX, p.posY + 1, p.posZ)) * 1.1f);
-
-        mc.getTextureManager().bindTexture(p.getLocationSkin());
+        mc.getTextureManager().bindTexture(skin);
         GlStateManager.enableTexture2D();
         GlStateManager.enableDepth();
         GlStateManager.depthMask(true);
