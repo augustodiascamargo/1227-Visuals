@@ -13,6 +13,7 @@ public enum Category {
     ANIMATIONS("Animations", "Animations", "CLIENT", 11),
     GAMEPLAY("Gameplay", "Gameplay", "CLIENT", 4),
     HITSOUNDS("Hit Sounds", "Hit Sounds", "CLIENT", 8),
+    MUSIC("Music", "Music and Integrations", "CLIENT", 8),
     HUD("HUD", "HUD", "CLIENT", 9),
     SETTINGS("Settings", "Settings and Presets", "CLIENT", 7);
 

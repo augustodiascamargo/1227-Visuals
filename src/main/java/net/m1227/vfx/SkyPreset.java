@@ -1,7 +1,7 @@
 package net.m1227.vfx;
 
 /**
- * One of the 50 dynamic skies: a gradient plus a mix of animated layers
+ * One of the 58 dynamic skies: a gradient plus a mix of animated layers
  * (stars, galaxy band, nebula clouds, flowing light lines, aurora, sun or
  * moon, stylised clouds, shooting stars, code rain, retro grid, storm).
  * All layers are drawn procedurally every frame; nothing is a static image.
@@ -35,6 +35,8 @@ public final class SkyPreset {
     public float storm;
     /** GLSL layer this sky uses when the shader setting is "Auto" (0 = none). */
     public int shader;
+    /** Colours for the sky's own GLSL layer (-1 = taken from the sky's other colours). */
+    public int shA = -1, shB = -1, shC = -1;
 
     private SkyPreset(String name, int top, int horizon, int bottom) {
         this.name = name;
@@ -61,6 +63,7 @@ public final class SkyPreset {
     private SkyPreset grid() { grid = true; return this; }
     private SkyPreset storm(float v) { storm = v; return this; }
     private SkyPreset shader(int v) { shader = v; return this; }
+    private SkyPreset shader(int v, int a, int b, int c) { shader = v; shA = a; shB = b; shC = c; return this; }
 
     public static final SkyPreset[] ALL = {
             p("Night Flow", 0x000000, 0x0B0D10, 0x000000).stars(0.25f, 0xFFFFFF).lines(16, 0xFFFFFF, 0xBFEFFF),
@@ -113,7 +116,17 @@ public final class SkyPreset {
             p("Storm Front", 0x2C3036, 0x5C6068, 0x1C1E22).clouds(0f, 0x9EA3AC).shader(8).storm(0.12f),
             p("Night Overcast", 0x14161B, 0x2E3138, 0x0B0C0F).clouds(0f, 0x4A4E57).stars(0.45f, 0xFFFFFF).shader(8),
             p("Ember Night", 0x04050B, 0x9A3A16, 0x0A0604).stars(0.6f, 0xFFFFFF).shooting(0.6f).glow(0.5f, 0xFF5A1F),
-            p("Teal Night", 0x020608, 0x0E4A42, 0x010304).aurora(5, 0x2DFFB0, 0x1A8A7A).stars(0.5f, 0xFFFFFF).shooting(0.4f)
+            p("Teal Night", 0x020608, 0x0E4A42, 0x010304).aurora(5, 0x2DFFB0, 0x1A8A7A).stars(0.5f, 0xFFFFFF).shooting(0.4f),
+            // electric skies: bright plasma veins (GLSL layer 9)
+            p("Electric Cyan", 0x020A0E, 0x0B2C30, 0x01060A).stars(0.4f, 0xE0FFFF).shader(9, 0x0E5E5A, 0x5CFFF0, 0xFFFFFF),
+            p("Electric Gold", 0x0A0703, 0x2E2210, 0x050301).stars(0.4f, 0xFFF4D6).shader(9, 0x5A3A10, 0xFFD27A, 0xFFF6E0),
+            p("Electric Red", 0x0C0204, 0x3A0A10, 0x060102).stars(0.3f, 0xFFD6D6).shader(9, 0x5A0A10, 0xFF3048, 0xFFC8D0),
+            p("Electric Violet", 0x06030E, 0x24104A, 0x030108).stars(0.4f, 0xF0E0FF).shader(9, 0x3A1070, 0xB06CFF, 0xF4E8FF),
+            p("Energy Blue", 0x01040E, 0x0A1E4A, 0x000208).stars(0.5f, 0xD6E8FF).shader(4, 0x0A2A8A, 0x2D8CFF, 0x9AE8FF),
+            // aurora curtains (GLSL layer 10)
+            p("Green Aurora", 0x041A10, 0x1E6A3E, 0x03120A).stars(0.35f, 0xE8FFF0).glow(0.4f, 0x2DFF8A).shader(10, 0x2DFF8A, 0xB8FFD6, 0x0E6E3A),
+            p("Purple Aurora", 0x0C0418, 0x3A1A6A, 0x060210).stars(0.4f, 0xF0E0FF).shader(10, 0xB06CFF, 0xFFB8F0, 0x4A1A8A),
+            p("Blue Aurora", 0x020A1A, 0x0E3A6A, 0x010510).stars(0.4f, 0xE0F0FF).shader(10, 0x2D8CFF, 0x9AF0FF, 0x0E3A8A)
     };
 
     public static String[] names() {

@@ -1,4 +1,4 @@
-# 1227 — v1.14.0 (Minecraft 1.8.9 · Forge 11.15.1.2318 · Java 8)
+# 1227 — v1.18.0 (Minecraft 1.8.9 · Forge 11.15.1.2318 · Java 8)
 
 Mod client-side e puramente visual. Não envia pacotes, não desenha através de paredes e não muda alcance,
 timing de ataque ou outras mecânicas do servidor.
@@ -7,8 +7,6 @@ timing de ataque ou outras mecânicas do servidor.
 | Pasta | O que é |
 |---|---|
 | raiz (`build.gradle`, `src/`) | O mod Forge |
-| `api/` | API de versões e notícias para o site (Cloudflare Worker, opcional) |
-| `site/` | Site oficial estático (Cloudflare Pages) |
 | `docs/` | `AUDIT.md` (auditoria), `PROGRESS.md` (progresso, testes e próximas etapas), `RELEASE.md` (como publicar) |
 
 ## Compilar
@@ -29,11 +27,11 @@ O `.jar` vai em `.minecraft/mods` com Forge 1.8.9.
 |---|---|
 | ★ Favorites | Módulos marcados com a estrela no menu |
 | Skies | Dynamic Skies (30 céus, transição suave) |
-| Ambience | Ambience (12 estilos), Ambient Particles, World (fullbright, hora do dia, clima — só na sua tela) |
+| Ambience | Ambience (12 estilos), Ambient Particles, World (fullbright, hora do dia, clima — só na sua tela), Item Physics |
 | Auras | Target Aura (24 estilos), Player Aura (os mesmos 24), Player Glow |
-| Cosmetics | Aura Hat, Halo |
+| Cosmetics | Aura Hat, Halo (com China Hat), Wings, Energy Shell; materiais animados (Plasma, Aurora, Galaxy, Fire, Electric, Hologram e outros) |
 | Movement | Trails (16), Jump Effects (20), Player FX (aparecer, sumir, teleporte) |
-| Combat | Hit Effect (+ burst de crítico), Kill Effect, Shockwave, Damage Numbers, Victory & Defeat |
+| Combat | Hit Effect (+ burst de crítico), Kill Effect, Shockwave, Damage Numbers, Victory & Defeat, Spacing Circle |
 | Weapons | Weapon Effects (40, presos à lâmina em 1ª pessoa), Item Glow, Weapon Models (6 espadas 3D originais) |
 | Camera | Motion Blur, View Bobbing, Static FOV, Zoom, Camera FX, Low Fire |
 | Animations | 1.7 Animations |
@@ -53,11 +51,13 @@ Todo módulo tem "Reset to defaults" no fim das opções; Settings > Client tem 
 ```
 core/    Module, Setting (Bool/Num/Mode/Col/Key/Action), ModuleManager, ConfigManager, InputManager,
          Notifier, CombatTracker, Command1227
-vfx/     ParticleSystem (pool + atlas), Lines, Arcs, ShockwaveSystem, AuraLibrary, SkyPreset, Sprite
+client/  menu (menus), settings (tela de configurações, perfis), perf (performance, benchmark), ui (design system)
+vfx/     ParticleSystem (pool + atlas), Lines, Arcs, ShockwaveSystem, AuraLibrary, SkyPreset, Sprite,
+         SkyShader, MaterialShader (materiais dos cosméticos), CosmeticMesh
 module/  um arquivo por módulo
 ui/      ClickGui, Gfx, Icons, Glass
 hud/     HudModule (base movível), elementos do HUD, HudEditorScreen, ClickCounter
-render/  HandRenderer (mão em 1ª pessoa), HandFx (efeitos presos ao item)
+render/  HandRenderer (mão em 1ª pessoa), HandFx (efeitos presos ao item), Silhouette, PhysicsItemRender
 audio/   HitSoundEngine, SoundBank
 ```
 A entrada (teclas) fica em `InputManager`, separada da interface. O código depende só do Forge 1.8.9;
@@ -182,6 +182,90 @@ nada depende de Lunar ou de outro launcher.
 ### Licença dos modelos enviados
 O modelo do Tung Sahur (ZAHUR.fbx + textura) e a butterfly knife (.blend) foram enviados pelo usuário. Antes de
 publicar o 1227, confira a licença de cada um (por exemplo, se exigem crédito ao autor) e coloque o crédito aqui.
+
+## Mudanças na v1.18.0: o 1227 vira um client dentro do mod
+Instalação: Minecraft 1.8.9, depois Forge 1.8.9, depois `1227.jar` na pasta `mods`. Não precisa de launcher. Detalhes em `docs/CLIENT.md`, sistema visual em `docs/DESIGN.md` e testes em `docs/TEST-REPORT-1.18.md`.
+
+**Telas novas do 1227** (cada uma pode ser desligada em Settings › Interface, e todas têm um botão para a tela original do Minecraft):
+- **Menu principal:**
+  - Singleplayer, Multiplayer, Options, Modules, Cosmetics, Profiles, Mods, Language, Screenshots, menu clássico e Quit;
+  - cartão com o seu nome e a sua skin, e "What's new";
+  - fundo Aurora, Constellation, imagem própria (`config/1227/backgrounds`) ou sólido;
+  - layout à esquerda ou centralizado.
+- **Menu de pausa:**
+  - voltar, opções, LAN, conquistas, estatísticas, opções de mods e sair (os mesmos passos do vanilla);
+  - 10 atalhos: editor de HUD, módulos, cosméticos, visuais, performance, perfis, teclas, client, screenshots e música;
+  - fundo desfocado (opcional).
+- **Servidores:**
+  - abas Servers, Favorites, History e LAN;
+  - ícone, MOTD, ping real com barras, jogadores (passe o mouse para ver a lista) e aviso de versão diferente;
+  - adicionar, editar, excluir, conexão direta, reordenar com Shift+setas e atualizar com F5;
+  - usa a lista do `servers.dat` e a conexão do Forge;
+  - nada aparece antes de o servidor responder.
+- **Mundos:** busca, jogar, criar, renomear, excluir (com confirmação) e abrir a pasta saves.
+- **Settings** (uma tela só, 13 categorias): General, Interface, HUD, Visuals, Cosmetics, PvP, Animations, Audio, Performance, Controls, World, Profiles e Advanced.
+  - As opções do Minecraft (vídeo, som, chat, skin, mouse, GUI scale e outras) ficam junto com os módulos do 1227.
+  - Busca em todos os módulos; cada módulo abre a sua página de opções.
+- **Death screen e Disconnected (com Reconnect):** telas próprias.
+- **Outras telas do Minecraft com o visual do 1227:** Connecting, Loading terrain e as confirmações.
+- **Screenshot manager:** grade de miniaturas, visualizar, abrir, copiar a imagem, excluir e navegar com as setas.
+
+**Performance:**
+- **Presets Low End, Balanced, High FPS e Visual Quality:** mudam opções reais do Minecraft (distância, gráficos, iluminação suave, nuvens, partículas, sombras, VBO, FPS máximo e VSync) e os limites do 1227. Cada um pode ser salvo com os seus valores.
+- **Limites novos:** distância de entidades (jogadores só se você escolher), limite e distância das partículas do Minecraft, e FPS reduzido quando o jogo está em segundo plano.
+- **Benchmark de 30 ou 60 s:** FPS médio, 1% low e pior frame, salvos em `config/1227/benchmarks.json` para comparar antes e depois. Nenhum ganho é prometido sem medir.
+
+**Perfis:**
+- perfis com nome: salvar, carregar, sobrescrever e excluir;
+- copiar e colar a configuração pela área de transferência;
+- restaurar os backups automáticos.
+
+**Outros:**
+- **Advanced:** tela de carregamento do Forge com as cores do 1227 (pelo `splash.properties` do próprio Forge, com restauração), pastas, reset geral com confirmação.
+- **Sistema visual único** (cores, fontes, ícones, botões, sliders, toggles, campos, tooltips e notificações) usado por todas as telas novas.
+
+## Mudanças na v1.17.0
+- **Materiais animados para cosméticos** (shader próprio, `vfx/MaterialShader`): Plasma, Aurora, Galaxy, Fire, Electric, Hologram, Rainbow, Iridescent, Lava, Frost e Void. Sem suporte a shader na placa de vídeo, os cosméticos usam o degradê normal.
+- **China Hat** (Halo › Style "China Hat"):
+  - opção "Material" e cinco formatos: Cone, Bell (aba larga), Spiked (pontas), Two-tier (dois andares) e Flat disc;
+  - borda brilhante e brilho nas bordas ajustáveis.
+  - O Angel Halo também pode usar um material (vira um anel 3D).
+- **Wings:** opção "Material" em todos os estilos.
+- **Energy Shell (novo, Cosmetics):** casca de energia em volta do corpo que brilha nas bordas, anéis em órbita, os dois juntos ou um anel de Saturno. Usa os mesmos materiais.
+- **Spacing Circle (novo, Combat):**
+  - anel no chão com o raio da distância de combo (padrão 3 m), em quatro estilos (Solid, Dashed, Pulse e Glow);
+  - mostra a distância dos seus olhos até a hitbox do oponente embaixo da mira e marca o chão embaixo dele;
+  - a cor muda quando o oponente está dentro, perto ou fora do raio.
+  - O oponente é o seu alvo atual ou o jogador mais perto que você está vendo (nunca através de paredes). Só informa: não mira, não move e não muda o alcance.
+- **W-Tap Indicator (novo HUD):**
+  - nota de cada golpe: Perfect (reset de 1 a 2 ticks), Good (3 a 5), Slow (6 ou mais), No reset ou No sprint;
+  - quantos ticks durou o reset e quanto tempo depois do golpe ele começou;
+  - linha do tempo do sprint com os golpes marcados e a % de golpes com sprint na sessão.
+  - Só observa as suas teclas e o seu sprint; não aperta nada.
+- **Item Physics (novo, Ambience):** itens no chão ficam deitados num ângulo aleatório e blocos apoiados no chão; enquanto caem, giram. Só o desenho muda (a posição e a coleta continuam iguais). Com o módulo desligado, os itens são desenhados exatamente como no vanilla.
+
+## Mudanças na v1.16.0
+- **Discord Presence:** o seu perfil mostra "Jogando 1227Visuals", com o servidor (ou "Singleplayer") e o tempo de jogo, pelo pipe local oficial do Discord (sem token e sem acesso à conta). Funciona no Windows.
+  Configuração única:
+  1. Em https://discord.com/developers/applications, clique em **New Application** e use o nome **1227Visuals** (é esse nome que aparece em "Jogando").
+  2. Copie o **Application ID**.
+  3. No 1227, abra Music › Discord Presence, cole o ID e ative o módulo.
+- **Music Player** (categoria Music; tecla M, configurável):
+  - **Músicas locais:** arquivos OGG e WAV em `config/1227-music`. Subpastas viram álbuns, o nome "Artista - Título.ogg" vira o título e um `cover.png` na pasta vira a capa.
+  - **Recursos:** busca, fila, histórico, anterior/play/próxima, barra de progresso com avanço, volume, aleatório e repetir (todas ou uma).
+  - **Atalhos:** abrir o player, play/pause, próxima e anterior.
+  - **Spotify e YouTube:** cole o link da playlist nas configurações. O botão abre a playlist no app do Spotify ou no navegador, onde ela toca com a sua conta. O 1227 mostra o que está tocando (pelo título da janela), controla com as teclas de mídia e mostra o nome e a capa da playlist (oEmbed público, sem login). Nada é baixado.
+  - **HUD "Music" (mini player):** capa, título, artista e progresso.
+- **Configurações de texto:** novo campo de texto no menu (aceita Ctrl+V), usado nos links e no ID do Discord.
+
+## Mudanças na v1.15.0
+- **Plano do 1227 Client:** auditoria do jar 1.14.0 e arquitetura em `docs/PLAN-CLIENT.md`.
+- **Céus elétricos (camada GLSL "Electric Sky"):** Electric Cyan, Electric Gold, Electric Red, Electric Violet e Energy Blue.
+- **Auroras em cortina (camada GLSL "Aurora Curtains"):** Green Aurora, Purple Aurora e Blue Aurora. São 58 céus no total.
+- **Picture Sky:** use as suas imagens (panoramas PNG/JPG, de preferência 2:1) como céu, colocando-as em `config/1227-skies`. Tem rotação lenta e a opção de manter os efeitos do céu por cima.
+- **Pearl Helper:** trajetória da ender pearl com a física do 1.8.9 (gravidade 0,03, arrasto 0,99, ou 0,8 na água), marcador no bloco onde ela cai e distância e tempo de voo. Opcionalmente também para bolas de neve e ovos. Só visual.
+- **Aim Helper (HUD informativo):** distância, velocidade e estado (no chão, pulando ou caindo) do jogador na mira ou do seu alvo. Não mexe na mira.
+- **Sem servidor próprio:** a API e o site foram removidos. As versões são publicadas só pelas Releases do GitHub.
 
 ## Mudanças na v1.14.0
 - **Launcher removido** do projeto (pasta `launcher/` e o workflow dele). O 1227 é distribuído só como mod.

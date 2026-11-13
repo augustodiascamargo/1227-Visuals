@@ -67,6 +67,22 @@ public class ClickGui extends GuiScreen {
     }
 
     private static Category category = Category.SKY;
+    /** Screen to go back to when the menu closes (null = the game). */
+    private static net.minecraft.client.gui.GuiScreen returnTo;
+
+    /** Opens the module menu on a category, returning to 'parent' when closed (1227 client screens). */
+    public static void open(Category c, net.minecraft.client.gui.GuiScreen parent) {
+        if (c != null) {
+            category = c;
+            favView = false;
+        }
+        ClickGui g = new ClickGui();
+        returnTo = parent;
+        returnFor = g;
+        net.minecraft.client.Minecraft.getMinecraft().displayGuiScreen(g);
+    }
+
+    private static ClickGui returnFor;
     private static boolean favView;
     private Module tipModule, tipShown;
     private long tipSince;
@@ -77,6 +93,8 @@ public class ClickGui extends GuiScreen {
     private final float[] openAnim = {0f};
     private String search = "";
     private boolean searchFocus;
+    /** Text setting being edited (null = none). */
+    private Setting.Text editingText;
     private Module binding;
     private Setting.Key bindingKey;
     private float curScale = 1f, pxPerUnit = 2f;
@@ -174,7 +192,10 @@ public class ClickGui extends GuiScreen {
             if (openAnim[0] < 0.03f) return;
         }
         if (closing && openAnim[0] < 0.03f) {
-            mc.displayGuiScreen(null);
+            net.minecraft.client.gui.GuiScreen back = returnFor == this ? returnTo : null;
+            returnTo = null;
+            returnFor = null;
+            mc.displayGuiScreen(back);
             return;
         }
         float o = openAnim[0];
@@ -843,6 +864,24 @@ public class ClickGui extends GuiScreen {
                     else if (bt == 1) k.set(0);
                 }
             }, null));
+        } else if (s instanceof Setting.Text) {
+            final Setting.Text tx = (Setting.Text) s;
+            Gfx.text(s.name, x, y + 2, Gfx.alpha(TEXT, al));
+            boolean on = editingText == tx;
+            Gfx.roundedRect(x, y + 13, w, 15, 6, Gfx.alpha(on ? Gfx.mix(FIELD, ACCENT, 0.25f) : FIELD, al));
+            String v = tx.get();
+            boolean ph = v.isEmpty() && !on;
+            String shown = ph ? tx.placeholder : v + (on && (System.currentTimeMillis() / 500L) % 2L == 0L ? "|" : "");
+            // keep the end of long text visible while typing
+            while (Gfx.textWidth(shown) > w - 12 && shown.length() > 1) shown = shown.substring(1);
+            Gfx.text(shown, x + 6, y + 17, Gfx.alpha(ph ? DIM : WHITE, al));
+            hits.add(new Hit(x, y + 13, w, 15, true, new Click() {
+                @Override
+                public void on(float cx, int bt) {
+                    if (bt == 0) editingText = tx;
+                    else if (bt == 1) tx.set("");
+                }
+            }, null));
         } else if (s instanceof Setting.Action) {
             final Setting.Action ac = (Setting.Action) s;
             boolean hv = in(lastMx, lastMy, x, y + 1, w, 20) && inList(lastMx, lastMy);
@@ -956,6 +995,7 @@ public class ClickGui extends GuiScreen {
         if (s instanceof Setting.Mode && galleryKind(m, (Setting.Mode) s) != 0) return galleryHeight((Setting.Mode) s, rowWidth());
         if (s instanceof Setting.Action) return 24f;
         if (s instanceof Setting.Key) return 30f;
+        if (s instanceof Setting.Text) return 32f;
         if (s instanceof Setting.Num) return 26f;
         if (s instanceof Setting.Col) return OPEN_COLORS.contains(s) ? 106f : 20f;
         return 18f;
@@ -1201,6 +1241,7 @@ public class ClickGui extends GuiScreen {
             return;
         }
         searchFocus = false;
+        editingText = null;
         binding = null;
         bindingKey = null;
         for (int i = hits.size() - 1; i >= 0; i--) {
@@ -1252,6 +1293,24 @@ public class ClickGui extends GuiScreen {
             binding.key = key == Keyboard.KEY_ESCAPE ? 0 : key;
             ConfigManager.markDirty();
             binding = null;
+            return;
+        }
+        if (editingText != null) {
+            String v = editingText.get();
+            if (key == Keyboard.KEY_ESCAPE || key == Keyboard.KEY_RETURN) {
+                editingText = null;
+            } else if (key == Keyboard.KEY_BACK) {
+                if (!v.isEmpty()) editingText.set(v.substring(0, v.length() - 1));
+            } else if (key == Keyboard.KEY_V && isCtrlKeyDown()) {
+                String clip = getClipboardString();
+                if (clip != null) {
+                    clip = clip.replace("\n", "").replace("\r", "").trim();
+                    String nv = v + clip;
+                    editingText.set(nv.length() > editingText.maxLength ? nv.substring(0, editingText.maxLength) : nv);
+                }
+            } else if (ChatAllowedCharacters.isAllowedCharacter(c) && v.length() < editingText.maxLength) {
+                editingText.set(v + c);
+            }
             return;
         }
         if (settingsFor != null && key == Keyboard.KEY_ESCAPE) {

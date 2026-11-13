@@ -1,0 +1,5 @@
+1227 is now a full client inside the mod
+New main menu, pause menu, server list and world list
+One Settings screen for Minecraft and 1227 options
+Performance presets, entity and particle limits, benchmark
+Profiles, config backups and a screenshot manager

@@ -16,12 +16,14 @@ public final class ModuleManager {
         register(new AmbienceModule());
         register(new AmbientModule());
         register(new WorldModule());
+        register(new ItemPhysicsModule());
         register(new TargetAuraModule());
         register(new PlayerAuraModule());
         register(new PlayerGlowModule());
         register(new AuraHatModule());
         register(new HaloModule());
         register(new WingsModule());
+        register(new EnergyShellModule());
         register(new TrailsModule());
         register(new AfterimageModule());
         register(new JumpEffectModule());
@@ -31,6 +33,8 @@ public final class ModuleManager {
         register(new KillEffectModule());
         register(new ShockwaveModule());
         register(new ProjectileTrailsModule());
+        register(new PearlHelperModule());
+        register(new SpacingCircleModule());
         register(new DamageNumbersModule());
         register(new MatchFxModule());
         register(new WeaponEffectsModule());
@@ -46,6 +50,8 @@ public final class ModuleManager {
         register(new ToggleSprintModule());
         register(new EmotesModule());
         register(new HitSoundsModule());
+        register(new MusicModule());
+        register(new DiscordPresenceModule());
         register(new DynamicIslandModule());
         register(new HitMarkerModule());
         register(new CrosshairModule());
@@ -68,9 +74,13 @@ public final class ModuleManager {
         register(new net.m1227.hud.SessionHud());
         register(new net.m1227.hud.ScoreboardHud());
         register(new net.m1227.hud.HitDelayHud());
+        register(new net.m1227.hud.WTapHud());
+        register(new net.m1227.hud.AimHelperHud());
+        register(new net.m1227.hud.MusicHud());
         register(new TabListModule());
         register(new BossBarModule());
         register(new MenuStyleModule());
+        register(new InterfaceModule());
         register(new ClientModule());
         register(new PresetsModule());
         register(PerformanceModule.INSTANCE);

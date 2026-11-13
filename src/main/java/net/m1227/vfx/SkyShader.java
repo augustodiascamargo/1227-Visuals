@@ -15,7 +15,7 @@ import org.lwjgl.opengl.GL20;
  */
 public final class SkyShader {
     public static final String[] STYLES = {"Off", "Nebula", "Aurora Veil", "Cosmic Ocean", "Plasma Storm", "Warp Stars",
-            "Sunset Clouds", "Volumetric Clouds", "Storm Clouds"};
+            "Sunset Clouds", "Volumetric Clouds", "Storm Clouds", "Electric Sky", "Aurora Curtains"};
 
     /** Styles drawn with normal alpha blending (they can darken the sky) instead of additively. */
     public static boolean opaque(int style) {
@@ -65,6 +65,27 @@ public final class SkyShader {
             + "  float k = 1.0/(abs(el)+0.22); vec3 p = vec3(d.x*k, 0.0, d.z*k)*1.2 + vec3(uTime*0.02,0.0,uTime*0.01);\n"
             + "  float c = smoothstep(0.45,0.8,fbm(p*1.5)); float glow = exp(-abs(el)*5.0);\n"
             + "  col = uC*glow*0.45 + mix(uA,uB,glow)*c*step(0.0,el)*0.9;\n"
+            + " } else if (uStyle==9) {\n"
+            // electric sky: domain-warped ridged noise gives bright branching plasma veins over a dim glow
+            + "  float h = max(el, 0.0); float k = 1.0/(h+0.28);\n"
+            + "  vec3 q = vec3(d.x*k, uTime*0.045, d.z*k)*1.15;\n"
+            + "  float w = fbm(q*1.2 + vec3(uTime*0.03, 0.0, -uTime*0.02));\n"
+            + "  float n = fbm(q*2.0 + w*2.6); float r = 1.0-abs(2.0*n-1.0);\n"
+            + "  float n2 = fbm(q*4.1 + w*1.7 + 3.0); float r2 = 1.0-abs(2.0*n2-1.0);\n"
+            + "  float v = pow(r, 9.0) + 0.45*pow(r2, 14.0);\n"
+            + "  float flick = 0.85 + 0.15*sin(uTime*6.0 + w*25.0);\n"
+            + "  float sky = smoothstep(-0.04, 0.3, el);\n"
+            + "  col = (uA*pow(r,4.0)*0.22 + mix(uB, uC, clamp(v,0.0,1.0))*v*1.25)*flick*sky + vec3(1.0)*stars(d,170.0,0.988)*0.7;\n"
+            + " } else if (uStyle==10) {\n"
+            // aurora curtains: tall rippling curtains that fill most of the sky (strong green look)
+            + "  float h = max(el, 0.0); float ang = atan(d.z, d.x);\n"
+            + "  float fold = fbm(vec3(cos(ang)*3.0, sin(ang)*3.0, uTime*0.05));\n"
+            + "  float rays = 0.65*pow(0.5+0.5*sin(ang*22.0 + fold*9.0 + uTime*0.25), 2.0) + 0.35*noise(vec3(ang*9.0, uTime*0.2, 1.7));\n"
+            + "  float base = smoothstep(0.02, 0.16, h) * exp(-max(h-0.2,0.0)*3.0);\n"
+            + "  float curtain = base * (0.45 + 0.55*rays) * (0.55 + 0.45*fold);\n"
+            + "  float haze = fbm(d*2.5 + vec3(0.0, uTime*0.02, 0.0));\n"
+            + "  col = mix(uA, uB, clamp(h*2.2 + rays*0.2, 0.0, 1.0))*curtain*1.3 + uC*haze*0.25*smoothstep(-0.1,0.4,el)\n"
+            + "      + vec3(1.0)*stars(d,170.0,0.988)*smoothstep(0.3,0.7,h);\n"
             + " } else if (uStyle==7 || uStyle==8) {\n"
             // cloud deck projected on a plane above the camera; domain-warped fbm for soft, billowy shapes
             + "  bool storm = uStyle==8; float h = max(el, 0.0);\n"

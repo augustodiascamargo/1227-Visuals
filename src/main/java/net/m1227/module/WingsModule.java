@@ -23,15 +23,22 @@ public final class WingsModule extends Module {
     private final Setting.Col color1, color2;
     private final Setting.Num size, flap, opacity;
     private final Setting.Bool others;
+    private final Setting.Mode material;
+    private final Setting.Num edgeGlow;
+    /** Set while a material is active: vertices then carry texture coordinates and white colour. */
+    private static boolean shadedNow;
+    private static float uvScale = 1f;
 
     public WingsModule() {
-        super("Wings", "Angel, demon, butterfly, energy or crystal wings.", Category.COSMETICS, false);
+        super("Wings", "Angel, demon, butterfly, energy or crystal wings, with animated materials.", Category.COSMETICS, false);
         style = add(new Setting.Mode("Style", "Angel", STYLES));
         color1 = add(new Setting.Col("Color", 0xFFFFFF));
         color2 = add(new Setting.Col("Tip color", 0xB8C8FF));
         size = add(new Setting.Num("Size", 1.0, 0.5, 1.8, 0.05, "x"));
         flap = add(new Setting.Num("Flap speed", 1.0, 0.0, 3.0, 0.1, "x"));
         opacity = add(new Setting.Num("Opacity", 0.95, 0.2, 1.0, 0.05, ""));
+        material = add(new Setting.Mode("Material", "Gradient", net.m1227.vfx.MaterialShader.MATERIALS));
+        edgeGlow = add(new Setting.Num("Edge glow", 0.4, 0.0, 1.0, 0.05, ""));
         others = add(new Setting.Bool("Show on other players", false));
     }
 
@@ -80,9 +87,17 @@ public final class WingsModule extends Module {
         } else {
             GlStateManager.tryBlendFuncSeparate(770, 771, 1, 0);
         }
+        shadedNow = net.m1227.vfx.MaterialShader.begin(net.m1227.vfx.MaterialShader.index(material), System.nanoTime() / 1e9,
+                color1.rgb(), color2.rgb(), 3f, edgeGlow.f(), 0.15f);
+        if (shadedNow) {
+            GlStateManager.depthMask(false);
+            OpenGlHelper.setLightmapTextureCoords(OpenGlHelper.lightmapTexUnit, 240f, 240f);
+        }
     }
 
     private void end() {
+        if (shadedNow) net.m1227.vfx.MaterialShader.end();
+        shadedNow = false;
         GlStateManager.depthMask(true);
         GlStateManager.tryBlendFuncSeparate(770, 771, 1, 0);
         GlStateManager.shadeModel(GL11.GL_FLAT);
@@ -128,6 +143,8 @@ public final class WingsModule extends Module {
     private void wing(double x, double y, double z, float ux, float uz, float sc) {
         String st = style.get();
         int c0 = color1.rgb(), c1 = color2.rgb();
+        uvScale = 1f / Math.max(0.1f, sc);
+        net.m1227.vfx.MaterialShader.origin(x, y, z);
         float a = opacity.f();
         if (st.equals("Angel")) {
             // layered feathers fanning from up-out to down-out, longest in the middle
@@ -198,6 +215,14 @@ public final class WingsModule extends Module {
 
     /** Point (u along the outward direction, v up) in world space. */
     private static void vtx(double x, double y, double z, float ux, float uz, double u, double v, int c, float a) {
+        if (shadedNow) {
+            // u along the wing, v = distance from the root (1 at the tips) for the material's rim
+            GL11.glTexCoord2f((float) (Math.atan2(v, u) / Math.PI * 0.5 + 0.5), (float) Math.min(1.0, Math.hypot(u, v) * uvScale));
+            GL11.glNormal3f(-uz, 0f, ux);
+            GL11.glColor4f(1f, 1f, 1f, a);
+            GL11.glVertex3d(x + ux * u, y + v, z + uz * u);
+            return;
+        }
         GL11.glColor4f(((c >> 16) & 255) / 255f, ((c >> 8) & 255) / 255f, (c & 255) / 255f, a);
         GL11.glVertex3d(x + ux * u, y + v, z + uz * u);
     }

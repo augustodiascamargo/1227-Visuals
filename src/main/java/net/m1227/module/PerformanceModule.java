@@ -1,10 +1,7 @@
 package net.m1227.module;
 
 import net.m1227.core.Category;
-import net.m1227.core.ConfigManager;
 import net.m1227.core.Module;
-import net.m1227.core.ModuleManager;
-import net.m1227.core.Notifier;
 import net.m1227.core.Setting;
 
 /**
@@ -19,31 +16,32 @@ public final class PerformanceModule extends Module {
     public final Setting.Num maxParticles;
     public final Setting.Num distance;
 
+    /** Entities (not players, unless chosen) farther than this are not drawn; 256 = off. */
+    public final Setting.Num entityDistance;
+    public final Setting.Bool cullPlayers;
+    /** Cap and distance for Minecraft's own particles (4000 / 64 = vanilla behaviour). */
+    public final Setting.Num particleCap, particleDistance;
+    public final Setting.Bool backgroundLimit;
+    public final Setting.Num backgroundFps;
+    /** Name of the last preset applied ("Custom" after manual changes made through presets). */
+    public final Setting.Mode activePreset;
+
     private PerformanceModule() {
-        super("Performance", "Effect quality, particle limits and one-click presets.", Category.SETTINGS, true);
+        super("Performance", "Effect quality, entity and particle limits, background FPS and presets.", Category.SETTINGS, true);
         quality = add(new Setting.Mode("Quality", "High", "Low", "Medium", "High", "Ultra"));
         maxParticles = add(new Setting.Num("Max particles", 3000, 200, 8000, 100, ""));
         distance = add(new Setting.Num("Render distance", 48, 8, 128, 4, "m"));
-        add(new Setting.Action("Preset: Low-end PC", () -> preset("Low-end PC", "Low", 600, 24, false)));
-        add(new Setting.Action("Preset: High FPS", () -> preset("High FPS", "Medium", 1500, 32, false)));
-        add(new Setting.Action("Preset: Balanced", () -> preset("Balanced", "High", 3000, 48, true)));
-        add(new Setting.Action("Preset: Visual quality", () -> preset("Visual quality", "Ultra", 6000, 80, true)));
-    }
-
-    /**
-     * Applies a preset. heavyOn = whether Motion Blur may stay on (it renders the frame an extra
-     * time, the biggest single cost among 1227's modules); the lighter presets switch it off.
-     */
-    private void preset(String name, String q, int particles, int dist, boolean heavyOn) {
-        quality.set(q);
-        maxParticles.set((double) particles);
-        distance.set((double) dist);
-        if (!heavyOn) {
-            Module mb = ModuleManager.byName("Motion Blur");
-            if (mb != null && mb.isEnabled()) mb.setEnabled(false);
+        entityDistance = add(new Setting.Num("Entity render distance", 256, 16, 256, 8, "m"));
+        cullPlayers = add(new Setting.Bool("Entity distance also hides players", false));
+        particleCap = add(new Setting.Num("Minecraft particle limit", 4000, 100, 4000, 100, ""));
+        particleDistance = add(new Setting.Num("Minecraft particle distance", 64, 8, 64, 4, "m"));
+        backgroundLimit = add(new Setting.Bool("Limit FPS when the game is in the background", true));
+        backgroundFps = add(new Setting.Num("Background FPS", 15, 5, 60, 5, "")).showIf(() -> backgroundLimit.on());
+        activePreset = add(new Setting.Mode("Active preset", "Custom", net.m1227.client.perf.PerfPresets.NAMES_WITH_CUSTOM)).showIf(() -> false);
+        for (final String n : net.m1227.client.perf.PerfPresets.NAMES) {
+            add(new Setting.Action("Preset: " + n, () -> net.m1227.client.perf.PerfPresets.apply(n)));
         }
-        ConfigManager.markDirty();
-        Notifier.post(Notifier.Kind.SYSTEM, "Performance", name + " preset applied", Notifier.GOOD, 1800);
+        add(new Setting.Action("Run 30 s benchmark", () -> net.m1227.client.perf.Benchmark.start(30)));
     }
 
     @Override

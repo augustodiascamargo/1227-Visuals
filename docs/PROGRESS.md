@@ -1,3 +1,5 @@
+> O plano atual do 1227 Client está em `docs/PLAN-CLIENT.md`. Este arquivo é o histórico das etapas anteriores. Na v1.15.0, a API e o site foram removidos: o projeto não depende de nenhum servidor próprio.
+
 # 1227 Client: registro de progresso
 
 Este arquivo é o registro contínuo do projeto. Cada etapa anota o que foi feito, o que foi testado (e como) e o que falta.
@@ -7,10 +9,8 @@ Este arquivo é o registro contínuo do projeto. Cada etapa anota o que foi feit
 | Pasta | Conteúdo |
 |---|---|
 | `/` (raiz) | Mod Forge 1.8.9 (`build.gradle`, `src/`); fica na raiz para não quebrar o build existente |
-| `api/` | API em Cloudflare Worker (manifesto de versões e notícias) |
-| `site/` | Site estático (Cloudflare Pages), gerado por `tools/build_site.py` |
 | `docs/` | Auditoria, progresso e processo de release |
-| `.github/workflows/` | `build.yml` (mod), `release.yml` (release + manifesto + API) e `launcher.yml` (instalador Windows) |
+| `.github/workflows/` | `build.yml` (mod), `release.yml` (release no GitHub) |
 
 ## Etapa 1 (v1.12.0): concluída
 
@@ -98,6 +98,30 @@ O foco volta a ser só o mod. Na v1.14.0 a pasta `launcher/` e o workflow `launc
 ### Etapa 4: distribuição
 - Assinatura de código do instalador do Windows (exige certificado comprado; sem ele, o SmartScreen avisa).
 - Domínio próprio para o site e a API (opcional; os `*.workers.dev` e `*.pages.dev` gratuitos funcionam).
+
+## Decisão (12/11/2026): launcher removido de novo
+O launcher Java (que preparava o Forge e abria o launcher oficial) foi feito e removido a pedido, porque o usuário não quer depender do launcher oficial. Sem login Microsoft próprio (sem Azure), não há outro jeito legítimo de abrir o jogo, então o 1227 segue como mod.
+
+## v1.17.0: cosméticos com materiais, Spacing Circle, W-Tap Indicator e Item Physics
+- Pedidos do usuário: Spacing Circle, W-Tap Indicator e efeitos (plasma, aurora etc.) no China Hat e em outros cosméticos.
+- **Pesquisa:** busca na web por mods "visuals" de PvP 1.8.9 (Modrinth/CurseForge: Visual+, ChinaHat, TargetESP e outros). A maioria dos recursos comuns já existe no 1227 (China Hat, Target ESP = Target Aura, Jump Circles = Jump Effects). Novo a partir da pesquisa: **Item Physics**. Nada foi copiado: só a ideia do recurso.
+- **Testes aqui:**
+  - compilação com `javac` sem erros próprios;
+  - o shader dos materiais foi compilado e desenhado em WebGL (Chromium) num chapéu e numa cápsula, e conferido por captura;
+  - o W-Tap foi modelado sobre a ordem de atualização do 1.8.9 (o estado do sprint no fim do tick é o que vai para o servidor).
+- **Falta testar no jogo:** o Item Physics (substitui o renderizador de itens; com outro mod de Item Physics, vale o último carregado), a posição do China Hat em cada formato e as notas do W-Tap com e sem Toggle Sprint.
+
+## v1.18.0: client completo dentro do mod
+- Pedido: experiência de client inteiro só com o `1227.jar` (menus próprios, configurações unificadas, otimização, design system), sem launcher obrigatório.
+- **Feito:**
+  - Menu System, Settings System, Performance System, Profile System, Screenshot manager e o design system;
+  - documentação em `docs/CLIENT.md` e `docs/DESIGN.md`.
+- **Testado aqui:**
+  - compilação sem erros próprios;
+  - todos os nomes da API do Minecraft 1.8.9 usados conferidos com o código-fonte descompilado do 1.8.9 (repositório MavenMCP-1.8.9 no GitHub);
+  - a lógica de sair, renascer e conectar comparada com a do vanilla.
+- **Falta testar no jogo:** o roteiro completo está em `docs/TEST-REPORT-1.18.md`.
+- **Limites do Forge 1.8.9 sem patch de classes:** listados em `docs/CLIENT.md` (listas vanilla de teclas, packs e idiomas, a tela "Building terrain", freelook e otimização de chunks).
 
 ## Decisões técnicas
 - **Mod na raiz do repositório:** mantém o `build.yml` e o ForgeGradle 2.x funcionando como estão.

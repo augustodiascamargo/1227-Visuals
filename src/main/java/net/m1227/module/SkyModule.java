@@ -114,7 +114,7 @@ public final class SkyModule extends Module {
     private final float[] env = new float[MAXSEG + 1];
 
     public SkyModule() {
-        super("Dynamic Skies", "50 animated skies with smooth transitions.", Category.SKY, false);
+        super("Dynamic Skies", "58 animated skies with smooth transitions.", Category.SKY, false);
         INSTANCE = this;
         preset = add(new Setting.Mode("Sky", "Night Flow", SkyPreset.names()));
         speed = add(new Setting.Num("Animation speed", 1.0, 0.1, 3.0, 0.1, "x"));
@@ -125,6 +125,28 @@ public final class SkyModule extends Module {
         transition = add(new Setting.Num("Transition time", 1.5, 0.2, 5.0, 0.1, "s"));
         showBody = add(new Setting.Bool("Sun / moon / planet", true));
         fogMatch = add(new Setting.Bool("Fog matches sky", true));
+        picture = add(new Setting.Mode("Picture sky", "Off", pictureNames()));
+        pictureSpin = add(new Setting.Num("Picture rotation", 0.3, 0.0, 3.0, 0.05, "\u00b0/s")).showIf(() -> !picture.is("Off"));
+        pictureEffects = add(new Setting.Bool("Sky effects over the picture", false)).showIf(() -> !picture.is("Off"));
+        add(new Setting.Action("Open pictures folder", () -> {
+            final java.io.File d = pictureDir();
+            d.mkdirs();
+            Thread th = new Thread(() -> {
+                try {
+                    java.awt.Desktop.getDesktop().open(d);
+                } catch (Throwable ignored) {
+                    // no desktop integration available
+                }
+            }, "1227-open-folder");
+            th.setDaemon(true);
+            th.start();
+        }));
+        add(new Setting.Action("Reload pictures", () -> {
+            picture.setOptions(pictureNames());
+            pictureLoaded = null;
+            net.m1227.core.Notifier.post(net.m1227.core.Notifier.Kind.SYSTEM, "Picture sky",
+                    (picture.options.length - 1) + " picture(s) found", net.m1227.core.Notifier.GOOD, 1800);
+        }));
         // "Off" = only the sky's own layer (the cloud skies have one); any other choice replaces it
         shaderStyle = add(new Setting.Mode("Shader layer (GLSL)", "Off", net.m1227.vfx.SkyShader.STYLES));
         shaderStrength = add(new Setting.Num("Shader strength", 0.8, 0.1, 1.5, 0.05, "x")).showIf(() -> !shaderStyle.is("Off"));
@@ -134,7 +156,90 @@ public final class SkyModule extends Module {
         shaderC = add(new Setting.Col("Shader color 3", 0xFF4FD8)).showIf(() -> !shaderStyle.is("Off") && shaderPalette.is("Custom"));
     }
 
-    private final Setting.Mode shaderStyle, shaderPalette;
+    private final Setting.Mode shaderStyle, shaderPalette, picture;
+    private Setting.Num pictureSpin;
+    private Setting.Bool pictureEffects;
+
+    // ------------------------------------------------------------ picture sky
+    // Your own images as the sky: equirectangular panoramas (2:1) work best. PNG or JPG files in
+    // config/1227-skies. Loaded once into a texture; the old one is freed when you switch.
+    private String pictureLoaded;
+    private net.minecraft.util.ResourceLocation pictureTex;
+
+    private static java.io.File pictureDir() {
+        return new java.io.File(net.m1227.core.ConfigManager.dir(), "1227-skies");
+    }
+
+    private static String[] pictureNames() {
+        java.util.List<String> out = new java.util.ArrayList<String>();
+        out.add("Off");
+        java.io.File[] fs = pictureDir().listFiles();
+        if (fs != null) {
+            java.util.Arrays.sort(fs);
+            for (java.io.File f : fs) {
+                String n = f.getName().toLowerCase();
+                if (f.isFile() && (n.endsWith(".png") || n.endsWith(".jpg") || n.endsWith(".jpeg"))) out.add(f.getName());
+            }
+        }
+        return out.toArray(new String[0]);
+    }
+
+    private boolean ensurePicture(Minecraft mc) {
+        String want = picture.get();
+        if (want.equals("Off")) return false;
+        if (want.equals(pictureLoaded)) return pictureTex != null;
+        if (pictureTex != null) mc.getTextureManager().deleteTexture(pictureTex);
+        pictureTex = null;
+        pictureLoaded = want;
+        try {
+            java.io.File f = new java.io.File(pictureDir(), want);
+            java.awt.image.BufferedImage img = javax.imageio.ImageIO.read(f);
+            if (img == null) throw new java.io.IOException("not an image");
+            int max = Math.min(8192, net.minecraft.client.Minecraft.getGLMaximumTextureSize());
+            if (img.getWidth() > max || img.getHeight() > max) {
+                float k = Math.min(max / (float) img.getWidth(), max / (float) img.getHeight());
+                java.awt.image.BufferedImage sm = new java.awt.image.BufferedImage(Math.max(1, (int) (img.getWidth() * k)),
+                        Math.max(1, (int) (img.getHeight() * k)), java.awt.image.BufferedImage.TYPE_INT_ARGB);
+                java.awt.Graphics2D g = sm.createGraphics();
+                g.setRenderingHint(java.awt.RenderingHints.KEY_INTERPOLATION, java.awt.RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+                g.drawImage(img, 0, 0, sm.getWidth(), sm.getHeight(), null);
+                g.dispose();
+                img = sm;
+            }
+            pictureTex = mc.getTextureManager().getDynamicTextureLocation("m1227_picture_sky", new net.minecraft.client.renderer.texture.DynamicTexture(img));
+        } catch (Exception ex) {
+            net.m1227.core.Notifier.post(net.m1227.core.Notifier.Kind.SYSTEM, "Picture sky", "Could not load " + want, net.m1227.core.Notifier.BAD, 2200);
+        }
+        return pictureTex != null;
+    }
+
+    /** Textured sphere around the camera (radius 100), panorama mapped by longitude/latitude. */
+    private void pictureSphere(Minecraft mc, double t) {
+        mc.getTextureManager().bindTexture(pictureTex);
+        GlStateManager.enableTexture2D();
+        GlStateManager.disableBlend();
+        float b = Math.min(1.5f, brightness.f());
+        GL11.glColor4f(b, b, b, 1f);
+        float rot = (float) ((t * pictureSpin.f() / 360.0) % 1.0);
+        int stacks = 24, slices = 48;
+        float r = 100f;
+        for (int i = 0; i < stacks; i++) {
+            double la0 = Math.PI * (i / (double) stacks - 0.5), la1 = Math.PI * ((i + 1) / (double) stacks - 0.5);
+            GL11.glBegin(GL11.GL_QUAD_STRIP);
+            for (int j = 0; j <= slices; j++) {
+                double lo = 2 * Math.PI * j / slices;
+                float u = j / (float) slices + rot;
+                GL11.glTexCoord2f(u, 1f - (i + 1) / (float) stacks);
+                GL11.glVertex3f((float) (Math.cos(la1) * Math.cos(lo) * r), (float) (Math.sin(la1) * r), (float) (Math.cos(la1) * Math.sin(lo) * r));
+                GL11.glTexCoord2f(u, 1f - i / (float) stacks);
+                GL11.glVertex3f((float) (Math.cos(la0) * Math.cos(lo) * r), (float) (Math.sin(la0) * r), (float) (Math.cos(la0) * Math.sin(lo) * r));
+            }
+            GL11.glEnd();
+        }
+        GlStateManager.enableBlend();
+        GlStateManager.disableTexture2D();
+        GL11.glColor4f(1f, 1f, 1f, 1f);
+    }
     private final Setting.Num shaderStrength;
     private final Setting.Col shaderA, shaderB, shaderC;
 
@@ -152,7 +257,11 @@ public final class SkyModule extends Module {
             a = tinted(p.aurora > 0 ? p.auroraA : p.nebA);
             b = tinted(p.aurora > 0 ? p.auroraB : p.nebB);
             c = tinted(p.lineGlow);
-            if (net.m1227.vfx.SkyShader.opaque(style)) {
+            if (own && p.shA >= 0) {
+                a = tinted(p.shA);
+                b = tinted(p.shB);
+                c = tinted(p.shC);
+            } else if (net.m1227.vfx.SkyShader.opaque(style)) {
                 // clouds: lit top, shadowed underside, horizon blends into the sky's own horizon
                 a = tinted(p.cloudColor);
                 b = tinted(net.m1227.vfx.ParticleSystem.mix(p.cloudColor, p.top, 0.6f));
@@ -251,12 +360,15 @@ public final class SkyModule extends Module {
             GlStateManager.enableBlend();
             GlStateManager.disableTexture2D();
             GlStateManager.blendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
-            gradient(previous, shown, m);
-            shaderLayer(shown, 1f, t);
-
-            if (previous != null) layers(previous, 1f - m, t, sunAngle);
-            layers(shown, m, t, sunAngle);
-            stormFlash(previous, shown, m, t);
+            boolean pic = ensurePicture(mc);
+            if (pic) pictureSphere(mc, ps.time);
+            else gradient(previous, shown, m);
+            if (!pic || pictureEffects.on()) {
+                shaderLayer(shown, 1f, t);
+                if (previous != null) layers(previous, 1f - m, t, sunAngle);
+                layers(shown, m, t, sunAngle);
+                stormFlash(previous, shown, m, t);
+            }
 
             GL11.glColor4f(1f, 1f, 1f, 1f);
             GlStateManager.blendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);

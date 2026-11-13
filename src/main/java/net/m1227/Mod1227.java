@@ -26,7 +26,7 @@ import org.apache.logging.log4j.Logger;
 public class Mod1227 {
     public static final String MODID = "m1227";
     public static final String NAME = "1227";
-    public static final String VERSION = "1.14.0";
+    public static final String VERSION = "1.18.0";
     public static final Logger LOGGER = LogManager.getLogger(NAME);
 
     /** Forge's config folder (set in preInit, before modules are created). */
@@ -35,6 +35,17 @@ public class Mod1227 {
     @Mod.EventHandler
     public void preInit(FMLPreInitializationEvent e) {
         configDir = e.getModConfigurationDirectory();
+        // Item Physics: our renderer replaces the dropped-item renderer, and draws exactly like
+        // vanilla while the module is off
+        net.minecraftforge.fml.client.registry.RenderingRegistry.registerEntityRenderingHandler(
+                net.minecraft.entity.item.EntityItem.class,
+                new net.minecraftforge.fml.client.registry.IRenderFactory<net.minecraft.entity.item.EntityItem>() {
+                    @Override
+                    public net.minecraft.client.renderer.entity.Render<? super net.minecraft.entity.item.EntityItem> createRenderFor(
+                            net.minecraft.client.renderer.entity.RenderManager manager) {
+                        return new net.m1227.render.PhysicsItemRender(manager, net.minecraft.client.Minecraft.getMinecraft().getRenderItem());
+                    }
+                });
     }
 
     @Mod.EventHandler
@@ -54,6 +65,11 @@ public class Mod1227 {
         MinecraftForge.EVENT_BUS.register(net.m1227.render.HandRenderer.INSTANCE);
         MinecraftForge.EVENT_BUS.register(net.m1227.render.Silhouette.INSTANCE);
         MinecraftForge.EVENT_BUS.register(net.m1227.vfx.BlockWave.INSTANCE);
+        // client systems: menus, server history, performance, benchmark
+        MinecraftForge.EVENT_BUS.register(net.m1227.client.menu.MenuSystem.INSTANCE);
+        MinecraftForge.EVENT_BUS.register(net.m1227.client.menu.ServerStore.INSTANCE);
+        MinecraftForge.EVENT_BUS.register(net.m1227.client.perf.PerfSystem.INSTANCE);
+        MinecraftForge.EVENT_BUS.register(net.m1227.client.perf.Benchmark.INSTANCE);
         ClientCommandHandler.instance.registerCommand(new Command1227());
 
         Runtime.getRuntime().addShutdownHook(new Thread(new Runnable() {

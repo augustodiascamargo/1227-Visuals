@@ -288,6 +288,33 @@ public abstract class Setting<T> {
 
     // ------------------------------------------------------------------
 
+    /** A short line of text (an ID, a link, a name). Edited in the menu with paste support. */
+    public static final class Text extends Setting<String> {
+        public final int maxLength;
+        public final String placeholder;
+
+        public Text(String name, String def, int maxLength, String placeholder) {
+            super(name, def);
+            this.maxLength = maxLength;
+            this.placeholder = placeholder;
+        }
+
+        @Override
+        public JsonElement toJson() {
+            return new JsonPrimitive(value);
+        }
+
+        @Override
+        public void fromJson(JsonElement e) {
+            if (e.isJsonPrimitive()) {
+                String v = e.getAsString();
+                value = v.length() > maxLength ? v.substring(0, maxLength) : v;
+            }
+        }
+    }
+
+    // ------------------------------------------------------------------
+
     /** A keyboard key (LWJGL key code). 0 means "not bound". */
     public static final class Key extends Setting<Integer> {
         public Key(String name, int def) {
