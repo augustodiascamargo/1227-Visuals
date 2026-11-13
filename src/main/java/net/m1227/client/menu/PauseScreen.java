@@ -90,7 +90,7 @@ public final class PauseScreen extends UiScreen {
                 () -> mc.displayGuiScreen(new GuiStats(this, mc.thePlayer.getStatFileWriter())));
         y += bh + g;
         ui.button("modopts", "Mod options", x, y, colW, bh, Ui.SECONDARY, true, Glyph.MODS,
-                () -> mc.displayGuiScreen(new net.minecraftforge.fml.client.GuiIngameModOptions(this)));
+                () -> mc.displayGuiScreen(new net.minecraftforge.fml.client.GuiModList(this))); // what Forge 1.8.9 "Mod Options" opens
         y += bh + g;
         ui.button("classic", "Classic pause menu", x, y, colW, bh, Ui.GHOST, true, Glyph.EYE, () -> MenuSystem.openVanilla(new GuiIngameMenu()));
         y += bh + g + 6;
