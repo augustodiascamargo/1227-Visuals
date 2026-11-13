@@ -81,7 +81,7 @@ public final class ScoreboardHud extends HudModule {
         for (int i = list.size() - 1; i >= 0; i--) { // highest score at the top, like vanilla
             Score s = list.get(i);
             String name = ScorePlayerTeam.formatPlayerName(sb.getPlayersTeam(s.getPlayerName()), s.getPlayerName());
-            lines.add(new String[]{name, String.valueOf(s.getScorePoints())});
+            lines.add(new String[]{net.m1227.module.NickHiderModule.text(name), String.valueOf(s.getScorePoints())});
         }
     }
 

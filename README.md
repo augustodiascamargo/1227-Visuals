@@ -183,6 +183,24 @@ nada depende de Lunar ou de outro launcher.
 O modelo do Tung Sahur (ZAHUR.fbx + textura) e a butterfly knife (.blend) foram enviados pelo usuário. Antes de
 publicar o 1227, confira a licença de cada um (por exemplo, se exigem crédito ao autor) e coloque o crédito aqui.
 
+## Mudanças na v1.20.1
+
+- **Build:** corrigido o erro de compilação em `AlertsModule`: uma opção era usada antes de ser
+  criada ("variable durability might not have been initialized").
+- **Checagem local mais forte:** agora inclui a análise de fluxo do javac, que pega esse tipo de
+  erro antes do GitHub. O código inteiro passou sem nenhum erro desse tipo.
+- **Novos HUDs e módulos:**
+  - **Pack Display:** o resource pack ativo, com ícone.
+  - **Saturation:** fome, saturação escondida e exaustão (no servidor, a exaustão é estimativa).
+  - **Nick Hider:** mostra outro nome no lugar do seu no chat, no scoreboard, na Dynamic Island,
+    no menu de módulos e no menu principal. Só na sua tela.
+- **HUD Editor:**
+  - clique num elemento e use as setas para mover 1 px (Shift: 10 px);
+  - C centraliza, H esconde;
+  - o elemento selecionado fica destacado.
+- **Layouts de HUD antigos:** os que guardavam o widget como "Music" agora posicionam o
+  "Now Playing".
+
 ## Mudanças na v1.20.0: Floating Lyrics, música, QoL e performance
 
 Auditoria completa em `docs/AUDIT-1.20.md` (arquitetura, problemas corrigidos, comparação com

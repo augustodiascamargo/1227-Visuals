@@ -44,9 +44,11 @@ public final class HudLayouts {
     public static boolean apply(JsonObject o) {
         boolean any = false;
         for (Module m : ModuleManager.inCategory(Category.HUD)) {
-            if (!(m instanceof HudModule) || !o.has(m.name) || !o.get(m.name).isJsonObject()) continue;
+            // layouts saved before 1.20 call the Now Playing widget "Music"
+            String key = o.has(m.name) ? m.name : m.name.equals("Now Playing") && o.has("Music") ? "Music" : m.name;
+            if (!(m instanceof HudModule) || !o.has(key) || !o.get(key).isJsonObject()) continue;
             HudModule h = (HudModule) m;
-            JsonObject e = o.getAsJsonObject(m.name);
+            JsonObject e = o.getAsJsonObject(key);
             try {
                 if (e.has("x")) h.posX.set(clamp(e.get("x").getAsDouble(), 0, 1));
                 if (e.has("y")) h.posY.set(clamp(e.get("y").getAsDouble(), 0, 1));

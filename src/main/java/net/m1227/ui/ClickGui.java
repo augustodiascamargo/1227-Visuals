@@ -386,7 +386,7 @@ public class ClickGui extends GuiScreen {
                 // skin not loaded yet
             }
             Gfx.weight(TtfFont.MEDIUM);
-            Gfx.text(Gfx.trim(mc.thePlayer.getName(), SIDE - 60), wx + 40, uy + 3, Gfx.alpha(TEXT, o));
+            Gfx.text(Gfx.trim(net.m1227.module.NickHiderModule.name(mc.thePlayer.getName()), SIDE - 60), wx + 40, uy + 3, Gfx.alpha(TEXT, o));
             Gfx.weight(TtfFont.REGULAR);
         }
         int fps = net.minecraft.client.Minecraft.getDebugFPS();

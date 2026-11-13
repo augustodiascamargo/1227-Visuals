@@ -204,7 +204,7 @@ public final class MainMenuScreen extends UiScreen {
     /** Account card and what's new. */
     private void sidePanel(int w, int h, float a, boolean withCharacter) {
         float pw = Math.min(210, w * 0.3f), px = w - pw - 18, py = withCharacter ? 12 : Math.max(18, h * 0.16f);
-        String name = mc.getSession() == null ? "Player" : mc.getSession().getUsername();
+        String name = mc.getSession() == null ? "Player" : net.m1227.module.NickHiderModule.name(mc.getSession().getUsername());
         Ui.glassCard(px, py, pw, 44);
         face(name, px + 10, py + 10, 24);
         Ui.textMedium(Gfx.trim(name, pw - 60), px + 42, py + 12, DS.T_BODY, DS.TEXT);

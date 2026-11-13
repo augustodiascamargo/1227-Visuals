@@ -41,8 +41,8 @@ public final class AlertsModule extends Module {
         food = add(new Setting.Bool("Low food", true));
         foodAt = add(new Setting.Num("Food below", 6, 1, 19, 1, "")).showIf(() -> food.on());
         armor = add(new Setting.Bool("Armor about to break", true));
-        armorAt = add(new Setting.Num("Armor durability below", 10, 1, 50, 1, "%")).showIf(() -> armor.on() || durability.on());
         durability = add(new Setting.Bool("Held item about to break", true));
+        armorAt = add(new Setting.Num("Durability below", 10, 1, 50, 1, "%")).showIf(() -> armor.on() || durability.on());
         potions = add(new Setting.Bool("Few healing potions", false));
         potionsAt = add(new Setting.Num("Potions below", 2, 1, 16, 1, "")).showIf(() -> potions.on());
         invFull = add(new Setting.Bool("Inventory full", false));

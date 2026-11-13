@@ -62,7 +62,7 @@ compara só as funções.
 | Alertas (vida, comida, durabilidade...) | Badlion, mods de QoL | Parcial (notificações) | Alertas com cooldown e som | `ClientTickEvent` + `Notifier` | Média | **Feito** |
 | Gerenciador de screenshots | Lunar, Feather | Sim | Filtros, grupos por dia, copiar caminho | `ScreenshotScreen` | Média | **Melhorado** |
 | Gerenciador de resource packs | Lunar, Feather | Não (só a tela vanilla) | Verificação, ordem, importação, backup | `ResourcePackRepository` | Média | **Feito** |
-| Pack Display HUD | Lunar | Não | Mostrar o pack ativo | `HudModule` | Baixa | Pendente |
+| Pack Display HUD | Lunar | Não | Mostrar o pack ativo | `HudModule` | Baixa | **Feito (1.20.1)** |
 | Perfis por servidor | Feather, Lunar | Perfis sem vínculo | Vincular perfil a servidor | Detecta servidor no tick e aplica perfil | Média | **Feito** |
 | Entity culling / FPS | Feather, Lunar, Badlion | Distância única | Distâncias separadas e oclusão opcional | `RenderLivingEvent.Pre` + raios em cache | Alta | **Feito** |
 | Block entity culling | Mods de FPS | Não | Baús e placas atrás de blocos | Wrapper nos `TileEntitySpecialRenderer` | Alta | **Feito** |
@@ -71,7 +71,7 @@ compara só as funções.
 | Visualizador de áudio | Raro em clients | Não | FFT real | `PcmTap` + `Fft` | Alta | **Feito** |
 | Modo cinematográfico/foto | Lunar (hide HUD), replay tools | F1 vanilla | Esconder o HUD e manter letras e música | Cancelar `RenderGameOverlayEvent.Pre` | Média | **Feito** |
 | Contador de dias | Lunar | Não | Linha no Clock | `ClockHud` | Baixa | **Feito** |
-| Nick hider (local) | Lunar, Badlion | Não | Esconder o próprio nick na tela | Evento de chat/nametag | Baixa | Pendente |
+| Nick hider (local) | Lunar, Badlion | Não | Esconder o próprio nick na tela | Evento de chat + HUDs próprios | Baixa | **Feito (1.20.1)**; a tab list vanilla não muda |
 | Freelook | Lunar, outros | Não | Não planejado: vários servidores proíbem | | | Fora de escopo |
 | Auto GG / mensagens automáticas | Lunar, Badlion | Não | Não: envia chat ao servidor | | | Fora de escopo |
 | Replay | Mods de replay | Não | Projeto enorme | | | Fora de escopo |
@@ -129,9 +129,8 @@ Sem dados reais, o visualizador mostra um modo "simulated" com etiqueta, ou some
 - **Partículas:** não há limite de partículas por módulo; continua o limite global.
 - **Fonte:** só tem Latin-1. Acentos funcionam; letras em japonês, coreano e similares aparecem
   como "?".
-- **HUDs pequenos:** Pack Display HUD, Nick hider e Saturation HUD.
-- **Layouts de HUD antigos:** layouts salvos em `HudLayouts` com o HUD "Music" não posicionam o
-  "Now Playing" (o config principal é migrado; os arquivos de layout, não).
+- **HUDs pequenos:** Pack Display, Nick Hider e Saturation foram feitos na 1.20.1. Os layouts
+  antigos com "Music" também já posicionam o "Now Playing" (1.20.1).
 
 Fontes da pesquisa: [Lunar Client mods list](https://www.bisecthosting.com/pt-pt/blog/lunar-client-mods-list),
 [best minecraft clients](https://sportskeeda.com/minecraft/best-minecraft-clients),

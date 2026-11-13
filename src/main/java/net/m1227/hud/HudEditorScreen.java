@@ -23,7 +23,7 @@ public final class HudEditorScreen extends GuiScreen {
     private final List<HudModule> huds = new ArrayList<HudModule>();
     /** Everything shown as an on/off chip: the movable elements plus HUD modules that draw elsewhere (island, crosshair...). */
     private final List<Module> chips = new ArrayList<Module>();
-    private HudModule dragging;
+    private HudModule dragging, selected;
     private float offX, offY;
     private float guideX = -1, guideY = -1;
     private long opened;
@@ -114,7 +114,7 @@ public final class HudEditorScreen extends GuiScreen {
             if (!h.isEnabled()) continue;
             h.render(sr, true);
             float x = h.screenX(sr), y = h.screenY(sr), w = h.width() * h.scale.f(), hh = h.height() * h.scale.f();
-            int c = h == hover ? accent() : Gfx.alpha(0xFFFFFFFF, 0.25f);
+            int c = h == hover || h == selected ? accent() : Gfx.alpha(0xFFFFFFFF, 0.25f);
             Gfx.rect(x - 1, y - 1, w + 2, 1, c);
             Gfx.rect(x - 1, y + hh, w + 2, 1, c);
             Gfx.rect(x - 1, y, 1, hh, c);
@@ -142,7 +142,7 @@ public final class HudEditorScreen extends GuiScreen {
             Gfx.text(h.name, r[0] + 8, r[1] + 3.5f, h.isEnabled() ? 0xFFFFFFFF : 0xFFA9ADBA);
         }
         drawLayoutBar(mx, my);
-        String help = "Drag to move  ·  Scroll to resize  ·  Right-click to reset  ·  Middle-click to lock  ·  Esc to save";
+        String help = "Drag to move  ·  Arrows nudge (Shift x10)  ·  C centre  ·  H hide  ·  Scroll resize  ·  Right-click reset  ·  Middle-click lock  ·  Esc save";
         float hw = Gfx.textWidth(help);
         Gfx.roundedRect((width - hw) / 2f - 8, height - 20, hw + 16, 14, 7, Gfx.alpha(0xFF0B0C11, 0.85f));
         Gfx.text(help, (width - hw) / 2f, height - 16.5f, 0xFFA9ADBA);
@@ -175,6 +175,7 @@ public final class HudEditorScreen extends GuiScreen {
         }
         if (button == 0) {
             ScaledResolution sr = sr();
+            selected = h;
             dragging = h;
             offX = mx - h.screenX(sr);
             offY = my - h.screenY(sr);
@@ -261,6 +262,41 @@ public final class HudEditorScreen extends GuiScreen {
         if (h.locked.on()) return;
         h.scale.setClamped(h.scale.f() + (d > 0 ? 0.05 : -0.05));
         ConfigManager.markDirty();
+    }
+
+    /**
+     * Keyboard: arrows move the last clicked element 1 px (Shift: 10 px), C centres it
+     * horizontally, H hides it (turns it off).
+     */
+    @Override
+    protected void keyTyped(char c, int key) throws IOException {
+        HudModule h = selected;
+        if (h != null && h.isEnabled() && !h.locked.on()) {
+            ScaledResolution sr = sr();
+            float step = org.lwjgl.input.Keyboard.isKeyDown(org.lwjgl.input.Keyboard.KEY_LSHIFT) ? 10f : 1f;
+            float x = h.screenX(sr), y = h.screenY(sr);
+            float w = h.width() * h.scale.f(), hh = h.height() * h.scale.f();
+            boolean moved = true;
+            if (key == org.lwjgl.input.Keyboard.KEY_LEFT) x -= step;
+            else if (key == org.lwjgl.input.Keyboard.KEY_RIGHT) x += step;
+            else if (key == org.lwjgl.input.Keyboard.KEY_UP) y -= step;
+            else if (key == org.lwjgl.input.Keyboard.KEY_DOWN) y += step;
+            else if (key == org.lwjgl.input.Keyboard.KEY_C) x = (width - w) / 2f;
+            else if (key == org.lwjgl.input.Keyboard.KEY_H && h.toggleable()) {
+                h.setEnabled(false);
+                selected = null;
+                moved = false;
+            } else moved = false;
+            if (moved) {
+                x = Math.max(0, Math.min(width - w, x));
+                y = Math.max(0, Math.min(height - hh, y));
+                h.posX.set((double) (x / width));
+                h.posY.set((double) (y / height));
+                ConfigManager.markDirty();
+                return;
+            }
+        }
+        super.keyTyped(c, key);
     }
 
     @Override

@@ -307,7 +307,7 @@ public final class DynamicIslandModule extends Module {
     private void build(Minecraft mc, float sinceLast) {
         EntityPlayerSP p = mc.thePlayer;
         segCount = 0;
-        if (showName.on()) add(p.getName(), accent.rgb());
+        if (showName.on()) add(NickHiderModule.name(p.getName()), accent.rgb());
         if (showFps.on()) add(Minecraft.getDebugFPS() + " fps", 0x3DDC84);
         if (showPing.on()) {
             int ping = 0;

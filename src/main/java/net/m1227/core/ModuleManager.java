@@ -58,6 +58,7 @@ public final class ModuleManager {
         register(new AlertsModule());
         register(new SmartArmorModule());
         register(new WaypointsModule());
+        register(new NickHiderModule());
         register(new EmotesModule());
         register(new HitSoundsModule());
         register(new MusicModule());
@@ -93,6 +94,8 @@ public final class ModuleManager {
         register(new net.m1227.hud.VisualizerHud());
         register(new net.m1227.hud.InventoryHud());
         register(new net.m1227.hud.KeybindsHud());
+        register(new net.m1227.hud.PackDisplayHud());
+        register(new net.m1227.hud.FoodHud());
         register(new TabListModule());
         register(new BossBarModule());
         register(new MenuStyleModule());
