@@ -80,3 +80,38 @@ O FFT e o parser foram testados com dados sintéticos; o LRCLIB real não foi ch
 20. **"Skip chests and signs hidden behind blocks"** num lobby cheio de baús: nada pode sumir na
     sua frente.
 21. **"Skip mobs hidden behind blocks":** jogadores nunca devem sumir.
+
+## v1.20.2
+
+Feito aqui: compilação de checagem de todo o código (201 arquivos), com a análise de fluxo do
+javac. Nenhum erro do código do 1227; sobram só os de classes do Minecraft/Forge, ausentes fora do
+Gradle. A busca por opções usadas antes de serem criadas não achou nenhum caso. `LyricsTest` (15)
+e `SettingTest` + `PureLogicTest` (12) passaram. Nada disto foi testado dentro do jogo.
+
+Para testar no jogo:
+22. **Player FX:** troque o "Style" entre Classic, Beam, Portal, Smoke, Pixels e Rift. Com um
+    config antigo em que o Arrival Effects estava ligado, o Player FX deve abrir ligado e no
+    mesmo estilo.
+23. **Aim Helper "Glow point":** bata num jogador. O ponto de luz deve ficar no corpo dele, no
+    lugar escolhido em "Point" (mais perto da mira, peito ou cabeça), e se mover suave. A câmera
+    nunca deve se mexer sozinha.
+24. **Inspeção dos modelos 3D:** aperte a tecla de inspeção e troque de slot. Só a arma deve
+    girar, e os braços não podem aparecer de lado.
+25. **Item Glow:** com Glow, Outline e Glow + Outline, numa espada normal e numa encantada. O
+    contorno deve ter a mesma espessura em volta da lâmina, sem aparecer uma segunda espada
+    embaixo. Teste também em 1080p e numa janela pequena.
+26. **Player Glow:**
+    - em Target, Everyone e Self (3rd person), o contorno deve ficar só na borda;
+    - o meio do corpo não pode ficar branco;
+    - o contorno deve sumir atrás de paredes;
+    - durante o flash vermelho de dano, o contorno deve manter a cor.
+27. **Body:** Glass, Ghost, Hologram, Shadow, Tint e Rainbow. Confira:
+    - o nome em cima da cabeça continua aparecendo;
+    - armadura, item na mão e capa aparecem com o mesmo material;
+    - em terceira pessoa, o seu personagem também muda (com "Self").
+28. **No Hurt Cam:** tome dano de queda e de um jogador.
+    - Com 0%, a câmera e a mão não devem inclinar.
+    - Com 50%, devem inclinar menos que o normal.
+    - Em terceira pessoa, o seu personagem ainda pisca vermelho (se "Keep red flash" estiver
+      ligado).
+    - O Hit Color e o Target HUD continuam funcionando.

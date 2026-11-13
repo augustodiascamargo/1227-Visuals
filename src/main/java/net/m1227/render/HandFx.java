@@ -82,8 +82,16 @@ public final class HandFx {
         // then 0.5x and a -0.5 offset into the model's 0..1 space
         if (!model.isGui3d()) GlStateManager.scale(2.0F, 2.0F, 2.0F);
         model.getItemCameraTransforms().applyTransform(ItemCameraTransforms.TransformType.FIRST_PERSON);
-        if (glow && g.glowOn()) glowCopies(mc, stack, model, g);
-        if (glow && g.outlineOn()) outlineCopies(mc, stack, model, g);
+        // the copies are drawn without the enchantment shine: its pass resets blending and turns
+        // depth writes back on, which made later copies show as a second sword under the real one
+        ItemStack plain = stack;
+        if (glow && stack.hasEffect()) {
+            plain = stack.copy();
+            if (plain.hasTagCompound()) plain.getTagCompound().removeTag("ench");
+            if (plain.hasEffect()) plain = stack; // shine built into the item (blending is set again per copy)
+        }
+        if (glow && g.glowOn()) glowCopies(mc, plain, model, g);
+        if (glow && g.outlineOn()) outlineCopies(mc, plain, model, g);
         if (weapon && !custom) {
             GlStateManager.scale(0.5F, 0.5F, 0.5F);
             GlStateManager.translate(-0.5F, -0.5F, -0.5F);
@@ -124,37 +132,65 @@ public final class HandFx {
 
     // ----------------------------------------------------------- glow
 
+    /** Blending and depth for one copy (set again every copy, in case the item changed them). */
+    private static void copyState(boolean glow) {
+        if (glow) GlStateManager.blendFunc(0x8001 /* GL_CONSTANT_COLOR */, GL11.GL_ONE);
+        else GlStateManager.tryBlendFuncSeparate(770, 771, 1, 0);
+        GlStateManager.depthMask(false);
+        GlStateManager.depthFunc(GL11.GL_LEQUAL);
+    }
+
+    /** Screen pixels per "1x": 2 px at 1080p, more on bigger screens, never under 1. */
+    private static float pxScale(Minecraft mc) {
+        return Math.max(1f, mc.displayHeight / 540f);
+    }
+
     /**
-     * Contour around the held item: solid-colour silhouettes of the item shifted in 8 directions
-     * in its own plane. Drawn before the real item, which then covers the middle: only the rim shows.
+     * Contour around the held item: flat-colour copies of the item moved a few SCREEN pixels in
+     * 8 directions (16 for thick lines), so the line has the same width all around the blade as
+     * you see it. Drawn before the real item, which then covers the middle: only the rim shows.
      */
     private void outlineCopies(Minecraft mc, ItemStack stack, IBakedModel model, ItemGlowModule g) {
         int c = g.color(time);
         float a = Math.min(1f, 0.4f + g.intensity()) * g.pulse(time);
-        float w = g.outlineWidth();
+        float w = g.outlineWidth() / 0.03f * pxScale(mc); // "1.0x" = 2 px at 1080p
         mc.getTextureManager().bindTexture(TextureMap.locationBlocksTexture);
         GlStateManager.disableLighting();
         GlStateManager.enableBlend();
         GlStateManager.tryBlendFuncSeparate(770, 771, 1, 0);
         GlStateManager.depthMask(false);
         Silhouette.begin(c, a);
-        for (int i = 0; i < 8; i++) {
-            double ang = Math.PI * 2 * i / 8;
-            GlStateManager.pushMatrix();
-            GlStateManager.translate((float) Math.cos(ang) * w, (float) Math.sin(ang) * w, 0f);
-            mc.getRenderItem().renderItem(stack, model);
-            GlStateManager.popMatrix();
+        ScreenOffset.begin();
+        try {
+            int n = w > 2.5f ? 16 : 8;
+            for (int i = 0; i < n; i++) {
+                double ang = Math.PI * 2 * i / n;
+                ScreenOffset.shift((float) Math.cos(ang) * w, (float) Math.sin(ang) * w, 0f);
+                copyState(false);
+                mc.getRenderItem().renderItem(stack, model);
+            }
+            if (w > 1.5f) { // fill the inside of thick lines
+                for (int i = 0; i < 8; i++) {
+                    double ang = Math.PI * 2 * (i + 0.5) / 8;
+                    ScreenOffset.shift((float) Math.cos(ang) * w * 0.55f, (float) Math.sin(ang) * w * 0.55f, 0f);
+                    copyState(false);
+                    mc.getRenderItem().renderItem(stack, model);
+                }
+            }
+        } finally {
+            ScreenOffset.end();
+            Silhouette.end();
         }
-        Silhouette.end();
         GlStateManager.depthMask(true);
         GlStateManager.enableLighting();
         GlStateManager.color(1f, 1f, 1f, 1f);
     }
 
     /**
-     * Soft glow around the item: rings of tinted copies shifted outwards in the item's plane
+     * Soft glow around the item: rings of tinted copies moved outwards in SCREEN pixels
      * (8 directions per ring, fainter the further out), added on top of what is behind the
-     * hand. Drawn before the real item, so the glow only shows around the blade's edges.
+     * hand. Drawn before the real item, so the glow only shows around the blade's edges and
+     * spreads evenly on every side of it.
      */
     private void glowCopies(Minecraft mc, ItemStack stack, IBakedModel model, ItemGlowModule g) {
         int layers = g.layers();
@@ -166,18 +202,22 @@ public final class HandFx {
         GlStateManager.enableBlend();
         GlStateManager.depthMask(false);
         GlStateManager.blendFunc(0x8001 /* GL_CONSTANT_COLOR */, GL11.GL_ONE);
-        float reach = 0.02f + g.spread() * 0.3f; // 0.12 spread ~ 2 item pixels
-        for (int k = layers; k >= 1; k--) {
-            float rad = reach * k / layers;
-            float a = g.intensity() * pulse * (1.1f - k / (float) (layers + 1)) * 0.3f;
-            GL14.glBlendColor(r * a, gr * a, b * a, 1f);
-            for (int i = 0; i < 8; i++) {
-                double ang = Math.PI * 2 * (i + (k & 1) * 0.5) / 8;
-                GlStateManager.pushMatrix();
-                GlStateManager.translate((float) Math.cos(ang) * rad, (float) Math.sin(ang) * rad, 0f);
-                mc.getRenderItem().renderItem(stack, model);
-                GlStateManager.popMatrix();
+        float reach = (1.5f + g.spread() * 40f) * pxScale(mc); // default spread 0.12 ~ 6 px at 1080p
+        ScreenOffset.begin();
+        try {
+            for (int k = layers; k >= 1; k--) {
+                float rad = reach * k / layers;
+                float a = g.intensity() * pulse * (1.1f - k / (float) (layers + 1)) * 0.3f;
+                GL14.glBlendColor(r * a, gr * a, b * a, 1f);
+                for (int i = 0; i < 8; i++) {
+                    double ang = Math.PI * 2 * (i + (k & 1) * 0.5) / 8;
+                    ScreenOffset.shift((float) Math.cos(ang) * rad, (float) Math.sin(ang) * rad, 0f);
+                    copyState(true);
+                    mc.getRenderItem().renderItem(stack, model);
+                }
             }
+        } finally {
+            ScreenOffset.end();
         }
         GL14.glBlendColor(0f, 0f, 0f, 0f);
         GlStateManager.blendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);

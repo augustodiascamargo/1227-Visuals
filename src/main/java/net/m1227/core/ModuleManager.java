@@ -27,7 +27,6 @@ public final class ModuleManager {
         register(new HaloModule());
         register(new WingsModule());
         register(new EnergyShellModule());
-        register(new ArrivalEffectsModule());
         register(new TrailsModule());
         register(new AfterimageModule());
         register(new JumpEffectModule());
@@ -51,6 +50,7 @@ public final class ModuleManager {
         register(new FovModule());
         register(new ZoomModule());
         register(new CameraFxModule());
+        register(new NoHurtCamModule());
         register(new CinematicModule());
         register(new LowFireModule());
         register(new AnimationsModule());

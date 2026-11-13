@@ -46,6 +46,28 @@ public final class Silhouette {
         GL11.glTexEnv(GL11.GL_TEXTURE_ENV, GL11.GL_TEXTURE_ENV_COLOR, c);
     }
 
+    /**
+     * Tinted, see-through texturing: RGB = texture x colour, alpha = texture alpha x alpha. Call
+     * end() afterwards. Used by the body materials (glass, ghost, hologram...).
+     */
+    public static void beginTint(int rgb, float alpha) {
+        OpenGlHelper.setActiveTexture(OpenGlHelper.defaultTexUnit);
+        GL11.glTexEnvi(GL11.GL_TEXTURE_ENV, GL11.GL_TEXTURE_ENV_MODE, GL13.GL_COMBINE);
+        GL11.glTexEnvi(GL11.GL_TEXTURE_ENV, GL13.GL_COMBINE_RGB, GL11.GL_MODULATE);
+        GL11.glTexEnvi(GL11.GL_TEXTURE_ENV, GL13.GL_SOURCE0_RGB, GL11.GL_TEXTURE);
+        GL11.glTexEnvi(GL11.GL_TEXTURE_ENV, GL13.GL_OPERAND0_RGB, GL11.GL_SRC_COLOR);
+        GL11.glTexEnvi(GL11.GL_TEXTURE_ENV, GL13.GL_SOURCE1_RGB, GL13.GL_CONSTANT);
+        GL11.glTexEnvi(GL11.GL_TEXTURE_ENV, GL13.GL_OPERAND1_RGB, GL11.GL_SRC_COLOR);
+        GL11.glTexEnvi(GL11.GL_TEXTURE_ENV, GL13.GL_COMBINE_ALPHA, GL11.GL_MODULATE);
+        GL11.glTexEnvi(GL11.GL_TEXTURE_ENV, GL13.GL_SOURCE0_ALPHA, GL11.GL_TEXTURE);
+        GL11.glTexEnvi(GL11.GL_TEXTURE_ENV, GL13.GL_OPERAND0_ALPHA, GL11.GL_SRC_ALPHA);
+        GL11.glTexEnvi(GL11.GL_TEXTURE_ENV, GL13.GL_SOURCE1_ALPHA, GL13.GL_CONSTANT);
+        GL11.glTexEnvi(GL11.GL_TEXTURE_ENV, GL13.GL_OPERAND1_ALPHA, GL11.GL_SRC_ALPHA);
+        java.nio.FloatBuffer c = org.lwjgl.BufferUtils.createFloatBuffer(16);
+        c.put(((rgb >> 16) & 255) / 255f).put(((rgb >> 8) & 255) / 255f).put((rgb & 255) / 255f).put(alpha).flip();
+        GL11.glTexEnv(GL11.GL_TEXTURE_ENV, GL11.GL_TEXTURE_ENV_COLOR, c);
+    }
+
     public static void end() {
         OpenGlHelper.setActiveTexture(OpenGlHelper.defaultTexUnit);
         GL11.glTexEnvi(GL11.GL_TEXTURE_ENV, GL11.GL_TEXTURE_ENV_MODE, GL11.GL_MODULATE);
@@ -78,25 +100,24 @@ public final class Silhouette {
         double y = e.lastTickPosY + (e.posY - e.lastTickPosY) * pt - mc.getRenderManager().viewerPosY + oy;
         double z = e.lastTickPosZ + (e.posZ - e.lastTickPosZ) * pt - mc.getRenderManager().viewerPosZ + oz;
         float yaw = e.prevRotationYaw + (e.rotationYaw - e.prevRotationYaw) * pt;
-        active = true;
-        try {
-            mc.getRenderManager().renderEntityWithPosYaw(e, x, y, z, yaw, pt);
-        } catch (RuntimeException ignored) {
-            // another mod's renderer failing must not take the frame down
-        } finally {
-            active = false;
-        }
+        renderAt(e, x, y, z, yaw, pt);
     }
 
     /** Renders an entity at an explicit camera-relative position and yaw. */
     public static void renderAt(Entity e, double x, double y, double z, float yaw, float pt) {
         Minecraft mc = Minecraft.getMinecraft();
         active = true;
+        // while hurt, Minecraft swaps the texture setup for its red flash, which would replace
+        // our flat colour with the real skin: draw the copy as if not hurt
+        net.minecraft.entity.EntityLivingBase l = e instanceof net.minecraft.entity.EntityLivingBase ? (net.minecraft.entity.EntityLivingBase) e : null;
+        int hurt = l != null ? l.hurtTime : 0;
+        if (l != null) l.hurtTime = 0;
         try {
             mc.getRenderManager().renderEntityWithPosYaw(e, x, y, z, yaw, pt);
         } catch (RuntimeException ignored) {
-            // keep the frame alive
+            // keep the frame alive (another mod's renderer failing must not take the frame down)
         } finally {
+            if (l != null && l.hurtTime == 0) l.hurtTime = hurt;
             active = false;
         }
     }

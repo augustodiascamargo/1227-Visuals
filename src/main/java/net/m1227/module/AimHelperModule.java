@@ -30,11 +30,11 @@ import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL14;
 
 /**
- * Aim Helper: a visual reference ON the target. A thick glowing ring that slides up and down the
- * target's body, a glow on the body itself (a soft colour over the whole body plus a brighter
- * band that travels with the ring), a reference point (chest, head or the spot of the hitbox
- * nearest your crosshair), a small card next to the target (face, name, distance, health) and
- * marks where your hits landed.
+ * Aim Helper: a visual reference ON the target. By default a glowing point of light sits on the
+ * target's body where you should aim (the spot of the hitbox nearest your crosshair, or chest /
+ * head), and the part of the body around it lights up. Optionally a thick glowing ring that
+ * slides up and down the body, a glow on the whole body, a card next to the target (face, name,
+ * distance, health) and marks where your hits landed.
  *
  * Purely visual: it never moves the camera, aims, attacks or changes reach. It only marks the
  * player you are fighting (your current target, or the one under the crosshair) and only while
@@ -42,23 +42,29 @@ import org.lwjgl.opengl.GL14;
  */
 public final class AimHelperModule extends Module {
     private final Setting.Mode marker, point, bodyGlow;
-    private final Setting.Col color, glowColor;
-    private final Setting.Num speed, ringSize, thickness, tilt, glowStrength;
+    private final Setting.Col color, glowColor, pointColor;
+    private final Setting.Num speed, ringSize, thickness, tilt, glowStrength, pointSize;
+    /** Smoothed aim point (world), so the light glides instead of jumping. */
+    private double ax, ay, az;
+    private EntityLivingBase aimOf;
+    private long aimNanos;
     private final Setting.Bool card, hitMarks, rimGlow;
     private final List<double[]> marks = new ArrayList<double[]>();
 
     public AimHelperModule() {
         super("Aim Helper", "A glowing ring and body glow on your target, a reference point, a card and hit marks.", Category.COMBAT, false);
-        marker = add(new Setting.Mode("Marker", "Ring", "Ring", "Point", "Ring + Point", "Brackets"));
+        marker = add(new Setting.Mode("Marker", "Glow point", "Glow point", "Ring", "Point", "Ring + Point", "Ring + Glow point", "Brackets"));
         point = add(new Setting.Mode("Reference point", "Nearest to crosshair", "Nearest to crosshair", "Chest", "Head"))
-                .showIf(() -> marker.get().contains("Point"));
+                .showIf(() -> marker.get().contains("oint"));
         color = add(new Setting.Col("Color", 0xFFFFFF));
         speed = add(new Setting.Num("Ring speed", 1.0, 0.2, 3.0, 0.1, "x")).showIf(() -> marker.get().contains("Ring"));
         ringSize = add(new Setting.Num("Ring size", 1.0, 0.6, 1.6, 0.05, "x")).showIf(() -> marker.get().contains("Ring"));
         thickness = add(new Setting.Num("Ring thickness", 1.0, 0.4, 2.5, 0.05, "x")).showIf(() -> marker.get().contains("Ring"));
         tilt = add(new Setting.Num("Ring tilt", 10, 0, 30, 1, " deg")).showIf(() -> marker.get().contains("Ring"));
-        bodyGlow = add(new Setting.Mode("Body glow", "Glow + Scan band", "Off", "Glow", "Scan band", "Glow + Scan band"));
-        glowColor = add(new Setting.Col("Glow color", 0x8B5CFF)).showIf(() -> !bodyGlow.is("Off"));
+        pointColor = add(new Setting.Col("Glow point color", 0x8FE6FF)).showIf(() -> marker.get().contains("Glow point"));
+        pointSize = add(new Setting.Num("Glow point size", 1.0, 0.4, 2.5, 0.05, "x")).showIf(() -> marker.get().contains("Glow point"));
+        bodyGlow = add(new Setting.Mode("Body glow", "Around the point", "Off", "Around the point", "Glow", "Scan band", "Glow + Scan band"));
+        glowColor = add(new Setting.Col("Glow color", 0x6FD3FF)).showIf(() -> !bodyGlow.is("Off"));
         glowStrength = add(new Setting.Num("Glow strength", 0.7, 0.1, 1.5, 0.05, "x")).showIf(() -> !bodyGlow.is("Off"));
         rimGlow = add(new Setting.Bool("Glow around the body", true)).showIf(() -> !bodyGlow.is("Off"));
         card = add(new Setting.Bool("Card next to the target", true));
@@ -82,6 +88,89 @@ public final class AimHelperModule extends Module {
         double ox = (e.posX - e.lastTickPosX) * (pt - 1), oy = (e.posY - e.lastTickPosY) * (pt - 1), oz = (e.posZ - e.lastTickPosZ) * (pt - 1);
         float b = e.getCollisionBorderSize();
         return e.getEntityBoundingBox().expand(b, b, b).offset(ox, oy, oz);
+    }
+
+    /**
+     * Where to aim, on the front of the target's hitbox (facing you), smoothed over time. The
+     * reference is the chosen point; it is moved along your line of sight onto the box surface so
+     * the light sits on the body, not inside it.
+     */
+    private Vec3 aimPoint(Minecraft mc, EntityLivingBase tg, AxisAlignedBB bb, float pt) {
+        double cx = (bb.minX + bb.maxX) / 2, cz = (bb.minZ + bb.maxZ) / 2;
+        Vec3 ref = point.is("Chest") ? new Vec3(cx, bb.minY + (bb.maxY - bb.minY) * 0.68, cz)
+                : point.is("Head") ? new Vec3(cx, bb.maxY - 0.22, cz) : nearestToCrosshair(mc, bb, pt);
+        Vec3 eye = mc.thePlayer.getPositionEyes(pt);
+        Vec3 dir = ref.subtract(eye);
+        double len = dir.lengthVector();
+        if (len > 1e-3) {
+            Vec3 far = new Vec3(eye.xCoord + dir.xCoord / len * 40, eye.yCoord + dir.yCoord / len * 40, eye.zCoord + dir.zCoord / len * 40);
+            MovingObjectPosition hit = bb.contract(0.08, 0.0, 0.08).calculateIntercept(eye, far);
+            if (hit != null && hit.hitVec != null) ref = hit.hitVec;
+        }
+        long now = System.nanoTime();
+        float dt = aimNanos == 0 ? 1f : Math.min(1f, (now - aimNanos) / 1e9f);
+        aimNanos = now;
+        if (aimOf != tg) {
+            aimOf = tg;
+            ax = ref.xCoord;
+            ay = ref.yCoord;
+            az = ref.zCoord;
+        } else {
+            double k = 1 - Math.exp(-dt * 18);
+            ax += (ref.xCoord - ax) * k;
+            ay += (ref.yCoord - ay) * k;
+            az += (ref.zCoord - az) * k;
+        }
+        return new Vec3(ax, ay, az);
+    }
+
+    private final float[] uv = new float[4];
+
+    /**
+     * The light on the body: a wide soft halo, a tighter glow and a white-hot core, facing the
+     * camera, pulsing gently. Drawn over the body (the target is visible: checked above).
+     */
+    private void glowPoint(RenderManager rm, Vec3 p, double t) {
+        int c = pointColor.rgb();
+        float r = ((c >> 16) & 255) / 255f, g = ((c >> 8) & 255) / 255f, b = (c & 255) / 255f;
+        float s = pointSize.f(), pulse = 0.85f + 0.15f * (float) Math.sin(t * 5.0);
+        GlStateManager.pushMatrix();
+        GlStateManager.translate(p.xCoord - rm.viewerPosX, p.yCoord - rm.viewerPosY, p.zCoord - rm.viewerPosZ);
+        GlStateManager.rotate(-rm.playerViewY, 0f, 1f, 0f);
+        GlStateManager.rotate(rm.playerViewX, 1f, 0f, 0f);
+        GlStateManager.disableDepth();
+        GlStateManager.depthMask(false);
+        GlStateManager.disableLighting();
+        GlStateManager.disableCull();
+        GlStateManager.disableAlpha();
+        GlStateManager.enableBlend();
+        GlStateManager.enableTexture2D();
+        GlStateManager.blendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE);
+        OpenGlHelper.setLightmapTextureCoords(OpenGlHelper.lightmapTexUnit, 240f, 240f);
+        ParticleSystem.INSTANCE.bindAtlas();
+        ParticleSystem.uv(Sprite.GLOW, uv);
+        quad(0.55f * s * pulse, r, g, b, 0.35f);
+        quad(0.26f * s, r, g, b, 0.75f);
+        quad(0.12f * s * pulse, Math.min(1f, r + 0.5f), Math.min(1f, g + 0.5f), Math.min(1f, b + 0.5f), 1f);
+        quad(0.06f * s, 1f, 1f, 1f, 1f);
+        GlStateManager.blendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
+        GlStateManager.enableDepth();
+        GlStateManager.enableAlpha();
+        GlStateManager.popMatrix();
+    }
+
+    private void quad(float h, float r, float g, float b, float a) {
+        GL11.glColor4f(r, g, b, a);
+        GL11.glBegin(GL11.GL_QUADS);
+        GL11.glTexCoord2f(uv[0], uv[1]);
+        GL11.glVertex3f(-h, -h, 0);
+        GL11.glTexCoord2f(uv[0], uv[3]);
+        GL11.glVertex3f(-h, h, 0);
+        GL11.glTexCoord2f(uv[2], uv[3]);
+        GL11.glVertex3f(h, h, 0);
+        GL11.glTexCoord2f(uv[2], uv[1]);
+        GL11.glVertex3f(h, -h, 0);
+        GL11.glEnd();
     }
 
     /** Point of the hitbox nearest to the look ray (where the crosshair is closest to the target). */
@@ -122,13 +211,15 @@ public final class AimHelperModule extends Module {
             // the ring slides from the feet to the head and back, easing at both ends
             double k = 0.5 - 0.5 * Math.cos(t * 2.2 * speed.get());
             double ringY = bb.minY + 0.12 + (bb.maxY - bb.minY - 0.24) * k;
-            if (!bodyGlow.is("Off")) bodyGlow(mc, tg, bb, pt, ringY, t);
+            Vec3 aim = aimPoint(mc, tg, bb, pt);
+            if (!bodyGlow.is("Off")) bodyGlow(mc, tg, bb, pt, bodyGlow.is("Around the point") ? aim.yCoord : ringY, t);
+            if (m.contains("Glow point")) glowPoint(rm, aim, t);
             state(true);
             if (m.contains("Ring")) {
                 float r = (float) ((bb.maxX - bb.minX) * 0.5 + 0.2) * ringSize.f();
                 thickRing(cx - rm.viewerPosX, ringY - rm.viewerPosY, cz - rm.viewerPosZ, r, thickness.f(), c, t);
             }
-            if (m.contains("Point")) {
+            if (m.equals("Point") || m.equals("Ring + Point")) {
                 Vec3 p = point.is("Chest") ? new Vec3(cx, bb.minY + (bb.maxY - bb.minY) * 0.68, cz)
                         : point.is("Head") ? new Vec3(cx, bb.maxY - 0.22, cz) : nearestToCrosshair(mc, bb, pt);
                 billboard(rm, p.xCoord, p.yCoord, p.zCoord);
@@ -174,7 +265,7 @@ public final class AimHelperModule extends Module {
         float gr = ((gc >> 16) & 255) / 255f, gg = ((gc >> 8) & 255) / 255f, gb = (gc & 255) / 255f;
         float str = glowStrength.f();
         float pulse = 0.8f + 0.2f * (float) Math.sin(t * 3.2);
-        boolean soft = bodyGlow.get().startsWith("Glow"), band = bodyGlow.get().contains("Scan");
+        boolean soft = bodyGlow.get().startsWith("Glow"), band = bodyGlow.get().contains("Scan") || bodyGlow.is("Around the point");
         RenderManager rm = mc.getRenderManager();
         Silhouette.entityState(true);
         GlStateManager.enableBlend();

@@ -30,8 +30,8 @@ public final class ConfigManager {
     private static File file;
     private static volatile boolean dirty;
     private static long lastSave;
-    /** Current file format. 1 = up to 1.19, 2 = 1.20 (adds "client" and migrations). */
-    public static final int FORMAT = 2;
+    /** Current file format. 1 = up to 1.19, 2 = 1.20 (adds "client" and migrations), 3 = 1.20.2. */
+    public static final int FORMAT = 3;
     private static int failures;
 
     private ConfigManager() {}
@@ -206,6 +206,25 @@ public final class ConfigManager {
         if (v < 2 && mods != null) {
             // 1.20: the "Music" HUD became "Now Playing"
             rename(mods, "Music", "Now Playing");
+        }
+        if (v < 3 && mods != null) {
+            // 1.20.2: Arrival Effects merged into Player FX (same job, now one module with styles)
+            if (mods.has("Arrival Effects") && mods.get("Arrival Effects").isJsonObject()) {
+                JsonObject a = mods.getAsJsonObject("Arrival Effects");
+                boolean on = a.has("enabled") && a.get("enabled").isJsonPrimitive() && a.get("enabled").getAsBoolean();
+                if (on) {
+                    JsonObject p = mods.has("Player FX") && mods.get("Player FX").isJsonObject() ? mods.getAsJsonObject("Player FX") : new JsonObject();
+                    p.addProperty("enabled", true);
+                    JsonObject ps = p.has("settings") && p.get("settings").isJsonObject() ? p.getAsJsonObject("settings") : new JsonObject();
+                    JsonObject as = a.has("settings") && a.get("settings").isJsonObject() ? a.getAsJsonObject("settings") : new JsonObject();
+                    if (as.has("Style")) ps.add("Style", as.get("Style"));
+                    else ps.addProperty("Style", "Beam");
+                    if (as.has("Color")) ps.add("Color", as.get("Color"));
+                    p.add("settings", ps);
+                    mods.add("Player FX", p);
+                }
+                mods.remove("Arrival Effects");
+            }
         }
         root.addProperty("version", FORMAT);
     }

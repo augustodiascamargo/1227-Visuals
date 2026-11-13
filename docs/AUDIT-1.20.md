@@ -72,6 +72,8 @@ compara só as funções.
 | Modo cinematográfico/foto | Lunar (hide HUD), replay tools | F1 vanilla | Esconder o HUD e manter letras e música | Cancelar `RenderGameOverlayEvent.Pre` | Média | **Feito** |
 | Contador de dias | Lunar | Não | Linha no Clock | `ClockHud` | Baixa | **Feito** |
 | Nick hider (local) | Lunar, Badlion | Não | Esconder o próprio nick na tela | Evento de chat + HUDs próprios | Baixa | **Feito (1.20.1)**; a tab list vanilla não muda |
+| No Hurt Cam | Lunar, Badlion, Feather | Não | Tirar a inclinação ao tomar dano, com força ajustável | `hurtTime` lido como 0 só durante o desenho do quadro (`RenderTickEvent`) | Média | **Feito (1.20.2)** |
+| Contorno de jogador só na borda | Lunar (Hit/Glow), outros | Brilho pintava o corpo | Contorno em pixels da tela, atrás do corpo | Cópias deslocadas na projeção + viés de profundidade | Alta | **Refeito (1.20.2)** |
 | Freelook | Lunar, outros | Não | Não planejado: vários servidores proíbem | | | Fora de escopo |
 | Auto GG / mensagens automáticas | Lunar, Badlion | Não | Não: envia chat ao servidor | | | Fora de escopo |
 | Replay | Mods de replay | Não | Projeto enorme | | | Fora de escopo |

@@ -152,6 +152,8 @@ public final class WeaponModelsModule extends Module {
         if (rotZ.f() != 0f) GlStateManager.rotate(rotZ.f(), 0f, 0f, 1f);
         float sa = scaleAll.f();
         GlStateManager.scale(sa, sa, sa);
+        // the draw / inspect animation turns only the weapon: the arms keep holding the grip
+        GlStateManager.pushMatrix();
         if (!model.is("Butterfly Knife")) {
             drawSpin();
             inspect(mc);
@@ -182,6 +184,8 @@ public final class WeaponModelsModule extends Module {
         widthBoost = md.equals("Cleaver") ? 0f : (md.equals("Rune Greatsword") || md.equals("Holy Claymore") || md.equals("Obsidian Edge")) ? 0.4f : 1f;
         if (md.equals("Butterfly Knife")) {
             butterfly(mc, stack, b, h, g);
+            GlStateManager.popMatrix();
+            GlStateManager.translate(-gx, -gy, -OZ);
             hands(mc);
             GlStateManager.shadeModel(GL11.GL_FLAT);
             GlStateManager.enableTexture2D();
@@ -194,6 +198,8 @@ public final class WeaponModelsModule extends Module {
             return;
         }
         models(md, b, h, g);
+        GlStateManager.popMatrix();
+        GlStateManager.translate(-gx, -gy, -OZ);
         hands(mc);
         GlStateManager.shadeModel(GL11.GL_FLAT);
         GlStateManager.enableTexture2D();

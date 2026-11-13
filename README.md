@@ -183,6 +183,36 @@ nada depende de Lunar ou de outro launcher.
 O modelo do Tung Sahur (ZAHUR.fbx + textura) e a butterfly knife (.blend) foram enviados pelo usuário. Antes de
 publicar o 1227, confira a licença de cada um (por exemplo, se exigem crédito ao autor) e coloque o crédito aqui.
 
+## Mudanças na v1.20.2
+
+- **Player FX e Arrival Effects viraram um módulo só:** o Player FX ganhou a opção "Style"
+  (Classic, Beam, Portal, Smoke, Pixels, Rift), que eram os estilos do Arrival Effects. Quem tinha
+  o Arrival Effects ligado fica com o Player FX ligado, no mesmo estilo e cor.
+- **Aim Helper:** o marcador padrão agora é "Glow point", um ponto de luz azul-claro no lugar do
+  corpo do alvo para onde você deve mirar (perto da mira, peito ou cabeça), com um brilho suave
+  no corpo em volta dele. Os marcadores antigos continuam nas opções. Ele não mexe na câmera nem
+  na mira.
+- **Modelos 3D:** na inspeção e ao sacar a arma, só a arma gira. Os braços ficam parados
+  segurando o cabo.
+- **Item Glow:** o contorno e o brilho agora são feitos em pixels da tela, com a mesma
+  espessura em toda a volta da espada. Antes eles eram deslocados no plano da espada e
+  apareciam embaixo dela. Também foi corrigido: em espadas encantadas, o brilho do encantamento
+  desligava a mistura das cores, e as cópias apareciam como uma segunda espada.
+- **Player Glow refeito:**
+  - o contorno fica só na borda do personagem, do jeito que a câmera o vê, e nunca pinta o
+    meio do corpo;
+  - o personagem não fica mais todo branco;
+  - "Glow" é um brilho suave por fora da borda;
+  - o contorno é testado contra a profundidade, então não aparece através de paredes;
+  - durante o flash vermelho de dano o contorno continua com a cor certa.
+- **Materiais do corpo (Player Glow › Body):** Glass (vidro com reflexo e bordas claras),
+  Ghost, Hologram (com faixa de varredura), Shadow, Tint e Rainbow, com cor e opacidade. Valem
+  para os mesmos jogadores escolhidos em "Players" e são só visuais, só na sua tela.
+- **Novo: No Hurt Cam** (Camera): tira a inclinação da câmera e da mão quando você toma dano.
+  "Shake strength" deixa uma versão mais fraca, se quiser. Só muda o desenho do quadro. Dano,
+  knockback e sons continuam iguais. O vermelho no seu personagem em terceira pessoa continua
+  (pode desligar).
+
 ## Mudanças na v1.20.1
 
 - **Build:** corrigido o erro de compilação em `AlertsModule`: uma opção era usada antes de ser
