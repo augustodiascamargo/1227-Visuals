@@ -93,7 +93,8 @@ public final class LyricsService {
     /** Called every client tick: starts a lookup when the song changes. */
     public static void tick() {
         FloatingLyricsModule m = FloatingLyricsModule.INSTANCE;
-        if (m == null || !m.isEnabled()) return;
+        // World Lyrics uses the same lyrics, so either module keeps the search running
+        if (m == null || !(m.isEnabled() || net.m1227.module.WorldLyricsModule.active())) return;
         NowPlaying.wantBridge();
         NowPlaying.Info np = NowPlaying.get();
         if (np.source == NowPlaying.Source.NONE || np.title.isEmpty()) {

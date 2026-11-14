@@ -28,3 +28,19 @@ jobs:
         with:
           name: 1227-jar
           path: dist/
+
+  relay-plugin:
+    # server/1227-relay: the optional Spigot/Paper plugin for 1227 Link (multiplayer emotes and cosmetics)
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 8
+      - name: Build the relay plugin
+        run: mvn -B -q -f server/1227-relay/pom.xml package
+      - uses: actions/upload-artifact@v4
+        with:
+          name: 1227-relay-plugin
+          path: server/1227-relay/target/1227-relay-*.jar

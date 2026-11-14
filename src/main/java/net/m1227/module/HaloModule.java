@@ -56,7 +56,7 @@ public final class HaloModule extends Module {
         if (c.equals("Red")) return new int[]{0xFF6A6A, 0xB0102A};
         if (c.equals("Violet")) return new int[]{0xD9A6FF, 0x5A2DD6};
         if (c.equals("Gold")) return new int[]{0xFFE7A0, 0xD9741A};
-        if (c.equals("Custom")) return new int[]{fx.color1.rgb(), fx.color2.rgb()};
+        if (c.equals("Custom")) return new int[]{RemoteLook.c1(fx.color1.rgb()), RemoteLook.c2(fx.color2.rgb())};
         return new int[]{0x8FE3FF, 0x1E4BFF};
     }
 
@@ -70,9 +70,20 @@ public final class HaloModule extends Module {
             List<EntityPlayer> list = mc.theWorld.playerEntities;
             for (int i = 0; i < list.size(); i++) {
                 EntityPlayer p = list.get(i);
-                if (p != mc.thePlayer && !p.isInvisible() && net.m1227.client.perf.EffectBudget.allow(net.m1227.client.perf.EffectBudget.Kind.AURA, p)) draw(p, e.partialTicks);
+                if (p != mc.thePlayer && !p.isInvisible() && !RemoteLook.handled(p, net.m1227.social.LinkProtocol.F_HALO)
+                        && net.m1227.client.perf.EffectBudget.allow(net.m1227.client.perf.EffectBudget.Kind.AURA, p)) draw(p, e.partialTicks);
             }
         }
+    }
+
+    /** 1227 Link: draws this halo on another player (shape from your settings, colours from theirs). */
+    public void drawRemote(EntityPlayer p, float pt) {
+        draw(p, pt);
+    }
+
+    /** Colours shared through 1227 Link. */
+    public int[] shareColors() {
+        return new int[]{fx.color1.rgb(), fx.color2.rgb()};
     }
 
     private void draw(EntityPlayer p, float pt) {
@@ -83,7 +94,7 @@ public final class HaloModule extends Module {
         if (!ps.inRange(cx, cy, cz)) return;
         double t = ps.time;
         float spd = fx.speed.f(), size = fx.size.f(), alpha = fx.alpha();
-        int c0 = fx.color1.rgb(), c1 = fx.color2.rgb();
+        int c0 = RemoteLook.c1(fx.color1.rgb()), c1 = RemoteLook.c2(fx.color2.rgb());
         double head = cy + p.height - (p.isSneaking() ? 0.2 : 0.0);
         double bob = Math.sin(t * 2.2 * spd) * 0.03;
         String st = style.get();
@@ -209,7 +220,7 @@ public final class HaloModule extends Module {
         net.minecraft.client.renderer.entity.RenderManager rm = Minecraft.getMinecraft().getRenderManager();
         double ox = rm.viewerPosX, oy = rm.viewerPosY, oz = rm.viewerPosZ; // meshAt subtracts the camera: this puts it at the origin
         float yaw = (float) Math.toRadians(yawDeg);
-        int c0 = fx.color1.rgb(), c1 = fx.color2.rgb();
+        int c0 = RemoteLook.c1(fx.color1.rgb()), c1 = RemoteLook.c2(fx.color2.rgb());
         float size = fx.size.f(), alpha = Math.max(0.6f, fx.alpha());
         double head = 1.85;
         String st = style.get();

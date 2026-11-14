@@ -107,3 +107,37 @@ A posição pode ser um canto, o centro, ou o HUD editor.
     visualizador;
   - tem câmera suave opcional;
   - "Photo mode" esconde tudo.
+
+## World Lyrics (v1.22)
+
+Módulo à parte, em Music: as palavras voam pelo mundo enquanto a música toca.
+- **Fonte:** usa as mesmas letras e o mesmo relógio (com os ajustes de sincronia) do Floating
+  Lyrics. Os dois podem ficar ligados juntos.
+- **Momento:** cada palavra aparece quando é cantada, pelo tempo de cada palavra do Enhanced LRC
+  ou pela estimativa dentro da linha. Em "Whole lines" aparece a linha inteira.
+- **Movimentos:**
+  - Drift: flutua devagar;
+  - Rise: sobe para o céu;
+  - Fly past: vem da frente e passa por você;
+  - Cross view: atravessa a visão;
+  - Pop: surge e some no lugar;
+  - Orbit: gira à sua volta;
+  - Rain: cai do alto;
+  - Beat burst: é lançada e empurrada a cada batida.
+- **Opções:**
+  - onde as palavras nascem, distância mínima e máxima;
+  - velocidade, tamanho, opacidade, fonte;
+  - cor (Single, Gradient, Rainbow, Beat);
+  - quantidade máxima de palavras, tempo de vida, intensidade, pulso no beat;
+  - "Scatter into letters";
+  - distância máxima.
+- **No mundo 3D:**
+  - são billboards de verdade, que respeitam a posição, a câmera e a perspectiva;
+  - "Hidden behind blocks" vem ligado;
+  - as palavras só nascem no ar e com visão livre dos seus olhos;
+  - uma palavra que entra num bloco some rápido.
+- **Performance:**
+  - pool fixo de 160 palavras, que reaproveita a mais antiga;
+  - nenhuma alocação por frame;
+  - corte por distância e atrás da câmera;
+  - uma configuração de GL por frame.

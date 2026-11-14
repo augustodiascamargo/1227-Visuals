@@ -28,4 +28,23 @@ public final class Reflect {
         }
         return null;
     }
+
+    /** Writes the index-th field of the given type declared in 'declaring'. False when not found. */
+    public static boolean set(Object o, Class<?> declaring, Class<?> type, int index, Object value) {
+        try {
+            int n = 0;
+            for (Field f : declaring.getDeclaredFields()) {
+                if (java.lang.reflect.Modifier.isStatic(f.getModifiers())) continue;
+                if (!type.isAssignableFrom(f.getType())) continue;
+                if (n++ == index) {
+                    f.setAccessible(true);
+                    f.set(o, value);
+                    return true;
+                }
+            }
+        } catch (Throwable ignored) {
+            // not found or not writable
+        }
+        return false;
+    }
 }

@@ -15,8 +15,8 @@ import org.lwjgl.input.Keyboard;
 /**
  * Emotes for your character: open the wheel (default the period key), pick one, and your
  * player model performs it (the camera can turn around to show it). Purely
- * visual and only on your screen: other players don't see emotes, and moving,
- * jumping, sneaking, attacking or taking damage ends the emote.
+ * visual. Other players see your emotes only if they use 1227 too and the server runs the 1227
+ * Relay plugin (1227 Link); moving, jumping, sneaking, attacking or taking damage ends the emote.
  */
 public final class EmotesModule extends Module {
     public static EmotesModule INSTANCE;
@@ -72,11 +72,18 @@ public final class EmotesModule extends Module {
         if (camera.is("Front view")) mc.gameSettings.thirdPersonView = 2;
         else if (camera.is("Back view")) mc.gameSettings.thirdPersonView = 1;
         Notifier.post(Notifier.Kind.STATE, "Emote", EMOTES[i], Notifier.ACCENT, 1200);
+        net.m1227.social.SocialLink.INSTANCE.localEmote(i); // other 1227 players see it (1227 Link)
+    }
+
+    /** Whether emote i repeats until stopped. */
+    public static boolean loops(int i) {
+        return i >= 0 && i < LOOPS.length && LOOPS[i];
     }
 
     public void stop() {
         if (current < 0) return;
         current = -1;
+        net.m1227.social.SocialLink.INSTANCE.localStop();
         Minecraft mc = Minecraft.getMinecraft();
         if (savedView >= 0 && !camera.is("Don't change")) mc.gameSettings.thirdPersonView = savedView;
         savedView = -1;

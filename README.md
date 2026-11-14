@@ -183,6 +183,48 @@ nada depende de Lunar ou de outro launcher.
 O modelo do Tung Sahur (ZAHUR.fbx + textura) e a butterfly knife (.blend) foram enviados pelo usuário. Antes de
 publicar o 1227, confira a licença de cada um (por exemplo, se exigem crédito ao autor) e coloque o crédito aqui.
 
+## Mudanças na v1.22.0
+
+- **Inventário deslocado: causa encontrada e corrigida.**
+  - Era o próprio Minecraft: com qualquer efeito de poção ativo, o `InventoryEffectRenderer` põe o
+    inventário 60 px à direita do centro para abrir espaço para a lista de efeitos.
+  - O novo módulo **Centered Inventory** (Gameplay, ligado por padrão) corrige o `guiLeft` logo
+    depois do layout da tela. Os botões e a busca do criativo acompanham, então cliques, slots e
+    tooltips continuam alinhados.
+  - A lista de efeitos é desenhada onde houver espaço. Opções: "Beside the inventory",
+    "Icons only" ou "Hidden".
+  - Também: o Player Glow com material de corpo não esconde mais o personagem na prévia do
+    inventário.
+- **Crosshair Editor:**
+  - prévia ao vivo, desenhada pela mesma função do jogo;
+  - zoom 1x/2x/4x;
+  - 8 fundos de teste com texturas do seu próprio jogo;
+  - simulação de mirar num jogador, de movimento e do flash de hit;
+  - blocos de estilo, sliders, cores com tom, saturação e brilho;
+  - 8 presets e "Restore default";
+  - 4 estilos novos: Circle Dot, Arcs, Hybrid, Sniper;
+  - animações Pulse, Rotate e Breathing gap, e largura do contorno.
+- **Display (Settings):**
+  - tamanhos de janela comuns e personalizado;
+  - tela cheia na resolução da área de trabalho ou em qualquer modo do monitor;
+  - confirmação de 12 s, que volta ao modo anterior sozinha se você não responder;
+  - F11 usa o modo escolhido;
+  - opção de abrir o jogo no tamanho salvo.
+  - O GUI Scale não é tocado.
+- **World Lyrics:**
+  - as palavras da música voam pelo mapa, cada uma no momento em que é cantada;
+  - 8 movimentos: Drift, Rise, Fly past, Cross view, Pop, Orbit, Rain, Beat burst;
+  - podem se desfazer em letras no fim;
+  - seguem o beat;
+  - presets: Dreamy, Concert, Storm, Galaxy, Minimal, Hype.
+  - Ficam atrás dos blocos e nunca nascem nem ficam dentro deles.
+  - Usa um pool fixo, sem alocar nada por frame.
+- **1227 Link:** jogadores do 1227 veem os emotes, as danças e os cosméticos (Halo, Aura Hat,
+  Wings) uns dos outros.
+  - Precisa do plugin **1227 Relay** no servidor (`server/1227-relay`, compilado pelo CI).
+  - Sem o plugin, nada é trocado e o resto funciona igual.
+  - Detalhes em `docs/LINK.md`.
+
 ## Mudanças na v1.21.0: PvP Performance
 
 Detalhes técnicos em `docs/PVP-PERFORMANCE.md`. Tudo é do lado do cliente: nada atrasa, descarta,

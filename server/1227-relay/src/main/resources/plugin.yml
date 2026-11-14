@@ -1,0 +1,12 @@
+name: 1227Relay
+main: net.m1227.relay.RelayPlugin
+version: ${project.version}
+description: Lets players who use the 1227 mod see each other's emotes and cosmetics. Cosmetic data only.
+author: 1227
+commands:
+  1227relay:
+    description: Shows how many 1227 players are linked.
+    permission: m1227relay.admin
+permissions:
+  m1227relay.admin:
+    default: op

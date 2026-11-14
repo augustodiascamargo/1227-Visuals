@@ -1,0 +1,7 @@
+# 1227 Relay
+# Name shown to players in 1227 > 1227 Link > Connection status.
+name: "1227 Relay"
+# Messages per second each player may send (extra ones are dropped, nobody is kicked).
+max-messages-per-second: 8
+# Only players in the same world receive each other's messages.
+same-world-only: true

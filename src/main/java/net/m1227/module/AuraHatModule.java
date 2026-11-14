@@ -15,12 +15,14 @@ import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 /** Cosmetic: a rotating cone of aura particles floating above the head. */
 public final class AuraHatModule extends Module {
     private final Setting.Num height, radius, rings, lift;
+    public static AuraHatModule INSTANCE;
     private final FxSettings fx;
     private final Setting.Bool rainbow, others;
     private float step;
 
     public AuraHatModule() {
         super("Aura Hat", "A cone of glowing particles above the head.", Category.COSMETICS, false);
+        INSTANCE = this;
         height = add(new Setting.Num("Height", 0.8, 0.3, 1.8, 0.05, ""));
         radius = add(new Setting.Num("Radius", 0.5, 0.2, 1.2, 0.05, ""));
         rings = add(new Setting.Num("Rings", 7, 3, 14, 1, ""));
@@ -46,9 +48,18 @@ public final class AuraHatModule extends Module {
             List<EntityPlayer> list = mc.theWorld.playerEntities;
             for (int i = 0; i < list.size(); i++) {
                 EntityPlayer p = list.get(i);
-                if (p != mc.thePlayer && !p.isInvisible() && net.m1227.client.perf.EffectBudget.allow(net.m1227.client.perf.EffectBudget.Kind.AURA, p)) hat(p, e.partialTicks);
+                if (p != mc.thePlayer && !p.isInvisible() && !RemoteLook.handled(p, net.m1227.social.LinkProtocol.F_HAT)
+                        && net.m1227.client.perf.EffectBudget.allow(net.m1227.client.perf.EffectBudget.Kind.AURA, p)) hat(p, e.partialTicks);
             }
         }
+    }
+
+    public void drawRemote(EntityPlayer p, float pt) {
+        hat(p, pt);
+    }
+
+    public int[] shareColors() {
+        return new int[]{fx.color1.rgb(), fx.color2.rgb()};
     }
 
     private void hat(EntityPlayer p, float pt) {
@@ -70,8 +81,8 @@ public final class AuraHatModule extends Module {
             int pts = Math.max(3, Math.round(fx.amount.f() * (1f - f * 0.55f) * q));
             double base = t * spin * 2.0 + k * 0.55;
             double y = cy + f * hh;
-            int c0 = rb ? ParticleSystem.rainbow((float) (f + t * 0.2)) : ParticleSystem.mix(fx.color1.rgb(), fx.color2.rgb(), f);
-            int c1 = rb ? ParticleSystem.rainbow((float) (f + t * 0.2 + 0.3)) : fx.color2.rgb();
+            int c0 = rb ? ParticleSystem.rainbow((float) (f + t * 0.2)) : ParticleSystem.mix(RemoteLook.c1(fx.color1.rgb()), RemoteLook.c2(fx.color2.rgb()), f);
+            int c1 = rb ? ParticleSystem.rainbow((float) (f + t * 0.2 + 0.3)) : RemoteLook.c2(fx.color2.rgb());
             for (int i = 0; i < pts; i++) {
                 double a = base + i * (Math.PI * 2.0 / pts);
                 Particle part = ps.glow(cx + Math.cos(a) * r, y, cz + Math.sin(a) * r, 0f, 0f, 0f,
@@ -81,6 +92,6 @@ public final class AuraHatModule extends Module {
         }
         // bright tip
         ps.glow(cx, cy + hh + 0.03, cz, 0f, 0f, 0f, life, size * 2.6f, size * 1.6f,
-                fx.color2.rgb(), fx.color1.rgb(), fx.alpha());
+                RemoteLook.c2(fx.color2.rgb()), RemoteLook.c1(fx.color1.rgb()), fx.alpha());
     }
 }

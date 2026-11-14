@@ -161,3 +161,47 @@ Registre sempre: configuração, cenário, duração, FPS, frame time, 1% low, m
     Tudo deve voltar como era.
 37. **PC fraco (CPU e GPU):** o Low-End PvP e a Dynamic Quality. O Overview deve mostrar a
     qualidade cosmética baixando nas lutas.
+
+## v1.22.0
+
+Feito aqui:
+- **Compilação de checagem** de todo o código (232 arquivos), com análise de fluxo: nenhum erro do
+  1227. As APIs novas do Minecraft, do Forge e do LWJGL foram conferidas nos fontes do MCP e do
+  Forge.
+- **`LinkTest`, 3 testes novos:** ida e volta do protocolo pelo relay, todas as mensagens, entradas
+  inválidas descartadas. Os 35 testes anteriores continuam passando.
+- **Plugin 1227 Relay:**
+  - compilado contra stubs mínimos da API do Bukkit (a API real não está disponível aqui; o CI
+    compila contra a spigot-api 1.8.8);
+  - testado de ponta a ponta com servidor e jogadores falsos: WELCOME, repasse só no mesmo mundo,
+    UUID do remetente, corpo intacto, emote, mensagens inválidas descartadas, limite de mensagens e
+    estado entregue a quem entra depois.
+- **Causa do inventário deslocado:** confirmada no código do Minecraft (`InventoryEffectRenderer`).
+
+**Não testado no jogo:** nada desta versão foi rodado dentro do Minecraft.
+
+### Para testar no jogo
+38. **Centered Inventory:** tome uma poção (ou `/effect`).
+    - O inventário deve ficar no centro, com os efeitos ao lado.
+    - Teste também em janela pequena (deve virar ícones) e no criativo: abas, busca e botões de
+      página.
+    - Desligue o módulo: deve voltar ao comportamento vanilla.
+39. **Crosshair Editor:**
+    - cada controle deve mudar a prévia na hora;
+    - compare a prévia em 1x com a mira de verdade, que deve ser idêntica;
+    - teste os fundos, os presets e o "Restore default".
+40. **Display:**
+    - mude o tamanho da janela, aceite e reverta;
+    - deixe o tempo de 12 s acabar: deve voltar sozinho;
+    - entre em tela cheia num modo diferente da área de trabalho;
+    - use o F11.
+    - HUDs e menus devem se ajustar e o GUI Scale não deve mudar.
+41. **World Lyrics:**
+    - os 8 movimentos com uma música com Enhanced LRC e com uma de LRC comum;
+    - perto de paredes e dentro de casa, nenhuma palavra deve aparecer dentro de bloco;
+    - meça o FPS com 160 palavras.
+42. **1227 Link:**
+    - dois clientes 1227 num servidor Spigot 1.8.8 com o plugin: emotes, danças, halo, aura hat e
+      asas com as cores de cada um, e o selo;
+    - um sai e volta: o outro deve voltar a ver;
+    - num servidor sem o plugin, "Connection status" deve dizer que não há relay.

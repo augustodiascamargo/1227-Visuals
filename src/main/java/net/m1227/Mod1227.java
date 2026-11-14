@@ -26,7 +26,7 @@ import org.apache.logging.log4j.Logger;
 public class Mod1227 {
     public static final String MODID = "m1227";
     public static final String NAME = "1227";
-    public static final String VERSION = "1.21.0";
+    public static final String VERSION = "1.22.0";
     public static final Logger LOGGER = LogManager.getLogger(NAME);
 
     /** Forge's config folder (set in preInit, before modules are created). */
@@ -76,6 +76,9 @@ public class Mod1227 {
         MinecraftForge.EVENT_BUS.register(net.m1227.client.perf.InputMonitor.INSTANCE);
         MinecraftForge.EVENT_BUS.register(net.m1227.net.NetObserver.INSTANCE);
         MinecraftForge.EVENT_BUS.register(net.m1227.net.LatencyMonitor.INSTANCE);
+        // 1227 Link (multiplayer emotes and cosmetics through the 1227 Relay plugin)
+        net.m1227.social.SocialLink.INSTANCE.init();
+        MinecraftForge.EVENT_BUS.register(net.m1227.social.SocialLink.INSTANCE);
         MinecraftForge.EVENT_BUS.register(net.m1227.vfx.CubeBurst.INSTANCE);
         ClientCommandHandler.instance.registerCommand(new Command1227());
 

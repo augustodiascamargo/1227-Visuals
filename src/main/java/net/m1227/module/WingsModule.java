@@ -20,6 +20,7 @@ import org.lwjgl.opengl.GL11;
 public final class WingsModule extends Module {
     public static final String[] STYLES = {"Angel", "Demon", "Butterfly", "Energy", "Crystal"};
     private final Setting.Mode style;
+    public static WingsModule INSTANCE;
     private final Setting.Col color1, color2;
     private final Setting.Num size, flap, opacity;
     private final Setting.Bool others;
@@ -31,6 +32,7 @@ public final class WingsModule extends Module {
 
     public WingsModule() {
         super("Wings", "Angel, demon, butterfly, energy or crystal wings, with animated materials.", Category.COSMETICS, false);
+        INSTANCE = this;
         style = add(new Setting.Mode("Style", "Angel", STYLES));
         color1 = add(new Setting.Col("Color", 0xFFFFFF));
         color2 = add(new Setting.Col("Tip color", 0xB8C8FF));
@@ -56,7 +58,8 @@ public final class WingsModule extends Module {
             List<EntityPlayer> list = mc.theWorld.playerEntities;
             for (int i = 0; i < list.size(); i++) {
                 EntityPlayer p = list.get(i);
-                if (p == mc.thePlayer || p.isInvisible() || p.getDistanceSqToEntity(mc.thePlayer) > 64 * 64 || !net.m1227.client.perf.EffectBudget.allow(net.m1227.client.perf.EffectBudget.Kind.AURA, p)) continue;
+                if (p == mc.thePlayer || p.isInvisible() || p.getDistanceSqToEntity(mc.thePlayer) > 64 * 64 || RemoteLook.handled(p, net.m1227.social.LinkProtocol.F_WINGS)
+                        || !net.m1227.client.perf.EffectBudget.allow(net.m1227.client.perf.EffectBudget.Kind.AURA, p)) continue;
                 if (!any) {
                     begin();
                     any = true;
@@ -106,7 +109,7 @@ public final class WingsModule extends Module {
             GlStateManager.tryBlendFuncSeparate(770, 771, 1, 0);
         }
         shadedNow = net.m1227.vfx.MaterialShader.begin(net.m1227.vfx.MaterialShader.index(material), System.nanoTime() / 1e9,
-                color1.rgb(), color2.rgb(), 3f, edgeGlow.f(), 0.15f);
+                RemoteLook.c1(color1.rgb()), RemoteLook.c2(color2.rgb()), 3f, edgeGlow.f(), 0.15f);
         if (shadedNow) {
             GlStateManager.depthMask(false);
             OpenGlHelper.setLightmapTextureCoords(OpenGlHelper.lightmapTexUnit, 240f, 240f);
@@ -127,6 +130,19 @@ public final class WingsModule extends Module {
         GL11.glColor4f(1f, 1f, 1f, 1f);
         OpenGlHelper.setLightmapTextureCoords(OpenGlHelper.lightmapTexUnit, lx, ly);
         GlStateManager.popMatrix();
+    }
+
+    public void drawRemote(EntityPlayer p, float pt) {
+        begin();
+        try {
+            draw(Minecraft.getMinecraft(), p, pt);
+        } finally {
+            end();
+        }
+    }
+
+    public int[] shareColors() {
+        return new int[]{color1.rgb(), color2.rgb()};
     }
 
     private void draw(Minecraft mc, EntityPlayer p, float pt) {
@@ -160,7 +176,7 @@ public final class WingsModule extends Module {
     /** One wing in the plane spanned by (ux, 0, uz) outward and +Y up. */
     private void wing(double x, double y, double z, float ux, float uz, float sc) {
         String st = style.get();
-        int c0 = color1.rgb(), c1 = color2.rgb();
+        int c0 = RemoteLook.c1(color1.rgb()), c1 = RemoteLook.c2(color2.rgb());
         uvScale = 1f / Math.max(0.1f, sc);
         net.m1227.vfx.MaterialShader.origin(x, y, z);
         float a = opacity.f();

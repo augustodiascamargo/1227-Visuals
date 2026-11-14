@@ -54,6 +54,9 @@ public final class ModuleManager {
         register(new CinematicModule());
         register(new LowFireModule());
         register(new AnimationsModule());
+        register(new CenteredInventoryModule());
+        register(new SocialModule());
+        register(new DisplayModule());
         register(new CompetitiveModule());
         register(new LowLatencyModule());
         register(new PvpVisualModule());
@@ -68,6 +71,7 @@ public final class ModuleManager {
         register(new HitSoundsModule());
         register(new MusicModule());
         register(new FloatingLyricsModule());
+        register(new WorldLyricsModule());
         register(new MusicAtmosphereModule());
         register(new DiscordPresenceModule());
         register(new DynamicIslandModule());

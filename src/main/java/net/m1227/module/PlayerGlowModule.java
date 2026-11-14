@@ -101,6 +101,8 @@ public final class PlayerGlowModule extends Module {
     public void onPre(RenderLivingEvent.Pre<EntityLivingBase> e) {
         if (rendering || Silhouette.active() || body.is("Normal")) return;
         Minecraft mc = Minecraft.getMinecraft();
+        // the character preview of the inventory (drawn at 0,0,0 inside a screen) keeps its normal look
+        if (mc.currentScreen != null && e.x == 0 && e.y == 0 && e.z == 0) return;
         if (!applies(mc, e.entity)) return;
         e.setCanceled(true);
         if (!drawn.contains(e.entity)) drawn.add(e.entity);
