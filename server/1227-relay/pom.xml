@@ -27,6 +27,14 @@
             <artifactId>spigot-api</artifactId>
             <version>1.8.8-R0.1-SNAPSHOT</version>
             <scope>provided</scope>
+            <!-- RelayPlugin uses Bukkit/Spigot API only; the legacy Bungee chat
+                 snapshot pulled transitively by Spigot 1.8.8 is not required. -->
+            <exclusions>
+                <exclusion>
+                    <groupId>net.md-5</groupId>
+                    <artifactId>bungeecord-chat</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
     </dependencies>
 

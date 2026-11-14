@@ -10,6 +10,7 @@ import net.m1227.social.LinkProtocol;
 import net.m1227.social.SocialLink;
 import net.m1227.vfx.Puppet;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.entity.AbstractClientPlayer;
 import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.client.renderer.GlStateManager;
 import net.minecraft.client.renderer.entity.RenderManager;
@@ -179,6 +180,8 @@ public final class SocialModule extends Module {
     public void onPlayer(RenderPlayerEvent.Pre e) {
         Minecraft mc = Minecraft.getMinecraft();
         EntityPlayer p = e.entityPlayer;
+        if (!(p instanceof AbstractClientPlayer)) return;
+        AbstractClientPlayer clientPlayer = (AbstractClientPlayer) p;
         if (p == mc.thePlayer || !seeEmotes.on() || !SocialLink.INSTANCE.linked) return;
         SocialLink.Remote r = SocialLink.INSTANCE.remotes.get(p.getUniqueID());
         if (r == null || r.emote < 0) return;
@@ -197,6 +200,6 @@ public final class SocialModule extends Module {
         e.setCanceled(true);
         EmotesModule.pose(r.emote, t, pose.reset());
         float yaw = p.prevRenderYawOffset + (p.renderYawOffset - p.prevRenderYawOffset) * e.partialRenderTick;
-        Puppet.render(p, e.x, e.y, e.z, yaw, pose, e.partialRenderTick);
+        Puppet.render(clientPlayer, e.x, e.y, e.z, yaw, pose, e.partialRenderTick);
     }
 }
