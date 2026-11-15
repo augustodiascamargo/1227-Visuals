@@ -19,14 +19,26 @@ public final class KillEffectModule extends Module {
     private final FxSettings fx;
     private final Setting.Bool red;
     private final Setting.Num sahurSize;
+    private final Setting.Mode fragments;
+    private final net.m1227.vfx.KillFx.Look look = new net.m1227.vfx.KillFx.Look();
+
+    public static final String[] STYLES = concat(new String[]{"Nova", "Ascend", "Implode", "Lightning", "Cash",
+            "Ragdoll", "Decapitation", "Shatter", "Ice Shatter", "Executioner", "Tung Sahur", "Pixel Burst"}, net.m1227.vfx.KillFx.STYLES);
+
+    private static String[] concat(String[] a, String[] b) {
+        String[] r = java.util.Arrays.copyOf(a, a.length + b.length);
+        System.arraycopy(b, 0, r, a.length, b.length);
+        return r;
+    }
 
     public KillEffectModule() {
         super("Kill Effect", "Effect when you finish off a target.", Category.COMBAT, true);
-        style = add(new Setting.Mode("Style", "Nova", "Nova", "Ascend", "Implode", "Lightning", "Cash",
-                "Ragdoll", "Decapitation", "Shatter", "Ice Shatter", "Executioner", "Tung Sahur", "Pixel Burst"));
+        style = add(new Setting.Mode("Style", "Nova", STYLES));
         fx = new FxSettings(this, 0x8B5CFF, 0x2DD4FF, 26, 1.0, 0.14, 1.0);
         red = add(new Setting.Bool("Red particles (Decapitation)", false)).showIf(() -> style.is("Decapitation"));
         sahurSize = add(new Setting.Num("Tung Sahur size", 2.1, 1.0, 3.0, 0.05, "x")).showIf(() -> style.is("Tung Sahur"));
+        fragments = add(new Setting.Mode("Fragmentation (Pixel Disintegration)", "Small pieces", "Small pieces", "Large pieces"))
+                .showIf(() -> style.is("Pixel Disintegration"));
         add(new Setting.Action("Preview", new Runnable() {
             @Override
             public void run() {
@@ -74,6 +86,18 @@ public final class KillEffectModule extends Module {
         String s = style.get();
         int c0 = fx.color1.rgb(), c1 = fx.color2.rgb();
         net.m1227.vfx.BodyFx bf = net.m1227.vfx.BodyFx.INSTANCE;
+        if (net.m1227.vfx.KillFx.has(s)) {
+            look.c0 = c0;
+            look.c1 = c1;
+            look.size = fx.size.f();
+            look.speed = fx.speed.f();
+            look.amount = fx.amount.f();
+            look.duration = Math.max(0.3f, fx.duration.f());
+            look.alpha = fx.alpha();
+            look.fine = fragments.is("Small pieces");
+            net.m1227.vfx.KillFx.play(s, victim, x, feetY, z, yaw, height, dirX, dirZ, look);
+            return;
+        }
         if (s.equals("Ragdoll")) {
             bf.ragdoll(victim, x, feetY, z, yaw, height, dirX, dirZ, fx.speed.f(), c0, c1);
             return;

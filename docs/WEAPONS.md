@@ -73,3 +73,31 @@ Os modelos que você coloca na pasta ficam no seu computador; nada deles vai par
 (num pack, num repositório ou num vídeo), confira a licença dele. Muitos modelos gratuitos são
 CC BY e pedem crédito ao autor. Personagens e itens de filmes ou séries são marcas de terceiros.
 O campo `credit` do arquivo aparece no editor quando existe.
+
+## Movimento em primeira pessoa (v1.24.0)
+Ajustes em **Weapon Models** (também no Weapon editor):
+
+| Ajuste | O que faz |
+|---|---|
+| Swing style | Per model (do estilo da arma), Classic, Fast, Heavy, Diagonal / Horizontal / Vertical slash, Thrust, Flourish, Twin, Two-handed |
+| Swing speed | duração do golpe desenhado (o golpe real não muda) |
+| Alternate swing direction | um golpe de cada lado |
+| Combo swings | golpes seguidos (até 0,6 s depois do anterior): normal, horizontal, vertical |
+| Critical swing when falling | golpe por cima quando você ataca caindo, como no crítico do Minecraft. É só visual: quem decide o crítico é o servidor |
+| Animation intensity | amplitude dos golpes e da respiração |
+| Hand sway (camera inertia) | quanto a arma fica para trás quando você gira a câmera |
+| Walking & sprint motion | inclinação e balanço ao andar, pose de corrida |
+| Jump & landing motion | pose subindo e caindo, e o "tranco" ao cair no chão |
+| Sword block animation | Smooth (entra e sai suave) ou Instant |
+| Draw animation | Spin, Flip, Rise, Quick, Smooth, Off |
+| Inspect animation / duration | Twirl, Turn over, Toss, Show off, Flip; duração 0,5x a 2x |
+
+Os botões **Motion preset** aplicam combinações prontas:
+- **Classic PvP:** golpe clássico, pouca inércia, saque rápido, bloqueio na hora.
+- **Smooth PvP:** o padrão.
+- **Modern Combat:** combos e mais movimento.
+- **Cinematic:** golpes amplos, mais lentos, muita inércia.
+- **Minimal:** quase parado.
+
+As animações 1.7 (blockhit e as outras) continuam separadas em **1.7 Animations**. Com o blockhit
+ligado, o golpe aparece também enquanto você bloqueia.

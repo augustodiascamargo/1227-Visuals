@@ -64,6 +64,8 @@ public final class BodyFx {
         int u, v, w, h, d; // skin texture rect (pixels) for a w x h x d box
         int color = -1;    // untextured colour (actors / mobs)
         boolean glow;      // emissive (drawn additively)
+        /** Per-face texture rects in skin pixels (u0, v0, u1, v1), by side index, or null: voxels. */
+        float[][] uvs;
 
         Box(float cx, float cy, float cz, int w, int h, int d, int u, int v, float inflate) {
             this.cx = cx * PX;
@@ -94,10 +96,27 @@ public final class BodyFx {
         boolean dissolved;
         /** Held in place (standing) until released - used while the Sahur is hitting it. */
         boolean pinned;
+        /** Gravity (blocks / s^2), the age before it starts moving, extra alpha. */
+        float gravity = 18f, delay, alphaMul = 1f;
+        /** Clip: only the part below (keepBelow) or above clipY is drawn; NaN = no clip. */
+        float clipY = Float.NaN;
+        boolean keepBelow = true, additive;
+        /** Bright overlay drawn on top (0..1) in glowColor. */
+        float glow;
+        int glowColor = 0xFFFFFF;
+        /** Scripted motion (returns true when it moved the body itself), or null for physics. */
+        Script script;
+        /** Free values for scripts. */
+        final float[] k = new float[8];
+    }
+
+    /** Scripted motion for a body (kill effects). */
+    interface Script {
+        boolean step(Group g, float dt);
     }
 
     /** The six parts of a player, each as its own list so they can be grouped freely. */
-    private static Box[] parts(boolean skinned) {
+    static Box[] parts(boolean skinned) {
         Box head = new Box(0, 28, 0, 8, 8, 8, 0, 0, 0);
         Box hat = new Box(0, 28, 0, 8, 8, 8, 32, 0, 0.5f);
         Box body = new Box(0, 18, 0, 8, 12, 4, 16, 16, 0);
@@ -115,7 +134,7 @@ public final class BodyFx {
         return new float[]{c, 0, s, 0, 1, 0, -s, 0, c};
     }
 
-    private static ResourceLocation skinOf(EntityLivingBase e) {
+    static ResourceLocation skinOf(EntityLivingBase e) {
         return e instanceof AbstractClientPlayer ? ((AbstractClientPlayer) e).getLocationSkin() : null;
     }
 
@@ -139,7 +158,7 @@ public final class BodyFx {
         if (e != null) HIDDEN.put(e.getEntityId(), System.currentTimeMillis() + ms);
     }
 
-    private Group group(EntityLivingBase victim, ResourceLocation skin, double x, double y, double z, float yawDeg, float height) {
+    Group group(EntityLivingBase victim, ResourceLocation skin, double x, double y, double z, float yawDeg, float height) {
         Group g = new Group();
         g.x = x;
         g.y = y;
@@ -341,10 +360,33 @@ public final class BodyFx {
         Group body;
     }
 
-    private void add(Group g, EntityLivingBase victim) {
+    void add(Group g, EntityLivingBase victim) {
         groups.add(g);
         if (stage) standInHidden = true;
         else if (victim != null) hide(victim, 4000L);
+    }
+
+    // ------------------------------------------------------- script helpers
+
+    /** Turns a scripted body by its angular velocity (wx, wy, wz) over dt. */
+    static void rotateBy(Group g, float dt) {
+        rotate(g.r, g.wx, g.wy, g.wz, dt);
+    }
+
+    int groupCount() {
+        return groups.size();
+    }
+
+    /** Tints and lights the groups added since index 'from' (pieces of an explosion). */
+    void tintNewGroups(int from, float r, float gr, float b, float glow, int glowColor) {
+        for (int i = from; i < groups.size(); i++) {
+            Group g = groups.get(i);
+            g.tintR = r;
+            g.tintG = gr;
+            g.tintB = b;
+            g.glow = glow;
+            g.glowColor = glowColor;
+        }
     }
 
     // ----------------------------------------------------------- update
@@ -367,18 +409,21 @@ public final class BodyFx {
 
     private void step(float dt) {
         ParticleSystem ps = ParticleSystem.INSTANCE;
-        for (Iterator<Group> it = groups.iterator(); it.hasNext(); ) {
-            Group g = it.next();
+        // index loop over the bodies present at the start: a script may add pieces (explosions),
+        // which start moving next frame; finished bodies are removed after the loop
+        int n0 = groups.size();
+        for (int gi = 0; gi < n0; gi++) {
+            Group g = groups.get(gi);
             g.age += dt;
-            if (g.age >= g.life) {
-                it.remove();
-                continue;
-            }
+            if (g.age >= g.life) continue;
             if (g.pinned) {
                 g.squash += (1f - g.squash) * Math.min(1f, dt * 10f);
+                if (g.script != null) g.script.step(g, dt);
                 continue;
             }
-            g.vy -= 18f * dt;
+            if (g.age < g.delay) continue;
+            if (g.script != null && g.script.step(g, dt)) continue;
+            g.vy -= g.gravity * dt;
             g.x += g.vx * dt;
             g.y += g.vy * dt;
             g.z += g.vz * dt;
@@ -415,6 +460,7 @@ public final class BodyFx {
                 }
             }
         }
+        groups.removeIf(g -> g.age >= g.life);
         for (Iterator<Sahur> it = sahurs.iterator(); it.hasNext(); ) {
             Sahur s = it.next();
             s.age += dt;
@@ -489,7 +535,8 @@ public final class BodyFx {
         GlStateManager.enableAlpha();
         GlStateManager.alphaFunc(GL11.GL_GREATER, 0.02f);
         for (Group g : groups) {
-            float fade = g.age > g.life - 0.45f ? Math.max(0f, (g.life - g.age) / 0.45f) : 1f;
+            float fade = (g.age > g.life - 0.45f ? Math.max(0f, (g.life - g.age) / 0.45f) : 1f) * g.alphaMul;
+            if (fade <= 0.003f) continue;
             float light = 1f;
             if (!stage && mc.theWorld != null) {
                 light = Math.max(0.35f, mc.theWorld.getLightBrightness(new BlockPos(g.x, g.y + 0.5, g.z)) * 1.1f);
@@ -500,12 +547,51 @@ public final class BodyFx {
             } else {
                 GlStateManager.disableTexture2D();
             }
+            boolean clip = !Float.isNaN(g.clipY);
+            if (clip) {
+                float rel = (float) (g.clipY - rY);
+                CLIP.clear();
+                if (g.keepBelow) CLIP.put(0).put(-1).put(0).put(rel);
+                else CLIP.put(0).put(1).put(0).put(-rel);
+                CLIP.flip();
+                GL11.glClipPlane(GL11.GL_CLIP_PLANE0, CLIP);
+                GL11.glEnable(GL11.GL_CLIP_PLANE0);
+            }
+            if (g.additive) {
+                GlStateManager.blendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE);
+                GlStateManager.depthMask(false);
+            }
             GL11.glBegin(GL11.GL_QUADS);
             for (Box b : g.boxes) {
                 if (b.color == 0x00000000) continue;
                 box(g, b, (float) (g.x - rX), (float) (g.y - rY), (float) (g.z - rZ), g.r, g.scale, g.squash, light, fade);
             }
             GL11.glEnd();
+            if (g.glow > 0.003f && !g.additive) {
+                // bright overlay: the same body again, added on top in the glow colour
+                GlStateManager.blendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE);
+                GlStateManager.depthFunc(GL11.GL_LEQUAL);
+                float tr = g.tintR, tg = g.tintG, tb = g.tintB;
+                g.tintR = ((g.glowColor >> 16) & 255) / 255f * 1.6f;
+                g.tintG = ((g.glowColor >> 8) & 255) / 255f * 1.6f;
+                g.tintB = (g.glowColor & 255) / 255f * 1.6f;
+                GlStateManager.disableTexture2D(); // a flat glow, not a brighter skin
+                GL11.glBegin(GL11.GL_QUADS);
+                for (Box b : g.boxes) {
+                    if (b.color == 0x00000000 || (b.u == 32 && b.v == 0 && b.uvs == null)) continue; // not the hat layer
+                    box(g, b, (float) (g.x - rX), (float) (g.y - rY), (float) (g.z - rZ), g.r, g.scale, g.squash, 1.4f, fade * Math.min(1f, g.glow));
+                }
+                GL11.glEnd();
+                GlStateManager.enableTexture2D();
+                g.tintR = tr;
+                g.tintG = tg;
+                g.tintB = tb;
+            }
+            if (g.additive || g.glow > 0.003f) {
+                GlStateManager.tryBlendFuncSeparate(770, 771, 1, 0);
+                GlStateManager.depthMask(true);
+            }
+            if (clip) GL11.glDisable(GL11.GL_CLIP_PLANE0);
         }
         MeshAssets.Animated model = sahurs.isEmpty() ? null : MeshAssets.sahur();
         for (Sahur s : sahurs) {
@@ -526,6 +612,7 @@ public final class BodyFx {
         GL11.glColor4f(1f, 1f, 1f, 1f);
     }
 
+    private static final java.nio.DoubleBuffer CLIP = org.lwjgl.BufferUtils.createDoubleBuffer(4);
     private static final float[] SHADE = {0.62f, 0.62f, 1.0f, 0.5f, 0.9f, 0.75f}; // +x -x +y -y -z +z
 
     /** Emits the 6 faces of a box from 8 world corners (bit0 = +x, bit1 = +y, bit2 = +z). */
@@ -581,6 +668,13 @@ public final class BodyFx {
                     Math.min(1f, (col & 255) / 255f * sh * g.tintB), fade);
         }
         float u0 = u / 64f, v0 = v / 64f, u1 = (u + w) / 64f, v1 = (v + h) / 64f;
+        if (b.uvs != null && b.uvs[side] != null) {
+            float[] q = b.uvs[side];
+            u0 = q[0] / 64f;
+            v0 = q[1] / 64f;
+            u1 = q[2] / 64f;
+            v1 = q[3] / 64f;
+        }
         GL11.glTexCoord2f(u0, v0);
         GL11.glVertex3f(c[tl][0], c[tl][1], c[tl][2]);
         GL11.glTexCoord2f(u1, v0);

@@ -297,6 +297,9 @@ public final class ParticleSystem {
             sw.render(rX, rY, rZ);
         }
         update(dt);
+        // animated shapes add their lines and particles before this frame's particles are drawn
+        FxShapes shapes = FxShapes.INSTANCE;
+        if (shapes.active()) shapes.update(dt, this, Lines.INSTANCE);
         if (count > 0 || frameCount > 0) render(mc, mc.getRenderManager().playerViewY, mc.getRenderManager().playerViewX);
         Arcs arcs = Arcs.INSTANCE;
         if (arcs.active()) {
@@ -316,6 +319,8 @@ public final class ParticleSystem {
             ShockwaveSystem.INSTANCE.clear();
             Arcs.INSTANCE.clear();
             Lines.INSTANCE.clear();
+            FxShapes.INSTANCE.clear();
+            BodyFx.INSTANCE.clear();
         }
     }
 

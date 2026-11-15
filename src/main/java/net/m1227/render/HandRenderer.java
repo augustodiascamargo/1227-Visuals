@@ -75,7 +75,9 @@ public final class HandRenderer {
     public void onHand(RenderHandEvent e) {
         Minecraft mc = Minecraft.getMinecraft();
         if (mc.thePlayer == null || mc.gameSettings.anaglyph) return;
-        boolean take = takeover(), fx = HandFx.wantsHand();
+        boolean fx = HandFx.wantsHand();
+        // effects drawn on the item (glow, outline, blade aura) need the item drawn in the same pass
+        boolean take = takeover() || (fx && HandFx.needsItemAlignment() && !net.m1227.module.ClientModule.handCompat());
         if ((!take && !fx) || !reflect()) return;
         ItemStack item;
         try {
@@ -218,8 +220,14 @@ public final class HandRenderer {
                     drinking(p, pt, item);
                     transform(equip, an != null && an.eating() ? swingP : 0.0F);
                 } else if (action == EnumAction.BLOCK) {
-                    transform(equip, an != null && an.blockhit() ? swingP : 0.0F);
-                    blockTransform();
+                    net.m1227.module.WeaponModelsModule wm = net.m1227.module.WeaponModelsModule.INSTANCE;
+                    if (wm != null && wm.replaces(item) && !wm.style().equals("Classic")) {
+                        // custom swords: the block pose blends in through the weapon motion engine
+                        wm.holdTransform(equip, swingP, true, pt);
+                    } else {
+                        transform(equip, an != null && an.blockhit() ? swingP : 0.0F);
+                        blockTransform();
+                    }
                 } else if (action == EnumAction.BOW) {
                     transform(equip, an != null && an.bow() ? swingP : 0.0F);
                     bowTransform(pt, p, item);
@@ -230,7 +238,7 @@ public final class HandRenderer {
                 net.m1227.module.WeaponModelsModule wm = net.m1227.module.WeaponModelsModule.INSTANCE;
                 if (wm != null && wm.replaces(item) && !wm.style().equals("Classic")) {
                     // each custom sword has its own way of being held and swung
-                    wm.holdTransform(equip, swingP);
+                    wm.holdTransform(equip, swingP, false, pt);
                 } else {
                     itemUsed(swingP);
                     transform(equip, swingP);

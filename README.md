@@ -183,6 +183,67 @@ nada depende de Lunar ou de outro launcher.
 O modelo do Tung Sahur (ZAHUR.fbx + textura) e a butterfly knife (.blend) foram enviados pelo usuário. Antes de
 publicar o 1227, confira a licença de cada um (por exemplo, se exigem crédito ao autor) e coloque o crédito aqui.
 
+## Mudanças na v1.25.0
+
+- **Correção do Item Glow na espada normal:**
+  - antes, o brilho podia aparecer como uma segunda "espada de luz" deslocada;
+  - causa: o 1227 recalculava a posição da mão para o brilho, e o Minecraft desenhava a espada
+    numa passada separada. Quando algo muda essa passada (outro mod, OptiFine, FOV), as duas
+    posições não batiam;
+  - agora, com brilho, contorno ou aura de lâmina ligados, o 1227 desenha o item na mesma passada,
+    como já fazia com as espadas 3D;
+  - no modo de compatibilidade da mão o comportamento antigo continua.
+- **9 Hit Effects novos:**
+  - Directional Slash e Crescent Slash: um corte luminoso que varre o alvo. O ângulo segue o seu
+    golpe: horizontal, vertical, diagonal, de costas, crítico;
+  - Energy Burst, Arc Lightning, Rune Explosion, Digital Distortion, Flame Burst, Vortex e Energy
+    Collapse;
+  - todos seguem a direção real do golpe (de você para o alvo).
+- **11 Kill Effects novos**, quase todos com uma cópia do corpo do jogador, com a skin dele:
+  - Soul Ascension: a alma sobe, o corpo fica cinza e some;
+  - Black Hole: o corpo é puxado girando para um buraco negro;
+  - Disintegration: desfaz de cima para baixo em brasas e cinzas;
+  - Pixel Disintegration: quebra em voxels com a própria skin, de cima para baixo. O tamanho dos
+    pedaços é ajustável;
+  - Shadow Dissolve: escurece e vira fumaça de baixo para cima;
+  - Crystal Explosion: vira cristal e explode em pedaços;
+  - Electric Explosion: raios correm pelo corpo, que pisca e explode;
+  - Portal Collapse: afunda num portal no chão;
+  - Gravity Pull: é erguido girando e esmagado num ponto;
+  - Energy Beam: um feixe do céu vaporiza o corpo de baixo para cima;
+  - Firework Finale: três fogos de artifício nas suas cores.
+- **Novo sistema de formas animadas** (cortes, runas, portal, feixe, buraco negro, foguetes):
+  - feito com linhas luminosas e partículas, que respeitam paredes;
+  - a mesma velocidade em qualquer FPS.
+- Nada disso muda o jogo: a morte e o movimento reais são do Minecraft. O corpo original só fica
+  escondido enquanto a cópia anima.
+
+## Mudanças na v1.24.0
+
+- **Engine de movimento das armas** em primeira pessoa, em camadas que se misturam sem pulo:
+  - pose de empunhadura e saque;
+  - andar, sprint, pulo, queda e recuperação da aterrissagem;
+  - inércia da câmera: a arma fica um pouco para trás em giros rápidos e volta com mola;
+  - golpes;
+  - bloqueio.
+- **Golpes novos:** Fast, Diagonal slash, Horizontal slash e Vertical slash, desenhados com curvas
+  de keyframe, além dos que já existiam (Classic, Heavy, Thrust, Flourish, Twin, Two-handed).
+  - Lado alternado e combo de três golpes (diagonal, horizontal, vertical).
+  - Golpe crítico visual quando você ataca caindo.
+  - Um golpe novo no meio de outro faz uma transição curta, sem salto.
+- **Bloqueio das espadas customizadas** entra e sai suave, ou na hora (opção). Funciona com e sem o
+  blockhit das animações 1.7.
+- **Inspeção:**
+  - estilo novo, Flip;
+  - duração ajustável;
+  - um golpe cancela a inspeção, e ela volta para a mão pelo caminho curto.
+- **Saque:** estilos novos Quick e Smooth.
+- **Ajustes:** velocidade do golpe, intensidade, balanço da mão, movimento ao andar, pulo e
+  aterrissagem, animação do bloqueio, duração da inspeção.
+- **Presets:** Classic PvP, Smooth PvP, Modern Combat, Cinematic e Minimal.
+- Tudo usa tempo real e molas com passo fixo: a mesma velocidade em 30 ou 240 FPS (testado).
+- É só o desenho: o ataque, o tempo de golpe e o bloqueio de verdade continuam os do Minecraft.
+
 ## Mudanças na v1.23.0
 
 - **11 modelos 3D com textura incluídos no jar:**

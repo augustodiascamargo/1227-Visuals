@@ -1,3 +1,5 @@
+9 new hit effects and 11 new kill effects (soul, black hole, pixel disintegration...); item glow fix
+New weapon motion: slashes, combos, critical swing, inertia, jump and landing, smooth block, presets
 Your own weapon models (Blockbench, glTF, FBX, OBJ) with their animations, also in third person
 Floating Lyrics, audio visualizer, waypoints, alerts and smarter performance
 Real rain and puddles, Aim Helper body glow, sword animations

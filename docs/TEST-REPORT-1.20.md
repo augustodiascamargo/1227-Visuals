@@ -283,3 +283,60 @@ terceira pessoa e o editor só foram conferidos por leitura e pela checagem de c
     nas partes transparentes.
 51. **Per sword type:** um modelo para a espada de diamante e outro para a de ferro; trocar de
     espada deve trocar o modelo.
+
+## v1.24.0
+
+- **Testes Java:** `WeaponMotionTest` (4, novos):
+  - o mesmo roteiro (andar, girar a câmera, pular, cair, dois golpes) dá a mesma pose final a 30,
+    144 e 240 FPS;
+  - cada um dos 10 golpes mexe a arma e volta exatamente ao repouso;
+  - o combo segue a ordem normal, horizontal, vertical e recomeça;
+  - atacar caindo dá o golpe crítico;
+  - o bloqueio suave chega na pose de bloqueio do Minecraft, e o instantâneo já começa nela.
+
+**Não testado:** nada desta versão foi rodado dentro do Minecraft. A ligação com o renderizador da
+mão foi conferida por leitura e pela checagem de compilação.
+
+### Para testar
+52. Cada Swing style com uma espada customizada: os movimentos devem ser diferentes entre si e
+    voltar à mão sem salto.
+    - Clicando rápido (10+ CPS), a espada não deve tremer.
+53. Combo swings ligado: três golpes seguidos devem sair normal, horizontal, vertical.
+54. Pule e ataque caindo: deve sair o golpe por cima.
+    - Ao cair de 3 ou mais blocos, a arma deve dar um tranco e voltar.
+55. Gire a câmera rápido: a arma fica um pouco para trás e volta. Com Hand sway em 0, não deve mexer.
+56. Bloqueie com espada customizada: a pose deve entrar suave (Smooth) ou na hora (Instant).
+    - Com o blockhit das 1.7 Animations ligado, clicar bloqueando deve mostrar o golpe.
+57. Inspecione (V) e ataque no meio: a inspeção deve voltar suave para a mão.
+58. Presets: cada botão deve mudar os ajustes e mostrar o aviso.
+    - Repita o teste 52 com o FPS limitado a 30 e depois a 240: a velocidade deve ser a mesma.
+
+## v1.25.0
+
+- **Testes Java:** os 13 de armas e movimento passam. Um teste novo confere que o ângulo do corte
+  acompanha o golpe.
+- **Checagem de compilação:** sem erros no código novo (efeitos, formas animadas, cópias de corpo,
+  mão).
+- **Voxels da Pixel Disintegration:** o mapeamento da skin foi conferido à mão, face por face, num
+  voxel de cada canto da cabeça.
+
+**Não testado:** nada desta versão foi rodado dentro do Minecraft. Os efeitos novos foram
+conferidos por leitura.
+
+### Para testar
+59. Item Glow com a espada normal (Weapon Models desligado):
+    - o brilho deve contornar a espada, sem uma segunda espada de luz embaixo;
+    - testar também com OptiFine, se você usa.
+60. Hit Effect › Style, cada estilo novo com "Preview":
+    - Directional e Crescent Slash, com Weapon Models ligado: um golpe horizontal deve dar corte
+      horizontal; um vertical (combo) ou crítico, corte de cima para baixo; golpes alternados
+      trocam o lado do corte.
+61. Kill Effect › Style, cada estilo novo com "Preview" e numa luta de verdade:
+    - o corpo copiado deve ter a skin do jogador;
+    - o original não deve aparecer junto;
+    - nada deve atravessar paredes.
+62. Pixel Disintegration com "Small pieces" e "Large pieces":
+    - os voxels devem ter as cores certas da skin (rosto na frente, costas atrás);
+    - devem soltar de cima para baixo.
+63. **Desempenho:** com Performance HUD aberto, matar alguém com Pixel Disintegration e com Black
+    Hole. Não deve haver travada grande.

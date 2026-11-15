@@ -94,12 +94,25 @@ public final class WeaponModelsModule extends Module {
         lightning = add(new Setting.Bool("Lightning arcs", false));
         flipOnEquip = add(new Setting.Bool("Butterfly: flip open when drawn", true)).showIf(() -> model.is("Butterfly Knife"));
         inspectKey = add(new Setting.Key("Inspect key", org.lwjgl.input.Keyboard.KEY_V));
-        inspectStyle = add(new Setting.Mode("Inspect animation", "Twirl", "Twirl", "Turn over", "Toss", "Show off"));
-        drawAnim = add(new Setting.Mode("Draw animation", "Spin", "Spin", "Flip", "Rise", "Off"));
+        inspectStyle = add(new Setting.Mode("Inspect animation", "Twirl", "Twirl", "Turn over", "Toss", "Show off", "Flip"));
+        drawAnim = add(new Setting.Mode("Draw animation", "Spin", "Spin", "Flip", "Rise", "Quick", "Smooth", "Off"));
         altSwings = add(new Setting.Bool("Alternate swing direction", true));
         idleMotion = add(new Setting.Bool("Idle motion", true));
         sprintPose = add(new Setting.Bool("Sprint pose", true));
         animSpeed = add(new Setting.Num("Animation speed", 1.0, 0.5, 2.0, 0.05, "x"));
+        swingStyle = add(new Setting.Mode("Swing style", "Per model", net.m1227.weapons.WeaponMotion.SWINGS));
+        swingSpeed = add(new Setting.Num("Swing speed", 1.0, 0.6, 1.6, 0.05, "x"));
+        comboSwings = add(new Setting.Bool("Combo swings (diagonal, horizontal, vertical)", false));
+        critSwing = add(new Setting.Bool("Critical swing when falling", true));
+        intensity = add(new Setting.Num("Animation intensity", 1.0, 0.0, 1.5, 0.05, "x"));
+        handSway = add(new Setting.Num("Hand sway (camera inertia)", 1.0, 0.0, 2.0, 0.05, "x"));
+        moveMotion = add(new Setting.Num("Walking & sprint motion", 1.0, 0.0, 2.0, 0.05, "x"));
+        jumpMotion = add(new Setting.Num("Jump & landing motion", 1.0, 0.0, 2.0, 0.05, "x"));
+        blockAnim = add(new Setting.Mode("Sword block animation", "Smooth", "Smooth", "Instant"));
+        inspectLength = add(new Setting.Num("Inspect duration", 1.0, 0.5, 2.0, 0.05, "x"));
+        for (final String pr : new String[]{"Classic PvP", "Smooth PvP", "Modern Combat", "Cinematic", "Minimal"}) {
+            add(new Setting.Action("Motion preset: " + pr, () -> preset(pr)));
+        }
         thirdPerson = add(new Setting.Bool("Show in third person", true));
         othersToo = add(new Setting.Bool("Also on other players' swords", false)).showIf(() -> thirdPerson.on());
         modelStore = add(new Setting.Text("Model file", "", 120, "")).showIf(() -> false);
@@ -338,13 +351,16 @@ public final class WeaponModelsModule extends Module {
     private final Setting.Mode inspectStyle, drawAnim;
     private final Setting.Bool altSwings, idleMotion, sprintPose;
     private final Setting.Num animSpeed;
+    private final Setting.Mode swingStyle, blockAnim;
+    private final Setting.Num swingSpeed, intensity, handSway, moveMotion, jumpMotion, inspectLength;
+    private final Setting.Bool comboSwings, critSwing;
+    private long inspectCancel = -1L;
     /** Animator of the imported model being drawn in first person (null for built-in models). */
     private net.m1227.weapons.WeaponAnimator modelAnim;
     /** Draw (equip) animation progress, 0 just drawn .. 1 done. */
     private float drawT = 1f;
     private long drawStart = -1L, lastRenderNanos;
     private int drawSlot = -1;
-    private float sprintK, lastFrameSec;
     private int swingCount;
 
     public boolean lightning() {
@@ -961,7 +977,8 @@ public final class WeaponModelsModule extends Module {
             drawT = 1f;
             return;
         }
-        drawT = Math.min(1f, (now - drawStart) / 1e9f / (0.55f / animSpeed.f()));
+        float dur = drawAnim.is("Quick") ? 0.28f : drawAnim.is("Smooth") ? 0.7f : 0.55f;
+        drawT = Math.min(1f, (now - drawStart) / 1e9f / (dur / animSpeed.f()));
     }
 
     private static float easeOutBack(float t) {
@@ -973,7 +990,7 @@ public final class WeaponModelsModule extends Module {
     /** The turning part of the draw animation, in item space around the grip. */
     private void drawSpin() {
         if (drawT >= 1f) return;
-        float rest = 1f - easeOutBack(drawT);
+        float rest = 1f - (drawAnim.is("Smooth") ? smooth(drawT) : easeOutBack(drawT));
         if (drawAnim.is("Spin")) GlStateManager.rotate(360f * rest, AX, AY, 0f);        // around the blade
         else if (drawAnim.is("Flip")) GlStateManager.rotate(-360f * rest, 0f, 0f, 1f);  // cartwheel in the hand
     }
@@ -987,7 +1004,8 @@ public final class WeaponModelsModule extends Module {
         int key = inspectKey.code();
         long now = System.currentTimeMillis();
         String st = inspectStyle.get();
-        long dur = (long) ((st.equals("Show off") ? 2600L : st.equals("Toss") ? 1300L : 1600L) / animSpeed.f());
+        long dur = (long) ((st.equals("Show off") ? 2600L : st.equals("Toss") ? 1300L : st.equals("Flip") ? 1100L : 1600L)
+                * inspectLength.f() / animSpeed.f());
         boolean down = key != 0 && mc.currentScreen == null && net.m1227.core.InputManager.isDown(key);
         net.m1227.weapons.WeaponAnimator ma = modelAnim;
         if (ma != null && ma.has(net.m1227.weapons.WeaponAnimator.INSPECT)) {
@@ -996,35 +1014,58 @@ public final class WeaponModelsModule extends Module {
             inspectWasDown = down;
             return;
         }
-        if (down && !inspectWasDown && (inspectStart < 0L || now - inspectStart > dur + 100L)) inspectStart = now;
+        if (down && !inspectWasDown && (inspectStart < 0L || now - inspectStart > dur + 100L)) {
+            inspectStart = now;
+            inspectCancel = -1L;
+        }
         inspectWasDown = down;
         if (inspectStart < 0L) return;
         float t = (now - inspectStart) / (float) dur;
-        if (t >= 1f) {
+        // cancelled by a swing: the pose fades back to the hand over 0.15 s (turns taken the short way)
+        float w = 1f;
+        if (inspectCancel >= 0L) {
+            w = 1f - smooth((now - inspectCancel) / 150f);
+            t = Math.min(t, (inspectCancel - inspectStart) / (float) dur);
+        }
+        if (t >= 1f || w <= 0f) {
             inspectStart = -1L;
+            inspectCancel = -1L;
             return;
         }
         float e = t * t * (3f - 2f * t);
         float lift = (float) Math.sin(t * Math.PI);
         if (st.equals("Twirl")) {
-            GlStateManager.rotate(-20f * lift, 1f, 0f, 0f);
-            GlStateManager.rotate(-720f * e, 0f, 0f, 1f);
+            GlStateManager.rotate(-20f * lift * w, 1f, 0f, 0f);
+            GlStateManager.rotate(shortWay(-720f * e) * w, 0f, 0f, 1f);
         } else if (st.equals("Toss")) {
             float up = 4f * t * (1f - t);                             // parabola: up and back down
-            GlStateManager.translate(AX * 0.55f * up, AY * 0.55f * up, 0.1f * up);
-            GlStateManager.rotate(-360f * e, 1f, -1f, 0f);            // end over end
+            GlStateManager.translate(AX * 0.55f * up * w, AY * 0.55f * up * w, 0.1f * up * w);
+            GlStateManager.rotate(shortWay(-360f * e) * w, 1f, -1f, 0f); // end over end
         } else if (st.equals("Show off")) {
             float in = Math.min(1f, t / 0.22f), out = Math.max(0f, (t - 0.78f) / 0.22f);
-            float k = smooth(in) * (1f - smooth(out));
+            float k = smooth(in) * (1f - smooth(out)) * w;
             float turn = Math.max(0f, Math.min(1f, (t - 0.18f) / 0.64f));
             GlStateManager.rotate(-45f * k, 1f, 0f, 0f);
             GlStateManager.rotate(30f * k, 0f, 0f, 1f);
-            GlStateManager.rotate(200f * smooth(turn), AX, AY, 0f);
+            GlStateManager.rotate(200f * smooth(turn) * w, AX, AY, 0f);
+        } else if (st.equals("Flip")) {
+            // a quick double flip in the hand, cartwheeling around the grip
+            float f = 1f - (1f - t) * (1f - t) * (1f - t);
+            GlStateManager.rotate(-14f * lift * w, 1f, 0f, 0f);
+            GlStateManager.rotate(shortWay(720f * f) * w, 0f, 0f, 1f);
         } else {
-            GlStateManager.rotate(-30f * lift, 1f, 0f, 0f);       // bring it towards the camera
-            GlStateManager.rotate(25f * lift, 0f, 0f, 1f);
-            GlStateManager.rotate(360f * e, AX, AY, 0f);           // spin around the blade's axis
+            GlStateManager.rotate(-30f * lift * w, 1f, 0f, 0f);       // bring it towards the camera
+            GlStateManager.rotate(25f * lift * w, 0f, 0f, 1f);
+            GlStateManager.rotate(shortWay(360f * e) * w, AX, AY, 0f);  // spin around the blade's axis
         }
+    }
+
+    /** An angle reduced to -180..180 (same orientation), so fading it out never spins backwards. */
+    private static float shortWay(float deg) {
+        float d = deg % 360f;
+        if (d > 180f) d -= 360f;
+        if (d < -180f) d += 360f;
+        return d;
     }
 
     private static float smooth(float x) {
@@ -1239,125 +1280,158 @@ public final class WeaponModelsModule extends Module {
         return style().equals("Two-handed");
     }
 
-    // A swing drawn over its own, slightly longer time (0.42 s instead of Minecraft's 0.3 s) so the
-    // motion reads clearly. Only the drawing changes; the real swing and hit timing are vanilla.
-    private static final float SWING_SEC = 0.42f;
-    private long swingStart = -1L;
-    private float lastSwingP;
+    // ------------------------------------------------------------- motion engine
 
-    private float visualSwing(float swingP) {
-        long now = System.nanoTime();
-        boolean started = swingP > 0f && (lastSwingP == 0f || swingP < lastSwingP - 0.2f);
-        lastSwingP = swingP;
-        float v = swingStart < 0L ? 1f : (now - swingStart) / 1e9f / SWING_SEC;
-        if (started && v > 0.7f) {
-            swingStart = now;
-            swingCount++;
-            v = 0f;
-        }
-        return v >= 1f ? 0f : v;
+    private final net.m1227.weapons.WeaponMotion motion = new net.m1227.weapons.WeaponMotion();
+    private final net.m1227.weapons.WeaponMotion.Input motionIn = new net.m1227.weapons.WeaponMotion.Input();
+    private final net.m1227.weapons.WeaponMotion.Params motionP = new net.m1227.weapons.WeaponMotion.Params();
+
+    public void holdTransform(float equip, float swingP) {
+        holdTransform(equip, swingP, false, 1f);
     }
 
     /**
-     * Replaces the vanilla first-person hold + swing transform for the custom swords. Every
-     * style starts from Minecraft's own hold position (so the sword sits where the hand is)
-     * and adds a smooth, style-specific motion that always returns to rest.
+     * Replaces the vanilla first-person hold + swing transform for the custom swords, through the
+     * layered motion engine (hold pose, draw, walking / sprint / jump / landing, camera inertia,
+     * swings, combo, critical, blocking). Only the drawing moves: the real swing, hit timing and
+     * blocking are Minecraft's.
      */
-    public void holdTransform(float equip, float swingP) {
-        String st = style();
-        float sw = visualSwing(swingP);
-        float bell = (float) Math.sin(sw * Math.PI);                 // 0 -> 1 -> 0
-        float lead = (float) Math.sin(Math.sqrt(sw) * Math.PI);      // fast in, slow out (vanilla-like)
-        boolean alt = altSwings.on() && (swingCount & 1) == 1;      // every other swing comes from the other side
-        float side = alt ? -1f : 1f;
-        float now = System.nanoTime() / 1e9f;
-        float dt = lastFrameSec == 0f ? 0.016f : Math.max(0f, Math.min(0.1f, now - lastFrameSec));
-        lastFrameSec = now;
+    public void holdTransform(float equip, float swingP, boolean blocking, float pt) {
         Minecraft mc = Minecraft.getMinecraft();
-        boolean sprinting = sprintPose.on() && mc.thePlayer != null && mc.thePlayer.isSprinting() && mc.thePlayer.onGround;
-        sprintK += ((sprinting ? 1f : 0f) - sprintK) * Math.min(1f, dt * 7f);
-        float rest = 1f - bell;                                       // idle and sprint poses fade out during a swing
+        net.minecraft.client.entity.EntityPlayerSP p = mc.thePlayer;
+        net.m1227.weapons.WeaponMotion.Input in = motionIn;
+        in.time = System.nanoTime() / 1e9;
+        in.swingProgress = swingP;
+        in.equip = equip;
+        in.blocking = blocking;
+        if (p != null) {
+            in.sprinting = p.isSprinting();
+            in.onGround = p.onGround;
+            in.inWater = p.isInWater() || p.isInLava() || p.isOnLadder() || p.ridingEntity != null;
+            double mx = p.posX - p.prevPosX, mz = p.posZ - p.prevPosZ;
+            in.speed = (float) Math.sqrt(mx * mx + mz * mz);
+            in.motionY = (float) (p.posY - p.prevPosY);
+            in.fallDistance = p.fallDistance;
+            in.walkPhase = p.prevDistanceWalkedModified + (p.distanceWalkedModified - p.prevDistanceWalkedModified) * pt;
+            in.yaw = p.prevRotationYaw + (p.rotationYaw - p.prevRotationYaw) * pt;
+            in.pitch = p.prevRotationPitch + (p.rotationPitch - p.prevRotationPitch) * pt;
+        }
+        in.draw = drawT;
+        in.drawRise = !drawAnim.is("Off");
+        in.drawOvershoot = !drawAnim.is("Smooth") && !drawAnim.is("Quick");
+        net.m1227.weapons.WeaponMotion.Params mp = motionP;
+        mp.style = style();
+        mp.swing = swingStyle.get();
+        mp.swingSpeed = swingSpeed.f();
+        mp.speed = animSpeed.f();
+        mp.intensity = intensity.f();
+        mp.sway = handSway.f();
+        mp.move = moveMotion.f();
+        mp.jump = jumpMotion.f();
+        mp.alternate = altSwings.on();
+        mp.combo = comboSwings.on();
+        mp.critical = critSwing.on();
+        mp.idle = idleMotion.on();
+        mp.sprintPose = sprintPose.on();
+        mp.smoothBlock = blockAnim.is("Smooth");
+        net.m1227.module.AnimationsModule an = net.m1227.module.AnimationsModule.INSTANCE;
+        mp.blockhit = an != null && an.isEnabled() && an.blockhit();
+        int before = motion.swings();
+        motion.update(in, mp);
+        lastMotionUse = in.time;
+        if (motion.swings() != before) {
+            swingCount = motion.swings();
+            // a new swing cancels a running inspect (it fades out instead of jumping)
+            if (inspectStart >= 0L && inspectCancel < 0L) inspectCancel = System.currentTimeMillis();
+        }
+        for (float[] o : motion.ops) {
+            if (o[0] == 0f) GlStateManager.translate(o[1], o[2], o[3]);
+            else if (o[0] == 1f) GlStateManager.rotate(o[1], o[2], o[3], o[4]);
+            else GlStateManager.scale(o[1], o[2], o[3]);
+        }
+    }
 
-        float x = 0.56F, y = -0.52F, z = -0.72F, yaw = 45F;
-        if (st.equals("Two-handed")) {
-            x = 0.42F;
-            y = -0.50F;
-            yaw = 38F;
+    /** Tilt of the current / last weapon swing's cut (degrees, sign = side), for slash effects. */
+    public float slashTiltDeg() {
+        return motion.slashTiltDeg();
+    }
+
+    /** True when the weapon motion engine has drawn a swing in the last second (it is in use). */
+    public boolean motionInUse() {
+        return isEnabled() && System.nanoTime() / 1e9 - lastMotionUse < 1.0;
+    }
+
+    private double lastMotionUse = -10;
+
+    /** True when the last swing started was drawn as a critical one (falling while attacking). */
+    public boolean lastSwingCritical() {
+        return motion.lastSwingCritical();
+    }
+
+    /** Applies one of the motion presets. */
+    private void preset(String name) {
+        String sw = "Per model", draw = "Spin", block = "Smooth";
+        double speed = 1.0, inten = 1.0, sway = 1.0, move = 1.0, jump = 1.0, anim = 1.0;
+        boolean alt = true, combo = false, crit = true, idle = true;
+        switch (name) {
+            case "Classic PvP":
+                sw = "Classic";
+                draw = "Quick";
+                block = "Instant";
+                inten = 0.8;
+                sway = 0.3;
+                move = 0.5;
+                jump = 0.5;
+                alt = false;
+                idle = false;
+                break;
+            case "Modern Combat":
+                draw = "Rise";
+                speed = 1.1;
+                inten = 1.1;
+                sway = 1.3;
+                move = 1.2;
+                jump = 1.2;
+                combo = true;
+                break;
+            case "Cinematic":
+                draw = "Flip";
+                speed = 0.85;
+                inten = 1.3;
+                sway = 1.8;
+                move = 1.5;
+                jump = 1.5;
+                anim = 0.9;
+                combo = true;
+                break;
+            case "Minimal":
+                sw = "Classic";
+                draw = "Off";
+                block = "Instant";
+                inten = 0.5;
+                sway = 0.0;
+                move = 0.0;
+                jump = 0.0;
+                alt = false;
+                crit = false;
+                idle = false;
+                break;
+            default: // Smooth PvP
         }
-        GlStateManager.translate(x, y, z);
-        GlStateManager.translate(0.0F, equip * -0.6F, 0.0F);
-        // draw animation: comes up from below the screen
-        if (drawT < 1f) {
-            float d = 1f - easeOutBack(drawT);
-            GlStateManager.translate(0.06F * d, -0.45F * d, 0.08F * d);
-            GlStateManager.rotate(-40F * d, 1.0F, 0.0F, 0.0F);
-        }
-        // sprint pose: lowered and tilted back, with a small running sway
-        if (sprintK > 0.01f) {
-            float k = sprintK * rest;
-            float run = (float) Math.sin(now * 9.5f * animSpeed.f());
-            GlStateManager.translate(0.03F * k, -0.07F * k, 0.05F * k);
-            GlStateManager.rotate(16F * k + 3F * run * k, 1.0F, 0.0F, 0.0F);
-            GlStateManager.rotate(-10F * k, 0.0F, 1.0F, 0.0F);
-            GlStateManager.rotate(4F * run * k, 0.0F, 0.0F, 1.0F);
-        }
-        // idle: the sword breathes a little in your hand
-        if (idleMotion.on()) {
-            float ti = now * animSpeed.f();
-            float k = rest * (1f - sprintK);
-            GlStateManager.translate(0.0F, 0.008F * (float) Math.sin(ti * 1.6f) * k, 0.0F);
-            GlStateManager.rotate(1.6F * (float) Math.sin(ti * 1.1f) * k, 1.0F, 0.0F, 0.0F);
-            GlStateManager.rotate(1.2F * (float) Math.sin(ti * 0.8f + 1f) * k, 0.0F, 0.0F, 1.0F);
-        }
-        GlStateManager.rotate(yaw, 0.0F, 1.0F, 0.0F);
-        if (st.equals("Two-handed")) {
-            // wide horizontal cut across the screen with both hands (alternate: back the other way)
-            GlStateManager.translate(-0.18F * bell * side, 0.04F * bell, -0.08F * bell);
-            GlStateManager.rotate(-55F * lead * side, 0.0F, 1.0F, 0.0F);
-            GlStateManager.rotate(-12F - 14F * bell, 0.0F, 0.0F, 1.0F);
-            GlStateManager.rotate(-28F * bell, 1.0F, 0.0F, 0.0F);
-        } else if (st.equals("Heavy")) {
-            if (!alt) {
-                // wind up slightly, then a downward chop
-                GlStateManager.translate(0.0F, 0.06F * bell, -0.06F * bell);
-                GlStateManager.rotate(-15F * lead, 0.0F, 1.0F, 0.0F);
-                GlStateManager.rotate(-85F * lead, 1.0F, 0.0F, 0.0F);
-            } else {
-                // rising diagonal cut
-                GlStateManager.translate(-0.06F * bell, -0.04F * bell, -0.08F * bell);
-                GlStateManager.rotate(35F * lead, 0.0F, 1.0F, 0.0F);
-                GlStateManager.rotate(-55F * lead, 1.0F, 0.0F, 0.0F);
-                GlStateManager.rotate(28F * lead, 0.0F, 0.0F, 1.0F);
-            }
-        } else if (st.equals("Thrust")) {
-            // straight stab forward (alternate: a low stab angled the other way)
-            GlStateManager.translate(-0.08F * bell, (alt ? -0.02F : 0.03F) * bell, -0.28F * bell);
-            GlStateManager.rotate((alt ? -12F : -22F) * bell, 1.0F, 0.0F, 0.0F);
-            GlStateManager.rotate(10F * bell * side, 0.0F, 1.0F, 0.0F);
-        } else if (st.equals("Flourish")) {
-            // sweeping arc with a twist of the wrist
-            GlStateManager.rotate(-40F * lead * side, 0.0F, 1.0F, 0.0F);
-            GlStateManager.rotate(-30F * lead * side, 0.0F, 0.0F, 1.0F);
-            GlStateManager.rotate(-55F * lead, 1.0F, 0.0F, 0.0F);
-        } else if (st.equals("Twin")) {
-            // quick out-and-back double cut
-            float two = (float) Math.sin(sw * Math.PI * 2.0);
-            GlStateManager.rotate(30F * two * side, 0.0F, 1.0F, 0.0F);
-            GlStateManager.rotate(-45F * bell, 1.0F, 0.0F, 0.0F);
-        } else if (!alt) {
-            // classic: the vanilla curve, drawn over the longer visual time
-            float f = (float) Math.sin(sw * sw * Math.PI);
-            GlStateManager.rotate(f * -20.0F, 0.0F, 1.0F, 0.0F);
-            GlStateManager.rotate(lead * -20.0F, 0.0F, 0.0F, 1.0F);
-            GlStateManager.rotate(lead * -80.0F, 1.0F, 0.0F, 0.0F);
-        } else {
-            // classic backhand
-            float f = (float) Math.sin(sw * sw * Math.PI);
-            GlStateManager.rotate(f * 22.0F, 0.0F, 1.0F, 0.0F);
-            GlStateManager.rotate(lead * 28.0F, 0.0F, 0.0F, 1.0F);
-            GlStateManager.rotate(lead * -65.0F, 1.0F, 0.0F, 0.0F);
-        }
-        GlStateManager.scale(0.4F, 0.4F, 0.4F);
+        swingStyle.set(sw);
+        drawAnim.set(draw);
+        blockAnim.set(block);
+        swingSpeed.setClamped(speed);
+        intensity.setClamped(inten);
+        handSway.setClamped(sway);
+        moveMotion.setClamped(move);
+        jumpMotion.setClamped(jump);
+        animSpeed.setClamped(anim);
+        altSwings.set(alt);
+        comboSwings.set(combo);
+        critSwing.set(crit);
+        idleMotion.set(idle);
+        net.m1227.core.Notifier.post(net.m1227.core.Notifier.Kind.SYSTEM, "Weapon motion", name, net.m1227.core.Notifier.ACCENT, 1500);
     }
 
     // ------------------------------------------------------------- hands

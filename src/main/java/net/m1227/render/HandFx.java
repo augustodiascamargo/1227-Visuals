@@ -62,6 +62,22 @@ public final class HandFx {
     }
 
     /**
+     * True when an effect is drawn ON the held item (glow, outline, blade aura): it must use the
+     * very same transform as the item, so the 1227 hand pass draws the item too. If Minecraft drew
+     * the item in its own pass, anything that changes that pass (another mod, OptiFine, a
+     * different FOV) would leave the glow as a second "sword of light" beside the real one.
+     */
+    public static boolean needsItemAlignment() {
+        Minecraft mc = Minecraft.getMinecraft();
+        if (mc.thePlayer == null) return false;
+        ItemStack held = mc.thePlayer.getHeldItem();
+        if (held == null) return false;
+        ItemGlowModule g = ItemGlowModule.INSTANCE;
+        WeaponEffectsModule w = WeaponEffectsModule.INSTANCE;
+        return (g != null && g.isEnabled() && g.applies(held)) || (w != null && w.firstPersonActive(mc.thePlayer) && w.bladeGlow());
+    }
+
+    /**
      * Called right before the held item is drawn, with the hand transform applied. Glow, outline
      * and blade aura go here: they write no depth, so the real item drawn afterwards covers them
      * and they only show around its edges, never on top of the blade.
