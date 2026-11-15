@@ -222,9 +222,11 @@ public final class SocialModule extends Module {
             r.emote = -1;
             return;
         }
+        // the puppet needs the player's skin, which only client-side players have
+        if (!(p instanceof net.minecraft.client.entity.AbstractClientPlayer)) return;
         e.setCanceled(true);
         EmotesModule.pose(r.emote, t, pose.reset());
         float yaw = p.prevRenderYawOffset + (p.renderYawOffset - p.prevRenderYawOffset) * e.partialRenderTick;
-        Puppet.render(p, e.x, e.y, e.z, yaw, pose, e.partialRenderTick);
+        Puppet.render((net.minecraft.client.entity.AbstractClientPlayer) p, e.x, e.y, e.z, yaw, pose, e.partialRenderTick);
     }
 }
