@@ -100,9 +100,11 @@ public final class HandFx {
         if (model == null) return;
         GlStateManager.pushMatrix();
         // same chain RenderItem applies: 2x for flat items, the model's first-person transform,
-        // then 0.5x and a -0.5 offset into the model's 0..1 space
+        // then 0.5x and a -0.5 offset into the model's 0..1 space. The transform goes through
+        // Forge like the real item does: Forge wraps the vanilla item models and positions them
+        // with its own matrix, so the old vanilla call put the copies beside the real sword.
         if (!model.isGui3d()) GlStateManager.scale(2.0F, 2.0F, 2.0F);
-        model.getItemCameraTransforms().applyTransform(ItemCameraTransforms.TransformType.FIRST_PERSON);
+        model = cameraTransform(model);
         // the copies are drawn without the enchantment shine: its pass resets blending and turns
         // depth writes back on, which made later copies show as a second sword under the real one
         ItemStack plain = stack;
@@ -133,7 +135,7 @@ public final class HandFx {
         if (model == null) return;
         GlStateManager.pushMatrix();
         if (!model.isGui3d()) GlStateManager.scale(2.0F, 2.0F, 2.0F);
-        model.getItemCameraTransforms().applyTransform(ItemCameraTransforms.TransformType.FIRST_PERSON);
+        model = cameraTransform(model);
         GlStateManager.scale(0.5F, 0.5F, 0.5F);
         GlStateManager.translate(-0.5F, -0.5F, -0.5F);
         if (arcs) {
@@ -149,6 +151,12 @@ public final class HandFx {
         }
         if (weapon) record(w, w.bladeStart(), w.bladeEnd(), p.getSwingProgress(0f));
         GlStateManager.popMatrix();
+    }
+
+    /** The first-person transform exactly as RenderItem applies it (through Forge); returns the model to draw. */
+    static IBakedModel cameraTransform(IBakedModel model) {
+        IBakedModel m = net.minecraftforge.client.ForgeHooksClient.handleCameraTransforms(model, ItemCameraTransforms.TransformType.FIRST_PERSON);
+        return m != null ? m : model;
     }
 
     // ----------------------------------------------------------- glow

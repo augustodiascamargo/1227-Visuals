@@ -4,18 +4,26 @@ import net.m1227.module.PerformanceModule;
 import net.minecraft.entity.Entity;
 
 /**
- * 24 aura styles shared by Target Aura (on the player you fight) and
+ * 39 aura styles shared by Target Aura (on the player you fight) and
  * Player Aura (on yourself / others). Three kinds of building blocks:
  * per-frame sprites (follow the entity exactly), per-frame luminous lines
  * (geometry) and emitted particles (leave a wake when the entity moves).
  */
 public final class AuraLibrary {
-    public static final String[] STYLES = {
+    private static final String[] BASE = {
             "Orbit", "Helix", "Rings", "Crystals", "Magic Circle", "Chains",
             "Rune Circle", "Halo Stack", "Gyro Rings", "Lightning Cage", "Flame", "Pulse Waves",
             "Star Orbit", "Hex Shield", "Triangle Seal", "Vortex", "Fireflies", "Star Crown",
             "Ghost Wisps", "Comet Ring", "Atom", "Petal Storm", "Light Pillars", "Target Lock"
     };
+    /** 24 + 15 styles (the 15 newer ones are in {@link AuraStyles2}). */
+    public static final String[] STYLES = join(BASE, AuraStyles2.STYLES);
+
+    private static String[] join(String[] a, String[] b) {
+        String[] r = java.util.Arrays.copyOf(a, a.length + b.length);
+        System.arraycopy(b, 0, r, a.length, b.length);
+        return r;
+    }
 
     /** Values read from the module's settings each frame (reused, no allocation). */
     public static final class Params {
@@ -77,6 +85,7 @@ public final class AuraLibrary {
         else if (style.equals("Atom")) atom(ps, cx, cy + h * 0.55, cz, rad * 1.1, t, p);
         else if (style.equals("Petal Storm")) petals(ps, cx, cy, cz, h, rad, t, q, p);
         else if (style.equals("Light Pillars")) pillars(ps, cx, cy, cz, h, rad, t, st, p);
+        else if (AuraStyles2.has(style)) AuraStyles2.draw(style, ps, cx, cy, cz, h, rad, t, n, q, st, p);
         else targetLock(cx, cy, cz, h, rad, t, p);
     }
 

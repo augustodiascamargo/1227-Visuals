@@ -183,6 +183,28 @@ nada depende de Lunar ou de outro launcher.
 O modelo do Tung Sahur (ZAHUR.fbx + textura) e a butterfly knife (.blend) foram enviados pelo usuário. Antes de
 publicar o 1227, confira a licença de cada um (por exemplo, se exigem crédito ao autor) e coloque o crédito aqui.
 
+## Mudanças na v1.26.0
+
+- **Item Glow na espada normal, causa encontrada:**
+  - o Forge troca os modelos de item do Minecraft por uma versão própria, que posiciona o item na
+    mão com outra matriz;
+  - as cópias do brilho usavam a conta antiga do Minecraft, então saíam ao lado da espada de
+    verdade, como uma segunda "espada de luz";
+  - agora o brilho, o contorno, a aura de lâmina e os raios passam pela mesma função do Forge que
+    desenha o item (`ForgeHooksClient.handleCameraTransforms`).
+- **Braço ao defender com espadas 3D:** a pose de bloqueio gira a espada na frente da tela, e o braço
+  preso ao cabo aparecia inteiro ou torto. Agora as mãos somem enquanto a pose de bloqueio está
+  ativa, como no Minecraft, e voltam quando ela sai.
+- **Rotação do modelo:** com Rotation X/Y/Z alterados, as animações de sacar e de inspecionar
+  giravam em eixos tortos. Agora a rotação só muda a posição de repouso: as animações acontecem no
+  quadro normal da mão. Os golpes já não eram afetados.
+- **15 estilos novos de aura** (Target Aura e Player Aura, 39 no total):
+  - Celestial Rings, Crystal Orbit, Energy Cage, Floating Runes, Void Circle, Digital Lock;
+  - Spirit Halo, Arcane Sigil, Gravity Ring, Lightning Orbit, Neon Geometry, Shattered Glass;
+  - Floating Cards, Energy Core, Starfield.
+  - Todos são linhas e sprites que seguem o alvo e não atravessam paredes. Usam cor, opacidade,
+    tamanho, velocidade, raio, quantidade e arco-íris.
+
 ## Mudanças na v1.25.0
 
 - **Correção do Item Glow na espada normal:**

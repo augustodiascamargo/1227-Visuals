@@ -101,6 +101,11 @@ public final class WeaponMotion {
         return lastCrit;
     }
 
+    /** How far the sword-block pose is blended in (0..1). */
+    public float blockWeight() {
+        return block.pos;
+    }
+
     public int swings() {
         return count;
     }

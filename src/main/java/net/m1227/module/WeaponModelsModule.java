@@ -426,8 +426,20 @@ public final class WeaponModelsModule extends Module {
         // the draw / inspect animation turns only the weapon: the arms keep holding the grip
         GlStateManager.pushMatrix();
         if (!cur().equals("Butterfly Knife")) {
+            // the animations move in the normal hand frame: the Rotation settings only turn the
+            // weapon at rest (undo them, animate, redo them), so a turned model still twirls,
+            // tosses and draws straight instead of around tilted axes
+            float rx = rotX.f(), ry = rotY.f(), rz = rotZ.f();
+            GlStateManager.scale(1f / sa, 1f / sa, 1f / sa);
+            if (rz != 0f) GlStateManager.rotate(-rz, 0f, 0f, 1f);
+            if (ry != 0f) GlStateManager.rotate(-ry, 0f, 1f, 0f);
+            if (rx != 0f) GlStateManager.rotate(-rx, 1f, 0f, 0f);
             if (anim == null || !anim.has(net.m1227.weapons.WeaponAnimator.DRAW)) drawSpin();
             inspect(mc);
+            if (rx != 0f) GlStateManager.rotate(rx, 1f, 0f, 0f);
+            if (ry != 0f) GlStateManager.rotate(ry, 0f, 1f, 0f);
+            if (rz != 0f) GlStateManager.rotate(rz, 0f, 0f, 1f);
+            GlStateManager.scale(sa, sa, sa);
         }
         GlStateManager.translate(-gx, -gy, -OZ);
         len = im != null ? 1.30f : 1.30f * length.f() * (knife() ? 0.8f : 1f);
@@ -1441,6 +1453,11 @@ public final class WeaponModelsModule extends Module {
      * attached to the handle whatever the swing, rotation or size. Uses your skin's arm texture.
      */
     private void hands(Minecraft mc) {
+        // blocking turns the sword across the screen: an arm held to the grip would swing into
+        // view (a whole arm, or bent), so the hands are hidden while the block pose is on
+        float bw = motionInUse() ? motion.blockWeight() : 0f;
+        if (mc.thePlayer != null && mc.thePlayer.isBlocking() && bw < 0.05f) return; // Minecraft's own block pose
+        if (bw > 0.3f) return;
         if (net.m1227.render.FlatColor.active()) return; // glow / outline copies are the weapon only
         if (!showHands.on() || mc.thePlayer == null || mc.thePlayer.isInvisible()) return;
         boolean slim = "slim".equals(mc.thePlayer.getSkinType());

@@ -340,3 +340,31 @@ conferidos por leitura.
     - devem soltar de cima para baixo.
 63. **Desempenho:** com Performance HUD aberto, matar alguém com Pixel Disintegration e com Black
     Hole. Não deve haver travada grande.
+
+## v1.26.0
+
+- **Brilho:** a causa do brilho deslocado foi confirmada no código do Forge 1.8.9.
+  - `IPerspectiveAwareModel.MapWrapper.handlePerspective` usa
+    `TRSRTransformation.blockCornerToCenter`, diferente de `ItemCameraTransforms.applyTransform`.
+- **Rotação:** a conta da rotação de repouso foi conferida no papel:
+  T·Rx·Ry·Rz·S·(S⁻¹·Rz⁻¹·Ry⁻¹·Rx⁻¹·A·Rx·Ry·Rz·S) = T·A·Rx·Ry·Rz·S.
+  - A animação A acontece no quadro normal da mão, e a rotação fica só no modelo.
+- **Testes Java:** os 13 de armas e movimento continuam passando. A checagem de compilação não
+  acusou erros no código novo.
+
+**Não testado:** nada desta versão foi rodado dentro do Minecraft.
+
+### Para testar
+64. **Item Glow com a espada normal** (Weapon Models desligado), parado, andando e golpeando:
+    - o brilho deve ficar só em volta da espada;
+    - com Outline também;
+    - com Weapon Effects › blade glow, a aura deve ficar em cima da lâmina.
+65. **Espada 3D, defendendo:**
+    - com Smooth e com Instant, nenhum braço deve aparecer voando;
+    - ao soltar, as mãos voltam.
+66. **Rotação:** mude Rotation X, Y e Z (por exemplo 90°) e depois:
+    - saque (troque de slot): a animação deve ser a mesma de antes, só com o modelo girado;
+    - inspecione com cada estilo;
+    - golpeie.
+67. **Target Aura e Player Aura:** cada um dos 15 estilos novos.
+    - Atrás de uma parede, a aura não deve aparecer.
