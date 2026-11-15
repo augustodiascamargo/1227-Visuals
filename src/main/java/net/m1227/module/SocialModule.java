@@ -10,7 +10,6 @@ import net.m1227.social.LinkProtocol;
 import net.m1227.social.SocialLink;
 import net.m1227.vfx.Puppet;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.entity.AbstractClientPlayer;
 import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.client.renderer.GlStateManager;
 import net.minecraft.client.renderer.entity.RenderManager;
@@ -22,8 +21,10 @@ import org.lwjgl.opengl.GL11;
 
 /**
  * 1227 Link: see the emotes, dances and cosmetics (Halo, Aura Hat, Wings) of other 1227 players,
- * and let them see yours. Needs the 1227 Relay plugin on the server (server/1227-relay); without
- * it nothing is exchanged and everything else in 1227 works as usual.
+ * and let them see yours. Two routes: the online relay (server/1227-cloud-relay, no plugin on the
+ * Minecraft server needed, like Lunar's own service) and the 1227 Relay plugin
+ * (server/1227-relay) on servers that have it. Without either nothing is exchanged and everything
+ * else in 1227 works as usual.
  *
  * Shared cosmetics are drawn with YOUR shape and style settings for that cosmetic, in THEIR colours.
  * Viewing is under your control: emotes, each cosmetic, the 1227 badge and the number of players
@@ -33,6 +34,8 @@ public final class SocialModule extends Module {
     public static SocialModule INSTANCE;
     private final Setting.Bool shareEmotes, shareCosmetics, seeEmotes, seeCosmetics, seeHalo, seeHat, seeWings, badge;
     private final Setting.Num maxPlayers;
+    private final Setting.Bool cloud, plugin;
+    private final Setting.Text relay;
     private final Puppet.Pose pose = new Puppet.Pose();
     // nearest linked players drawn this frame
     private final int[] drawnIds = new int[64];
@@ -40,8 +43,11 @@ public final class SocialModule extends Module {
     private final double[] d2s = new double[64];
 
     public SocialModule() {
-        super("1227 Link", "See other 1227 players' emotes and cosmetics (server needs the 1227 Relay plugin).", Category.COSMETICS, true);
+        super("1227 Link", "See other 1227 players' emotes and cosmetics, through the online relay or a server plugin.", Category.COSMETICS, true);
         INSTANCE = this;
+        cloud = add(new Setting.Bool("Online relay (no server plugin needed)", true));
+        relay = add(new Setting.Text("Relay address", "", 200, "wss://1227-link.<you>.workers.dev")).showIf(() -> cloud.on());
+        plugin = add(new Setting.Bool("Use the server's 1227 Relay plugin when there is one", true));
         shareEmotes = add(new Setting.Bool("Share my emotes", true));
         shareCosmetics = add(new Setting.Bool("Share my cosmetics", true));
         seeEmotes = add(new Setting.Bool("See other players' emotes", true));
@@ -56,9 +62,30 @@ public final class SocialModule extends Module {
 
     private void status() {
         SocialLink l = SocialLink.INSTANCE;
-        String s = l.linked ? "Linked" + (l.relayName.isEmpty() ? "" : " (" + l.relayName + ")") + ": " + l.remotes.size() + " other 1227 players"
-                : Minecraft.getMinecraft().isSingleplayer() ? "Singleplayer: nothing to share" : "This server has no 1227 Relay plugin";
-        Notifier.post(Notifier.Kind.SYSTEM, "1227 Link", s, l.linked ? Notifier.GOOD : Notifier.INFO, 3200);
+        Minecraft mc = Minecraft.getMinecraft();
+        String s;
+        if (mc.isSingleplayer() || mc.getCurrentServerData() == null) {
+            s = "Singleplayer: nothing to share";
+        } else {
+            String routes = (l.pluginLinked ? "server plugin" + (l.relayName.isEmpty() ? "" : " (" + l.relayName + ")") : "")
+                    + (l.pluginLinked && net.m1227.social.CloudLink.INSTANCE.linked() ? " + " : "")
+                    + (net.m1227.social.CloudLink.INSTANCE.linked() ? "online relay" : "");
+            s = l.linked() ? "Linked via " + routes + ": " + l.remotes.size() + " other 1227 players"
+                    : "Not linked. Online relay: " + net.m1227.social.CloudLink.INSTANCE.status + ". Server plugin: not found";
+        }
+        Notifier.post(Notifier.Kind.SYSTEM, "1227 Link", s, l.linked() ? Notifier.GOOD : Notifier.INFO, 4500);
+    }
+
+    public boolean cloudOn() {
+        return cloud.on();
+    }
+
+    public String relayUrl() {
+        return relay.get();
+    }
+
+    public boolean pluginOn() {
+        return plugin.on();
     }
 
     public boolean shareEmotes() {
@@ -89,7 +116,7 @@ public final class SocialModule extends Module {
     public void onWorld(RenderWorldLastEvent e) {
         Minecraft mc = Minecraft.getMinecraft();
         drawnCount = 0;
-        if (mc.theWorld == null || mc.thePlayer == null || !SocialLink.INSTANCE.linked) return;
+        if (mc.theWorld == null || mc.thePlayer == null || !SocialLink.INSTANCE.linked()) return;
         // nearest linked players first (insertion into a small fixed array)
         double[] d2s = this.d2s;
         int limit = Math.min(drawnIds.length, maxPlayers.i());
@@ -180,9 +207,7 @@ public final class SocialModule extends Module {
     public void onPlayer(RenderPlayerEvent.Pre e) {
         Minecraft mc = Minecraft.getMinecraft();
         EntityPlayer p = e.entityPlayer;
-        if (!(p instanceof AbstractClientPlayer)) return;
-        AbstractClientPlayer clientPlayer = (AbstractClientPlayer) p;
-        if (p == mc.thePlayer || !seeEmotes.on() || !SocialLink.INSTANCE.linked) return;
+        if (p == mc.thePlayer || !seeEmotes.on() || !SocialLink.INSTANCE.linked()) return;
         SocialLink.Remote r = SocialLink.INSTANCE.remotes.get(p.getUniqueID());
         if (r == null || r.emote < 0) return;
         float t = (System.nanoTime() - r.emoteStart) / 1e9f;
@@ -200,6 +225,6 @@ public final class SocialModule extends Module {
         e.setCanceled(true);
         EmotesModule.pose(r.emote, t, pose.reset());
         float yaw = p.prevRenderYawOffset + (p.renderYawOffset - p.prevRenderYawOffset) * e.partialRenderTick;
-        Puppet.render(clientPlayer, e.x, e.y, e.z, yaw, pose, e.partialRenderTick);
+        Puppet.render(p, e.x, e.y, e.z, yaw, pose, e.partialRenderTick);
     }
 }

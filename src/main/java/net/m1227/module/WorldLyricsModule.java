@@ -284,13 +284,19 @@ public final class WorldLyricsModule extends Module {
 
     /** A word breaking into its letters, each flying off on its own. */
     private void scatterLetters(W w) {
-        int n = Math.min(14, w.text.length());
+        // copy the word first: its own (now free) slot must never be reused while we read it
+        final String text = w.text;
+        final double x = w.x, y = w.y, z = w.z;
+        final float size = w.size;
+        final int color = w.color;
+        if (text == null) return;
+        int n = Math.min(14, text.length());
         for (int i = 0; i < n; i++) {
-            char c = w.text.charAt(i);
+            char c = text.charAt(i);
             if (c == ' ') continue;
             W l = null;
             for (W o : pool) {
-                if (!o.alive) {
+                if (!o.alive && o != w) {
                     l = o;
                     break;
                 }
@@ -299,17 +305,17 @@ public final class WorldLyricsModule extends Module {
             l.alive = true;
             l.letter = true;
             l.text = String.valueOf(c);
-            double off = (i - n / 2.0) * 0.18 * w.size;
-            l.x = w.x + off;
-            l.y = w.y;
-            l.z = w.z;
+            double off = (i - n / 2.0) * 0.18 * size;
+            l.x = x + off;
+            l.y = y;
+            l.z = z;
             l.vx = (Math.random() - 0.5) * 2.4;
             l.vy = Math.random() * 1.6;
             l.vz = (Math.random() - 0.5) * 2.4;
             l.age = 0f;
             l.life = 0.9f + (float) Math.random() * 0.6f;
-            l.size = w.size;
-            l.color = w.color;
+            l.size = size;
+            l.color = color;
             l.phase = (float) (Math.random() * 6);
             l.blocked = false;
         }

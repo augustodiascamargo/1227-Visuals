@@ -1,0 +1,15 @@
+ashen-reaver.bbmodel
+butterfly-knife/BKTextureMap.png
+butterfly-knife/ps1-butterfly-knife.fbx
+butterfly-knife/ps1-butterfly-knife.fbx.1227.json
+dreaded-blade.bbmodel
+gravewake-blade.bbmodel
+iron-sword.bbmodel
+karambit/karambit.gltf
+karambit/karambit.gltf.1227.json
+m48-kukri.bbmodel
+monkey-sword.bbmodel
+obsidian-energy-sword.bbmodel
+sculk-greatsword.bbmodel
+trollhunters-sword-of-daylight.bbmodel
+trollhunters-sword-of-daylight.bbmodel.1227.json

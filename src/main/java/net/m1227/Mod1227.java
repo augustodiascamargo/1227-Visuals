@@ -26,7 +26,7 @@ import org.apache.logging.log4j.Logger;
 public class Mod1227 {
     public static final String MODID = "m1227";
     public static final String NAME = "1227";
-    public static final String VERSION = "1.22.0";
+    public static final String VERSION = "1.23.0";
     public static final Logger LOGGER = LogManager.getLogger(NAME);
 
     /** Forge's config folder (set in preInit, before modules are created). */
@@ -80,6 +80,9 @@ public class Mod1227 {
         net.m1227.social.SocialLink.INSTANCE.init();
         MinecraftForge.EVENT_BUS.register(net.m1227.social.SocialLink.INSTANCE);
         MinecraftForge.EVENT_BUS.register(net.m1227.vfx.CubeBurst.INSTANCE);
+        // your own weapon models (config/1227/weapons), read in the background; third-person layer
+        net.m1227.weapons.WeaponLibrary.scan(null);
+        MinecraftForge.EVENT_BUS.register(new net.m1227.weapons.HeldWeaponLayer.Hook());
         ClientCommandHandler.instance.registerCommand(new Command1227());
 
         Runtime.getRuntime().addShutdownHook(new Thread(new Runnable() {
@@ -98,5 +101,6 @@ public class Mod1227 {
         ConfigManager.tick();
         net.m1227.music.NowPlaying.tick();
         net.m1227.lyrics.LyricsService.tick();
+        net.m1227.weapons.WeaponLibrary.tick();
     }
 }

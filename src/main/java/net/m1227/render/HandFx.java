@@ -72,8 +72,13 @@ public final class HandFx {
         boolean weapon = w != null && w.firstPersonActive(p) && w.bladeGlow();
         net.m1227.module.WeaponModelsModule wm = net.m1227.module.WeaponModelsModule.INSTANCE;
         boolean custom = wm != null && wm.replaces(stack);
-        // glow copies redraw the vanilla model, which would not match a custom 3D model
-        boolean glow = g != null && g.isEnabled() && g.applies(stack) && !custom;
+        boolean glow = g != null && g.isEnabled() && g.applies(stack);
+        if (custom) {
+            // 1.22.1: with a Weapon Models 3D sword the copies are that 3D model (flat colour), in its
+            // own pose and animation, so the glow follows the real silhouette instead of the vanilla one
+            if (glow) modelCopies(mc, stack, wm, g);
+            return;
+        }
         if (!weapon && !glow) return;
         IBakedModel model = mc.getRenderItem().getItemModelMesher().getItemModel(stack);
         if (model == null) return;
@@ -131,6 +136,46 @@ public final class HandFx {
     }
 
     // ----------------------------------------------------------- glow
+
+    /**
+     * Glow and outline around a Weapon Models 3D sword: the model drawn as a flat silhouette,
+     * shifted by a few screen pixels in 8 (or 16) directions, before the real model, with no depth
+     * writes. The real model then covers the middle and only the rim stays visible.
+     */
+    private void modelCopies(Minecraft mc, ItemStack stack, net.m1227.module.WeaponModelsModule wm, ItemGlowModule g) {
+        float pulse = g.pulse(time);
+        int c = g.color(time);
+        ScreenOffset.begin();
+        try {
+            if (g.glowOn()) {
+                int layers = g.layers();
+                float reach = (1.5f + g.spread() * 40f) * pxScale(mc);
+                for (int k = layers; k >= 1; k--) {
+                    float rad = reach * k / layers;
+                    float a = Math.min(1f, g.intensity() * pulse * (1.1f - k / (float) (layers + 1)) * 0.35f);
+                    for (int i = 0; i < 8; i++) {
+                        double ang = Math.PI * 2 * (i + (k & 1) * 0.5) / 8;
+                        ScreenOffset.shift((float) Math.cos(ang) * rad, (float) Math.sin(ang) * rad, 0f);
+                        wm.renderSilhouette(mc, stack, c, a);
+                    }
+                }
+            }
+            if (g.outlineOn()) {
+                float a = Math.min(1f, 0.4f + g.intensity()) * pulse;
+                float w = g.outlineWidth() / 0.03f * pxScale(mc);
+                int n = w > 2.5f ? 16 : 8;
+                for (int i = 0; i < n; i++) {
+                    double ang = Math.PI * 2 * i / n;
+                    ScreenOffset.shift((float) Math.cos(ang) * w, (float) Math.sin(ang) * w, 0f);
+                    wm.renderSilhouette(mc, stack, c, a);
+                }
+            }
+        } finally {
+            ScreenOffset.end();
+            GlStateManager.depthMask(true);
+            GlStateManager.tryBlendFuncSeparate(770, 771, 1, 0);
+        }
+    }
 
     /** Blending and depth for one copy (set again every copy, in case the item changed them). */
     private static void copyState(boolean glow) {

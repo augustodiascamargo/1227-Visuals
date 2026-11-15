@@ -14,12 +14,11 @@ import net.minecraft.item.ItemSword;
 import org.lwjgl.opengl.GL11;
 
 /**
- * Original 3D sword models for the first-person view, built from code
- * (extruded faceted blades, guards and grips) with simple directional
- * shading and optional emissive parts. They replace only how YOUR sword
- * looks in first person: reach, timing and hitboxes are untouched, other
- * players still see the normal sword, and in third person Minecraft's
- * sword is drawn (1.8.9 has no hook to swap held-item models there).
+ * 3D sword models: 18 originals built from code (extruded faceted blades, guards and grips)
+ * plus your own models from config/1227/weapons (.bbmodel, .gltf/.glb, .fbx, .obj), with their
+ * textures and their own animations. They change only how swords LOOK on your screen, in first
+ * person and (optionally) in third person: reach, timing and hitboxes are untouched, and other
+ * players see whatever their own game shows. One model for every sword, or one per sword type.
  */
 public final class WeaponModelsModule extends Module {
     public static WeaponModelsModule INSTANCE;
@@ -101,11 +100,246 @@ public final class WeaponModelsModule extends Module {
         idleMotion = add(new Setting.Bool("Idle motion", true));
         sprintPose = add(new Setting.Bool("Sprint pose", true));
         animSpeed = add(new Setting.Num("Animation speed", 1.0, 0.5, 2.0, 0.05, "x"));
+        thirdPerson = add(new Setting.Bool("Show in third person", true));
+        othersToo = add(new Setting.Bool("Also on other players' swords", false)).showIf(() -> thirdPerson.on());
+        modelStore = add(new Setting.Text("Model file", "", 120, "")).showIf(() -> false);
+        for (int i = 0; i < TIERS.length; i++) {
+            tierModes[i] = add(new Setting.Mode(TIERS[i] + " model", SAME, withSame(MODELS)));
+            tierStores[i] = add(new Setting.Text(TIERS[i] + " model file", "", 120, "")).showIf(() -> false);
+        }
+    }
+
+    // ------------------------------------------------------------- model choice (built-in or imported)
+
+    public static final String SAME = "Same as Model";
+    public static final String[] TIERS = {"Wooden sword", "Stone sword", "Iron sword", "Golden sword", "Diamond sword"};
+    private static final String[] TIER_MATERIALS = {"WOOD", "STONE", "IRON", "GOLD", "EMERALD"};
+    private final Setting.Bool thirdPerson, othersToo;
+    /** The Mode settings only keep values from their list, and imported names are listed only
+     *  after the folder is read, so the chosen names are also kept as plain text. */
+    private final Setting.Text modelStore;
+    private final Setting.Mode[] tierModes = new Setting.Mode[TIERS.length];
+    private final Setting.Text[] tierStores = new Setting.Text[TIERS.length];
+    private boolean listReady;
+    /** Model being drawn right now (null: the one for the held item). */
+    private String active;
+    /** Editor: model shown in the preview instead of the chosen one. */
+    private String previewModel;
+
+    public static boolean isBuiltIn(String n) {
+        for (String m : MODELS) if (m.equalsIgnoreCase(n)) return true;
+        return false;
+    }
+
+    private static String[] withSame(String[] list) {
+        String[] r = new String[list.length + 1];
+        r[0] = SAME;
+        System.arraycopy(list, 0, r, 1, list.length);
+        return r;
+    }
+
+    /** Every model name: built-in first, then the imported ones. */
+    public String[] allModels() {
+        java.util.List<String> l = new java.util.ArrayList<>(java.util.Arrays.asList(MODELS));
+        for (net.m1227.weapons.WeaponLibrary.Entry e : net.m1227.weapons.WeaponLibrary.entries()) l.add(e.name);
+        return l.toArray(new String[0]);
+    }
+
+    /** Called (main thread) when the weapons folder has been read: lists the imported models. */
+    public void refreshModelList() {
+        String[] all = allModels();
+        String want = !modelStore.get().isEmpty() ? modelStore.get() : model.get();
+        model.setOptions(all);
+        if (java.util.Arrays.asList(all).contains(want)) model.setSilently(want);
+        String[] tiers = withSame(all);
+        for (int i = 0; i < TIERS.length; i++) {
+            String w = !tierStores[i].get().isEmpty() ? tierStores[i].get() : tierModes[i].get();
+            tierModes[i].setOptions(tiers);
+            if (java.util.Arrays.asList(tiers).contains(w)) tierModes[i].setSilently(w);
+        }
+        listReady = true;
+    }
+
+    private void syncChoices() {
+        if (!listReady) return;
+        if (!model.get().equals(modelStore.get())) modelStore.set(model.get());
+        for (int i = 0; i < TIERS.length; i++) if (!tierModes[i].get().equals(tierStores[i].get())) tierStores[i].set(tierModes[i].get());
+    }
+
+    public Setting.Mode modelSetting() {
+        return model;
+    }
+
+    public Setting.Mode tierSetting(int i) {
+        return tierModes[i];
+    }
+
+    /** The model drawn for this item (per sword type when set, else the main choice). */
+    public String modelFor(ItemStack st) {
+        syncChoices();
+        if (st != null && st.getItem() instanceof ItemSword) {
+            String mat = ((ItemSword) st.getItem()).getToolMaterialName();
+            for (int i = 0; i < TIERS.length; i++) {
+                if (TIER_MATERIALS[i].equals(mat) && !tierModes[i].is(SAME)) return tierModes[i].get();
+            }
+        }
+        return model.get();
+    }
+
+    private String cur() {
+        if (active != null) return active;
+        Minecraft mc = Minecraft.getMinecraft();
+        return modelFor(mc.thePlayer != null ? mc.thePlayer.getHeldItem() : null);
+    }
+
+    /** The imported model behind a name, or null for built-in ones. */
+    public static net.m1227.weapons.WeaponLibrary.Entry imported(String name) {
+        return isBuiltIn(name) ? null : net.m1227.weapons.WeaponLibrary.byName(name);
+    }
+
+    public void setPreviewModel(String m) {
+        previewModel = m;
+    }
+
+    public String previewModel() {
+        return previewModel != null ? previewModel : model.get();
+    }
+
+    // ------------------------------------------------------------- imported models: placement and animation
+
+    /** Hold point in item space: the built-in grip station (hands are drawn there). */
+    private static final float GRIP_STATION = 0.17f * 1.30f;
+    private static final float[] ITEM_FRAME = {AX, AY, 0f, 0f, NX, NY, 0f, 0f, 0f, 0f, 1f, 0f,
+            OX + AX * GRIP_STATION, OY + AY * GRIP_STATION, OZ, 1f};
+    private float lastSwingFp;
+
+    private static float seconds() {
+        return (System.nanoTime() % 1_000_000_000_000L) / 1e9f;
+    }
+
+    private static long ticks() {
+        Minecraft mc = Minecraft.getMinecraft();
+        return mc.theWorld != null ? mc.theWorld.getTotalWorldTime() : System.currentTimeMillis() / 50L;
+    }
+
+    /** Draws an imported model in item space with the given animator (null = rest pose). */
+    private boolean drawImported(net.m1227.weapons.WeaponLibrary.Entry e, net.m1227.weapons.WeaponAnimator anim) {
+        if (e == null || !e.ready()) return false;
+        float[] W = ITEM_FRAME.clone();
+        net.m1227.weapons.M4.mul(W, e.matrix, W);
+        net.m1227.weapons.WModel.Pose pose = null;
+        if (anim != null) {
+            anim.setSpeed(animSpeed.f());
+            pose = anim.pose(seconds());
+        }
+        e.draw(pose != null ? e.model.boneMatrices(pose) : e.restBones, W, ticks(), 1f);
+        return true;
+    }
+
+    // ------------------------------------------------------------- third person
+
+    private final java.util.Map<String, net.m1227.weapons.WeaponAnimator> idleAnims = new java.util.HashMap<>();
+
+    /** True when this entity's held sword is drawn with a weapon model in third person. */
+    public boolean thirdPersonFor(net.minecraft.entity.EntityLivingBase e, ItemStack st) {
+        if (!isEnabled() || !thirdPerson.on() || st == null || !(st.getItem() instanceof ItemSword)) return false;
+        Minecraft mc = Minecraft.getMinecraft();
+        if (e != mc.thePlayer && !othersToo.on()) return false;
+        String md = modelFor(st);
+        net.m1227.weapons.WeaponLibrary.Entry im = imported(md);
+        if (im != null) return im.ready() && im.profile.thirdPerson;
+        return true;
+    }
+
+    /** Called by the held-item layer, already in the hand's space (as Minecraft's own item). */
+    public void renderThirdPerson(net.minecraft.entity.EntityLivingBase e, ItemStack st) {
+        Minecraft mc = Minecraft.getMinecraft();
+        String md = modelFor(st);
+        IBakedModel m = mc.getRenderItem().getItemModelMesher().getItemModel(st);
+        active = md;
+        GlStateManager.pushMatrix();
+        try {
+            if (m != null) {
+                if (!m.isGui3d()) GlStateManager.scale(2.0F, 2.0F, 2.0F);
+                m.getItemCameraTransforms().applyTransform(ItemCameraTransforms.TransformType.THIRD_PERSON);
+            }
+            GlStateManager.scale(0.5F, 0.5F, 0.5F);
+            GlStateManager.translate(-0.5F, -0.5F, -0.5F);
+            float gx = OX + AX * 0.2f, gy = OY + AY * 0.2f;
+            GlStateManager.translate(gx, gy, OZ);
+            float sa = scaleAll.f();
+            GlStateManager.scale(sa, sa, sa);
+            GlStateManager.translate(-gx, -gy, -OZ);
+            net.m1227.weapons.WeaponLibrary.Entry im = imported(md);
+            if (im != null) {
+                net.m1227.weapons.WeaponAnimator a = e == mc.thePlayer ? im.anim : idleAnim(im);
+                drawImported(im, a);
+            } else {
+                drawBuiltIn(md, null, false);
+            }
+        } finally {
+            GlStateManager.popMatrix();
+            active = null;
+            GlStateManager.enableTexture2D();
+            GlStateManager.enableCull();
+            GlStateManager.color(1f, 1f, 1f, 1f);
+            net.m1227.render.FlatColor.color(1f, 1f, 1f, 1f);
+        }
+    }
+
+    private net.m1227.weapons.WeaponAnimator idleAnim(net.m1227.weapons.WeaponLibrary.Entry e) {
+        net.m1227.weapons.WeaponAnimator a = idleAnims.get(e.name);
+        if (a == null) {
+            a = new net.m1227.weapons.WeaponAnimator();
+            idleAnims.put(e.name, a);
+        }
+        a.bind(e.model, e.profile);
+        return a;
+    }
+
+    /** Built-in model in item space (no hands); used for third person. */
+    private void drawBuiltIn(String md, ItemStack stack, boolean fp) {
+        thick = size.f();
+        len = 1.30f * length.f() * (knife() ? 0.8f : 1f);
+        GlStateManager.disableTexture2D();
+        GlStateManager.disableLighting();
+        GlStateManager.disableCull();
+        GlStateManager.enableDepth();
+        GlStateManager.depthMask(!net.m1227.render.FlatColor.active());
+        GlStateManager.depthFunc(GL11.GL_LEQUAL);
+        GlStateManager.enableBlend();
+        GlStateManager.tryBlendFuncSeparate(770, 771, 1, 0);
+        GlStateManager.shadeModel(GL11.GL_SMOOTH);
+        int b = primary.rgb(), h = secondary.rgb(), g = glowRgb();
+        tipColor = -1;
+        int fi = java.util.Arrays.asList(FINISHES).indexOf(finish.get());
+        if (fi > 0) {
+            int[] fc = FINISH_COLORS[fi];
+            b = fc[0];
+            tipColor = fc[1];
+            h = fc[2];
+            if (!matchWeaponFx.on()) g = fc[3];
+        }
+        widthBoost = md.equals("Cleaver") ? 0f : (md.equals("Rune Greatsword") || md.equals("Holy Claymore") || md.equals("Obsidian Edge")) ? 0.4f : 1f;
+        if (md.equals("Butterfly Knife")) {
+            net.m1227.vfx.MeshAssets.Rigid k = net.m1227.vfx.MeshAssets.knife();
+            if (k != null) butterflyMesh(k, 0f, b, h, g);
+            else katana(b, h, g);
+        } else {
+            models(md, b, h, g);
+        }
+        GlStateManager.shadeModel(GL11.GL_FLAT);
+        GlStateManager.enableTexture2D();
+        GlStateManager.enableLighting();
+        GlStateManager.disableBlend();
+        GlStateManager.depthMask(true);
     }
 
     private final Setting.Mode inspectStyle, drawAnim;
     private final Setting.Bool altSwings, idleMotion, sprintPose;
     private final Setting.Num animSpeed;
+    /** Animator of the imported model being drawn in first person (null for built-in models). */
+    private net.m1227.weapons.WeaponAnimator modelAnim;
     /** Draw (equip) animation progress, 0 just drawn .. 1 done. */
     private float drawT = 1f;
     private long drawStart = -1L, lastRenderNanos;
@@ -133,7 +367,28 @@ public final class WeaponModelsModule extends Module {
 
     /** Draws the model with the item's own first-person transform (call where the item would be drawn). */
     public void renderFirstPerson(Minecraft mc, ItemStack stack) {
+        active = modelFor(stack);
+        try {
+            renderFirstPerson0(mc, stack);
+        } finally {
+            active = null;
+        }
+    }
+
+    private void renderFirstPerson0(Minecraft mc, ItemStack stack) {
+        net.m1227.weapons.WeaponLibrary.tick();
+        net.m1227.weapons.WeaponLibrary.Entry im = imported(cur());
+        net.m1227.weapons.WeaponAnimator anim = im != null && im.ready() ? im.anim : null;
+        long ds = drawStart;
         updateDraw(mc);
+        float now = seconds();
+        if (anim != null) {
+            if (drawStart != ds && anim.has(net.m1227.weapons.WeaponAnimator.DRAW)) anim.trigger(net.m1227.weapons.WeaponAnimator.DRAW, now);
+            float sp = mc.thePlayer != null ? mc.thePlayer.getSwingProgress(1f) : 0f;
+            if (sp > 0f && (lastSwingFp == 0f || sp < lastSwingFp - 0.2f)) anim.trigger(net.m1227.weapons.WeaponAnimator.SWING, now);
+            lastSwingFp = sp;
+        }
+        modelAnim = anim;
         IBakedModel m = mc.getRenderItem().getItemModelMesher().getItemModel(stack);
         GlStateManager.pushMatrix();
         GlStateManager.translate(posX.f(), posY.f(), posZ.f());
@@ -154,23 +409,23 @@ public final class WeaponModelsModule extends Module {
         GlStateManager.scale(sa, sa, sa);
         // the draw / inspect animation turns only the weapon: the arms keep holding the grip
         GlStateManager.pushMatrix();
-        if (!model.is("Butterfly Knife")) {
-            drawSpin();
+        if (!cur().equals("Butterfly Knife")) {
+            if (anim == null || !anim.has(net.m1227.weapons.WeaponAnimator.DRAW)) drawSpin();
             inspect(mc);
         }
         GlStateManager.translate(-gx, -gy, -OZ);
-        len = 1.30f * length.f() * (knife() ? 0.8f : 1f);
+        len = im != null ? 1.30f : 1.30f * length.f() * (knife() ? 0.8f : 1f);
         GlStateManager.disableTexture2D();
         GlStateManager.disableLighting();
         GlStateManager.disableCull();
         // other hand effects can leave depth writes off; solid blades need them or they look see-through
         GlStateManager.enableDepth();
-        GlStateManager.depthMask(true);
+        GlStateManager.depthMask(!net.m1227.render.FlatColor.active());
         GlStateManager.depthFunc(GL11.GL_LEQUAL);
         GlStateManager.enableBlend();
         GlStateManager.tryBlendFuncSeparate(770, 771, 1, 0);
         GlStateManager.shadeModel(GL11.GL_SMOOTH);
-        String md = model.get();
+        String md = cur();
         int b = primary.rgb(), h = secondary.rgb(), g = glowRgb();
         tipColor = -1;
         int fi = java.util.Arrays.asList(FINISHES).indexOf(finish.get());
@@ -182,6 +437,25 @@ public final class WeaponModelsModule extends Module {
             if (!matchWeaponFx.on()) g = fc[3];
         }
         widthBoost = md.equals("Cleaver") ? 0f : (md.equals("Rune Greatsword") || md.equals("Holy Claymore") || md.equals("Obsidian Edge")) ? 0.4f : 1f;
+        if (im != null && drawImported(im, anim)) {
+            GlStateManager.disableTexture2D();
+            GlStateManager.disableLighting();
+            GlStateManager.disableCull();
+            GlStateManager.enableBlend();
+            GlStateManager.tryBlendFuncSeparate(770, 771, 1, 0);
+            GlStateManager.popMatrix();
+            GlStateManager.translate(-gx, -gy, -OZ);
+            hands(mc);
+            GlStateManager.shadeModel(GL11.GL_FLAT);
+            GlStateManager.enableTexture2D();
+            GlStateManager.enableLighting();
+            GlStateManager.enableCull();
+            GlStateManager.disableBlend();
+            GlStateManager.color(1f, 1f, 1f, 1f);
+            net.m1227.render.FlatColor.color(1f, 1f, 1f, 1f);
+            GlStateManager.popMatrix();
+            return;
+        }
         if (md.equals("Butterfly Knife")) {
             butterfly(mc, stack, b, h, g);
             GlStateManager.popMatrix();
@@ -193,7 +467,7 @@ public final class WeaponModelsModule extends Module {
             GlStateManager.enableCull();
             GlStateManager.disableBlend();
             GlStateManager.color(1f, 1f, 1f, 1f);
-            GL11.glColor4f(1f, 1f, 1f, 1f);
+            net.m1227.render.FlatColor.color(1f, 1f, 1f, 1f);
             GlStateManager.popMatrix();
             return;
         }
@@ -207,8 +481,24 @@ public final class WeaponModelsModule extends Module {
         GlStateManager.enableCull();
         GlStateManager.disableBlend();
         GlStateManager.color(1f, 1f, 1f, 1f);
-        GL11.glColor4f(1f, 1f, 1f, 1f);
+        net.m1227.render.FlatColor.color(1f, 1f, 1f, 1f);
         GlStateManager.popMatrix();
+    }
+
+    /**
+     * The held 3D model as a flat-colour silhouette, in the same place and pose as the real one
+     * (for Item Glow copies). Writes no depth, draws no hands. The caller sets the blending.
+     */
+    public void renderSilhouette(Minecraft mc, ItemStack stack, int rgb, float alpha) {
+        net.m1227.render.FlatColor.begin(rgb, alpha);
+        try {
+            renderFirstPerson(mc, stack);
+        } finally {
+            net.m1227.render.FlatColor.end();
+            GlStateManager.depthMask(true);
+            GlStateManager.color(1f, 1f, 1f, 1f);
+            GL11.glColor4f(1f, 1f, 1f, 1f);
+        }
     }
 
     /**
@@ -217,9 +507,34 @@ public final class WeaponModelsModule extends Module {
      * butterfly knife opening and closing.
      */
     public void renderPreview() {
+        active = previewModel();
+        try {
+            renderPreview0();
+        } finally {
+            active = null;
+        }
+    }
+
+    private void renderPreview0() {
         thick = size.f();
         len = 1.30f * length.f() * (knife() ? 0.8f : 1f);
-        String md = model.get();
+        String md = cur();
+        net.m1227.weapons.WeaponLibrary.Entry im = imported(md);
+        if (im != null) {
+            if (!im.ready()) return;
+            GlStateManager.pushMatrix();
+            float sa = scaleAll.f();
+            GlStateManager.scale(sa, sa, sa);
+            // centre the preview on the middle of the weapon
+            float lw = im.fit.lengthWith(im.profile), mid = (0.5f - im.fit.gripAt) * lw + im.profile.along;
+            GlStateManager.translate(-(OX + AX * (GRIP_STATION + mid)), -(OY + AY * (GRIP_STATION + mid)), -OZ);
+            drawImported(im, im.anim); // the editor sets up the lights (fixed to the screen)
+            GlStateManager.popMatrix();
+            GlStateManager.enableTexture2D();
+            GlStateManager.enableCull();
+            GlStateManager.color(1f, 1f, 1f, 1f);
+            return;
+        }
         int b = primary.rgb(), h = secondary.rgb(), g = glowRgb();
         tipColor = -1;
         int fi = java.util.Arrays.asList(FINISHES).indexOf(finish.get());
@@ -239,7 +554,7 @@ public final class WeaponModelsModule extends Module {
         GlStateManager.disableLighting();
         GlStateManager.disableCull();
         GlStateManager.enableDepth();
-        GlStateManager.depthMask(true);
+        GlStateManager.depthMask(!net.m1227.render.FlatColor.active());
         GlStateManager.depthFunc(GL11.GL_LEQUAL);
         GlStateManager.enableBlend();
         GlStateManager.tryBlendFuncSeparate(770, 771, 1, 0);
@@ -257,7 +572,7 @@ public final class WeaponModelsModule extends Module {
         GlStateManager.enableTexture2D();
         GlStateManager.enableCull();
         GlStateManager.color(1f, 1f, 1f, 1f);
-        GL11.glColor4f(1f, 1f, 1f, 1f);
+        net.m1227.render.FlatColor.color(1f, 1f, 1f, 1f);
         GlStateManager.popMatrix();
     }
 
@@ -344,7 +659,7 @@ public final class WeaponModelsModule extends Module {
             }
             extrude(ss, hw2, th2, cv, g, g, 0.32f / k * pulse, true);
         }
-        GlStateManager.depthMask(true);
+        GlStateManager.depthMask(!net.m1227.render.FlatColor.active());
         GlStateManager.tryBlendFuncSeparate(770, 771, 1, 0);
         OpenGlHelper.setLightmapTextureCoords(OpenGlHelper.lightmapTexUnit, lx, ly);
     }
@@ -627,7 +942,7 @@ public final class WeaponModelsModule extends Module {
     // ------------------------------------------------------------- knives
 
     private boolean knife() {
-        String m = model.get();
+        String m = cur();
         return m.equals("Karambit") || m.equals("Bayonet") || m.equals("Flip Knife") || m.equals("Huntsman")
                 || m.equals("Skeleton Knife") || m.equals("Push Dagger");
     }
@@ -674,6 +989,13 @@ public final class WeaponModelsModule extends Module {
         String st = inspectStyle.get();
         long dur = (long) ((st.equals("Show off") ? 2600L : st.equals("Toss") ? 1300L : 1600L) / animSpeed.f());
         boolean down = key != 0 && mc.currentScreen == null && net.m1227.core.InputManager.isDown(key);
+        net.m1227.weapons.WeaponAnimator ma = modelAnim;
+        if (ma != null && ma.has(net.m1227.weapons.WeaponAnimator.INSPECT)) {
+            // the model has its own inspect animation: play it instead of the built-in one
+            if (down && !inspectWasDown && !ma.busy(seconds())) ma.trigger(net.m1227.weapons.WeaponAnimator.INSPECT, seconds());
+            inspectWasDown = down;
+            return;
+        }
         if (down && !inspectWasDown && (inspectStart < 0L || now - inspectStart > dur + 100L)) inspectStart = now;
         inspectWasDown = down;
         if (inspectStart < 0L) return;
@@ -894,7 +1216,15 @@ public final class WeaponModelsModule extends Module {
     /** Classic, Two-handed, Heavy, Thrust, Flourish, Twin. */
     public String style() {
         if (holdMode.is("Classic")) return "Classic";
-        String m = model.get();
+        String m = cur();
+        net.m1227.weapons.WeaponLibrary.Entry im = imported(m);
+        if (im != null) {
+            String s = im.profile.style;
+            if (s != null && !s.equals("Auto") && !s.isEmpty()) return s;
+            if (!im.ready()) return "Classic";
+            float l = im.fit.lengthWith(im.profile);
+            return l >= 1.55f ? "Heavy" : l <= 0.95f ? "Thrust" : "Classic";
+        }
         if (m.equals("Katana") || m.equals("Holy Claymore")) return "Two-handed";
         if (m.equals("Cleaver") || m.equals("Obsidian Edge") || m.equals("Rune Greatsword")) return "Heavy";
         if (m.equals("Void Rapier") || m.equals("Butterfly Knife")) return "Thrust";
@@ -1037,15 +1367,16 @@ public final class WeaponModelsModule extends Module {
      * attached to the handle whatever the swing, rotation or size. Uses your skin's arm texture.
      */
     private void hands(Minecraft mc) {
+        if (net.m1227.render.FlatColor.active()) return; // glow / outline copies are the weapon only
         if (!showHands.on() || mc.thePlayer == null || mc.thePlayer.isInvisible()) return;
         boolean slim = "slim".equals(mc.thePlayer.getSkinType());
         mc.getTextureManager().bindTexture(mc.thePlayer.getLocationSkin());
         GlStateManager.enableTexture2D();
         GlStateManager.disableBlend();
         GlStateManager.enableDepth();
-        GlStateManager.depthMask(true);
+        GlStateManager.depthMask(!net.m1227.render.FlatColor.active());
         GL11.glBegin(GL11.GL_QUADS);
-        arm(model.is("Push Dagger") ? 0.035f : 0.17f, handAngle.f(), 40, 16, slim);
+        arm(cur().equals("Push Dagger") ? 0.035f : 0.17f, handAngle.f(), 40, 16, slim);
         if (twoHanded()) arm(0.05f, handAngle.f() + secondAngle.f(), 32, 48, slim);
         GL11.glEnd();
         GlStateManager.disableTexture2D();
@@ -1083,7 +1414,7 @@ public final class WeaponModelsModule extends Module {
 
     /** Quad a-b-c-d where a-b is the hand end (texture bottom) and c-d the far end (texture top). */
     private static void skinFace(float[] a, float[] b, float[] c, float[] d, float u, float v, float w, float h, float shade) {
-        GL11.glColor4f(shade, shade, shade, 1f);
+        net.m1227.render.FlatColor.color(shade, shade, shade, 1f);
         float u0 = u / 64f, u1 = (u + w) / 64f, v0 = v / 64f, v1 = (v + h) / 64f;
         GL11.glTexCoord2f(u0, v1);
         GL11.glVertex3f(a[0], a[1], a[2]);
@@ -1109,7 +1440,7 @@ public final class WeaponModelsModule extends Module {
         hw2[hw.length - 1] = 0f;
         th2[th.length - 1] = 0f;
         extrude(ss, hw2, th2, cv, g, 0xFFFFFF, alpha, true);
-        GlStateManager.depthMask(true);
+        GlStateManager.depthMask(!net.m1227.render.FlatColor.active());
         GlStateManager.tryBlendFuncSeparate(770, 771, 1, 0);
         OpenGlHelper.setLightmapTextureCoords(OpenGlHelper.lightmapTexUnit, lx, ly);
     }
@@ -1137,7 +1468,7 @@ public final class WeaponModelsModule extends Module {
             }
         }
         GL11.glEnd();
-        GlStateManager.depthMask(true);
+        GlStateManager.depthMask(!net.m1227.render.FlatColor.active());
         GlStateManager.tryBlendFuncSeparate(770, 771, 1, 0);
         OpenGlHelper.setLightmapTextureCoords(OpenGlHelper.lightmapTexUnit, lx, ly);
     }
@@ -1186,7 +1517,7 @@ public final class WeaponModelsModule extends Module {
             GL11.glBegin(GL11.GL_TRIANGLE_FAN);
             pt(s, 0f, 0f, 0f, p);
             float cr = ((c >> 16) & 255) / 255f * 0.8f, cg = ((c >> 8) & 255) / 255f * 0.8f, cb = (c & 255) / 255f * 0.8f;
-            GL11.glColor4f(cr, cg, cb, 1f);
+            net.m1227.render.FlatColor.color(cr, cg, cb, 1f);
             GL11.glVertex3f(p[0], p[1], p[2]);
             for (int k = 0; k <= n; k++) {
                 float[] a = sec[k % n];
@@ -1216,7 +1547,7 @@ public final class WeaponModelsModule extends Module {
             GL11.glBegin(GL11.GL_TRIANGLE_FAN);
             pt(s, 0f, 0f, 0f, p);
             float k2 = end == 0 ? 0.7f : 0.95f;
-            GL11.glColor4f(((c >> 16) & 255) / 255f * k2, ((c >> 8) & 255) / 255f * k2, (c & 255) / 255f * k2, 1f);
+            net.m1227.render.FlatColor.color(((c >> 16) & 255) / 255f * k2, ((c >> 8) & 255) / 255f * k2, (c & 255) / 255f * k2, 1f);
             GL11.glVertex3f(p[0], p[1], p[2]);
             for (int k = 0; k <= n; k++) {
                 double a = Math.PI * 2 * k / n;
@@ -1273,7 +1604,7 @@ public final class WeaponModelsModule extends Module {
         float r = Math.min(1f, ((col >> 16) & 255) / 255f * shade + spec);
         float g = Math.min(1f, ((col >> 8) & 255) / 255f * shade + spec);
         float bl = Math.min(1f, (col & 255) / 255f * shade + spec);
-        GL11.glColor4f(r, g, bl, alpha);
+        net.m1227.render.FlatColor.color(r, g, bl, alpha);
         GL11.glVertex3f(a[0], a[1], a[2]);
         GL11.glVertex3f(b[0], b[1], b[2]);
         GL11.glVertex3f(c[0], c[1], c[2]);

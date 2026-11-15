@@ -44,3 +44,14 @@ jobs:
         with:
           name: 1227-relay-plugin
           path: server/1227-relay/target/1227-relay-*.jar
+
+  cloud-relay-test:
+    # server/1227-cloud-relay: the online relay for 1227 Link (Cloudflare Worker), tested with a simulated runtime
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Test the relay
+        run: cd server/1227-cloud-relay && node --test test/relay.test.mjs

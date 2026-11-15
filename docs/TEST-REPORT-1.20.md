@@ -205,3 +205,81 @@ Feito aqui:
       asas com as cores de cada um, e o selo;
     - um sai e volta: o outro deve voltar a ver;
     - num servidor sem o plugin, "Connection status" deve dizer que não há relay.
+
+## v1.22.1
+
+Feito aqui:
+- **Compilação de checagem** de todo o código (236 arquivos), com análise de fluxo: nenhum erro do
+  1227.
+- **Testes Java:**
+  - `WsClientTest` (2, novos): handshake WebSocket, frames binários com máscara, ping/pong, close, e o
+    id da sala;
+  - `LinkTest` (3);
+  - os anteriores continuam passando.
+- **Relay online:**
+  - 3 testes em Node com runtime simulado: repasse, estado para quem entra depois, LEAVE, mensagens
+    inválidas, limite de 8/s, reconexão;
+  - ida e volta de bytes entre Java e JavaScript conferida.
+- **TLS:** as 9 raízes empacotadas carregam no Java 8.
+- **Crash do World Lyrics:** causa encontrada no código (a palavra reaproveitava o próprio espaço como
+  primeira letra), corrigida.
+
+**Não testado:** nada desta versão foi rodado dentro do Minecraft, e o relay não foi publicado numa
+conta Cloudflare.
+
+### Para testar
+43. **World Lyrics** com "Scatter into letters", em todos os movimentos, por alguns minutos: não pode
+    crashar.
+44. **Item Glow com o Weapon Models ligado:**
+    - Glow, Outline e Glow + Outline;
+    - o brilho deve contornar a espada 3D, inclusive durante a inspeção e o draw;
+    - sem modelo 3D, deve continuar como antes.
+45. **Relay online:**
+    - publique o relay e coloque o endereço em dois clientes;
+    - entrem no mesmo servidor (qualquer um, sem plugin);
+    - emotes, cosméticos e selo devem aparecer;
+    - "Connection status" deve dizer "Linked via online relay";
+    - derrube a internet de um deles: ele deve reconectar sozinho.
+
+## v1.23.0
+
+- **Importação:**
+  - os 11 modelos de teste (9 `.bbmodel`, 1 glTF, 1 FBX) são lidos pelos leitores Java;
+  - cada um foi desenhado num rasterizador de software, em três ângulos, para conferir geometria,
+    UV, rotação dos cubos, rotação de UV e a textura do FBX;
+  - a ponta e a empunhadura automáticas foram conferidas nessas imagens. O Karambit precisa de
+    "Swap tip and handle" (já no pack de exemplo);
+  - as duas animações da Iron Sword ("preview" e "swing") foram amostradas quadro a quadro.
+- **Testes Java:** `WeaponImportTest` (9, novos):
+  - faces, UV e normais dos cubos do Blockbench;
+  - rotação de elemento;
+  - interpolação linear, step e Catmull-Rom;
+  - sinais e pivô das animações do Blockbench;
+  - Molang;
+  - glTF embutido;
+  - encaixe na mão (eixo, ponta, empunhadura, invertido);
+  - espaços de animação;
+  - nomes.
+
+**Não testado:** nada desta versão foi rodado dentro do Minecraft. A parte de OpenGL, a camada de
+terceira pessoa e o editor só foram conferidos por leitura e pela checagem de compilação.
+
+### Para testar
+46. Sem copiar nada: os 11 modelos do jar devem aparecer no Weapon editor em "3D models (textured)".
+    - A pasta `config/1227/weapons-included` deve ser criada.
+    - Um modelo seu em `config/1227/weapons` deve aparecer em "Your models" depois de Reload.
+47. Escolha cada um em primeira pessoa:
+    - a textura deve estar certa;
+    - a mão deve ficar no cabo;
+    - a Dreaded Blade deve ter textura animada;
+    - golpe, inspeção (V) e sacar devem funcionar;
+    - com a Iron Sword, o Idle deve balançar e o Inspect tocar a animação "swing" do arquivo.
+48. Ajuste no editor:
+    - tamanho, posição, ângulos, empunhadura e trocar ponta/cabo devem mudar na hora;
+    - feche e abra o jogo: o ajuste continua (arquivo `.1227.json` ao lado do modelo).
+49. **Terceira pessoa:** F5 e o boneco do inventário mostram o modelo. Com "Also on other players'
+    swords", as espadas dos outros também.
+50. **Item Glow** (Glow, Outline) com um modelo importado: o brilho segue a silhueta, sem caixas
+    nas partes transparentes.
+51. **Per sword type:** um modelo para a espada de diamante e outro para a de ferro; trocar de
+    espada deve trocar o modelo.

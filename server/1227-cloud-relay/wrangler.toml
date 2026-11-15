@@ -1,0 +1,20 @@
+# 1227 Link online relay: a Cloudflare Worker + one Durable Object per room (Minecraft server).
+# Deploy: see README.md in this folder. Works on the free Workers plan (SQLite-backed Durable Objects).
+name = "1227-link"
+main = "src/index.js"
+compatibility_date = "2025-04-01"
+
+[[durable_objects.bindings]]
+name = "ROOMS"
+class_name = "Room"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["Room"]
+
+[vars]
+# Shown in 1227 > 1227 Link > Connection status.
+RELAY_NAME = "1227 Link"
+# "true" also accepts players Mojang could not confirm (offline accounts, or Mojang rate limits).
+# With "false" nobody can appear under someone else's name.
+ALLOW_UNVERIFIED = "false"

@@ -234,4 +234,22 @@ public final class LinkProtocol {
         return data != null && data.length >= 3 && data.length <= MAX_BYTES && data[0] == MAGIC && data[1] == VERSION
                 && data[2] >= HELLO && data[2] <= STOP;
     }
+
+    /**
+     * Online relay room of a Minecraft server: "host:port" in lower case (default port and a
+     * trailing dot left out), SHA-256, first 32 hex digits. The relay never learns the address.
+     */
+    public static String roomOf(String address) {
+        String a = address.trim().toLowerCase(java.util.Locale.ROOT);
+        if (a.endsWith(":25565")) a = a.substring(0, a.length() - 6);
+        if (a.endsWith(".")) a = a.substring(0, a.length() - 1);
+        try {
+            byte[] h = java.security.MessageDigest.getInstance("SHA-256").digest(a.getBytes(StandardCharsets.UTF_8));
+            StringBuilder b = new StringBuilder();
+            for (int i = 0; i < 16; i++) b.append(String.format("%02x", h[i] & 0xFF));
+            return b.toString();
+        } catch (java.security.NoSuchAlgorithmException e) {
+            throw new IllegalStateException(e);
+        }
+    }
 }

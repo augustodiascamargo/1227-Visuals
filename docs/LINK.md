@@ -4,7 +4,25 @@
 Quem usa o 1227 vê as danças, os emotes e os cosméticos (Halo, Aura Hat, Wings) de outros
 jogadores do 1227, e eles veem os seus. Tudo é só visual.
 
-## A limitação (e por que existe um plugin)
+## Duas formas de ligar (v1.22.1)
+1. **Relay online. Recomendado, e não precisa de nada no servidor.**
+   - É um serviço pequeno que você publica grátis na Cloudflare (`server/1227-cloud-relay`; o
+     passo a passo está no README dessa pasta).
+   - Coloque o endereço em **1227 Link › Relay address**.
+   - Funciona em qualquer servidor, como no Lunar.
+2. **Plugin 1227 Relay** em servidores que o tenham. É o mesmo protocolo.
+
+Com as duas ligadas, as mensagens vão pelas duas e as repetidas são descartadas pelo número de
+sequência.
+
+### Como o Lunar faz
+O Lunar Client não depende de plugin para mostrar cosméticos e emotes. O cliente se conecta ao
+serviço da própria Lunar (WebSocket), e é esse serviço que diz quem usa Lunar e o que cada um está
+usando. O plugin deles (Apollo) é opcional e serve para servidores que querem integrar recursos
+próprios. O relay online do 1227 segue a mesma arquitetura, com a diferença de que é você quem
+publica o serviço.
+
+## Plugin: a limitação (e por que existe)
 Um mod instalado só no cliente não consegue fazer o servidor repassar dados entre jogadores. Por
 isso o 1227 Link precisa do **1227 Relay**, um plugin pequeno para servidores Spigot/Paper 1.8.8+.
 - O código está em `server/1227-relay`.

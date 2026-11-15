@@ -131,14 +131,14 @@ public final class MeshAssets {
                 // soft key light from above-front plus ambient
                 float d = Math.max(0f, wnx * 0.35f + ny * 0.8f + wnz * 0.45f);
                 float s = (0.5f + 0.5f * d) * light;
-                GL11.glColor4f(s, s, s, alpha);
+                net.m1227.render.FlatColor.color(s, s, s, alpha);
                 GL11.glTexCoord2f(cornerUv[c * 2], cornerUv[c * 2 + 1]);
                 GL11.glVertex3d(x + (mx * rxX + mz * fx) * h, y + my * h, z + (mx * rxZ + mz * fz) * h);
             }
             GL11.glEnd();
             GlStateManager.shadeModel(GL11.GL_FLAT);
             GlStateManager.depthMask(true);
-            GL11.glColor4f(1f, 1f, 1f, 1f);
+            net.m1227.render.FlatColor.color(1f, 1f, 1f, 1f);
             GlStateManager.color(1f, 1f, 1f, 1f);
         }
     }
@@ -221,7 +221,7 @@ public final class MeshAssets {
                     // two-sided key light + a bright rim so steel reads as metal
                     float d = Math.abs(nx * 0.3f + ny * 0.25f + nz * 0.9f);
                     float s = glow ? 1f : 0.42f + 0.58f * d + 0.25f * (float) Math.pow(Math.abs(ny), 8);
-                    GL11.glColor4f(Math.min(1f, ((col >> 16) & 255) / 255f * s), Math.min(1f, ((col >> 8) & 255) / 255f * s),
+                    net.m1227.render.FlatColor.color(Math.min(1f, ((col >> 16) & 255) / 255f * s), Math.min(1f, ((col >> 8) & 255) / 255f * s),
                             Math.min(1f, (col & 255) / 255f * s), alpha);
                     float wx = q[0] * x + q[1] * y + q[2] * z + q[3];
                     float wy = q[4] * x + q[5] * y + q[6] * z + q[7];
@@ -233,7 +233,7 @@ public final class MeshAssets {
             }
             GlStateManager.shadeModel(GL11.GL_FLAT);
             GlStateManager.enableTexture2D();
-            GL11.glColor4f(1f, 1f, 1f, 1f);
+            net.m1227.render.FlatColor.color(1f, 1f, 1f, 1f);
             GlStateManager.color(1f, 1f, 1f, 1f);
         }
     }

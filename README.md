@@ -183,6 +183,48 @@ nada depende de Lunar ou de outro launcher.
 O modelo do Tung Sahur (ZAHUR.fbx + textura) e a butterfly knife (.blend) foram enviados pelo usuário. Antes de
 publicar o 1227, confira a licença de cada um (por exemplo, se exigem crédito ao autor) e coloque o crédito aqui.
 
+## Mudanças na v1.23.0
+
+- **11 modelos 3D com textura incluídos no jar:**
+  - lista: Ashen Reaver, Dreaded Blade (textura animada), Gravewake Blade, Iron Sword (com
+    animações), Karambit, M48 Kukri, Monkey Sword, Obsidian Energy Sword, PS1 Butterfly Knife,
+    Sculk Greatsword e Sword of Daylight;
+  - aparecem no Weapon editor em "3D models (textured)";
+  - créditos em `THIRD_PARTY_LICENSES.md`.
+- **Seus próprios modelos de arma** na pasta `config/1227/weapons` (guia: `docs/WEAPONS.md`).
+  - Formatos: `.bbmodel` (Blockbench), `.gltf`/`.glb`, `.fbx` binário e `.obj`. Os leitores são
+    próprios, em Java puro, e testados.
+  - Cada modelo é encaixado na mão automaticamente: eixo da lâmina, ponta, empunhadura abaixo da
+    guarda e tamanho. Tudo pode ser ajustado no Weapon editor e fica salvo ao lado do arquivo.
+  - Texturas com pixels nítidos, texturas animadas, partes que brilham no escuro e transparência.
+  - Um modelo para todas as espadas ou um por tipo (madeira, pedra, ferro, ouro, diamante).
+- **Engine de animação das armas:**
+  - as animações do próprio modelo tocam em quatro espaços: Idle em loop, Swing ao atacar,
+    Inspect na tecla de inspeção e Draw ao sacar;
+  - elas são misturadas sem pulo;
+  - nos espaços sem animação ficam os movimentos internos;
+  - interpolação linear, Catmull-Rom, step e bezier, e expressões Molang simples.
+- **Terceira pessoa:** a espada com modelo aparece em F5 e no boneco do inventário, com os modelos
+  importados e os internos. Opcionalmente também nas espadas dos outros jogadores, só na sua tela.
+- **Item Glow e contornos** funcionam nos modelos importados. A silhueta segue o recorte da textura.
+
+## Mudanças na v1.22.1
+
+- **1227 Link sem plugin:** relay online (`server/1227-cloud-relay`), que você publica grátis na
+  Cloudflare.
+  - Funciona em qualquer servidor, como no Lunar: os clientes falam com o relay, não com o servidor.
+  - A conta é confirmada pela Mojang, com o mesmo `joinServer`/`hasJoined` de entrar num servidor.
+  - A sala é um hash do endereço do servidor.
+  - A conexão é TLS, com reconexão automática.
+  - As raízes de certificado atuais vão no jar, porque o Java 8u51 dos launchers não as conhece.
+  - O plugin continua como segunda opção.
+- **Item Glow com os modelos 3D do Weapon Models:** antes o brilho era desligado quando havia um
+  modelo 3D na mão. Agora as cópias de glow e contorno são o próprio modelo 3D (cor sólida, na mesma
+  pose e animação), então o brilho segue a silhueta real da arma.
+- **Crash do World Lyrics corrigido** (`StringIndexOutOfBoundsException` no "Scatter into
+  letters"): a palavra que terminava reaproveitava o próprio espaço como a primeira letra e perdia o
+  texto no meio da leitura.
+
 ## Mudanças na v1.22.0
 
 - **Inventário deslocado: causa encontrada e corrigida.**

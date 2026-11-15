@@ -45,13 +45,25 @@ public final class SocialLink {
         public double emoteX, emoteZ;
         public boolean emoteAnchored;
         public long lastSeen;
-        public int lastSeq = Integer.MIN_VALUE;
+        private final int[] recentSeq = new int[8];
+        private final long[] recentAt = new long[8];
+        private int recentHead;
+
+        /** True if this sequence number was already handled in the last 15 s (then skip it). */
+        boolean seen(int seq, long now) {
+            for (int i = 0; i < 8; i++) if (recentAt[i] != 0L && recentSeq[i] == seq && now - recentAt[i] < 15_000_000_000L) return true;
+            recentSeq[recentHead] = seq;
+            recentAt[recentHead] = now;
+            recentHead = (recentHead + 1) & 7;
+            return false;
+        }
     }
 
     private FMLEventChannel channel;
     private final ConcurrentLinkedQueue<byte[]> inbox = new ConcurrentLinkedQueue<byte[]>();
     public final Map<UUID, Remote> remotes = new HashMap<UUID, Remote>();
-    public volatile boolean linked;
+    /** Linked through the 1227 Relay plugin on the current server. */
+    public volatile boolean pluginLinked;
     public volatile String relayName = "";
     private boolean registeredThisWorld;
     private World lastWorld;
@@ -67,6 +79,11 @@ public final class SocialLink {
     public volatile int sent, received, dropped;
 
     private SocialLink() {}
+
+    /** Linked through the server plugin or the online relay. */
+    public boolean linked() {
+        return pluginLinked || CloudLink.INSTANCE.linked();
+    }
 
     /** Called once from the mod's init. */
     public void init() {
@@ -104,7 +121,7 @@ public final class SocialLink {
 
     @SubscribeEvent
     public void onDisconnect(FMLNetworkEvent.ClientDisconnectionFromServerEvent e) {
-        linked = false;
+        pluginLinked = false;
         registeredThisWorld = false;
         inbox.clear();
     }
@@ -120,7 +137,25 @@ public final class SocialLink {
         return true;
     }
 
+    /** To every route that is linked (the server plugin and / or the online relay). */
     private void send(byte[] msg) {
+        if (!take()) return;
+        if (pluginLinked && channel != null) {
+            try {
+                channel.sendToServer(new FMLProxyPacket(new PacketBuffer(Unpooled.wrappedBuffer(msg)), LinkProtocol.CHANNEL));
+                sent++;
+            } catch (Throwable t) {
+                dropped++;
+            }
+        }
+        if (CloudLink.INSTANCE.linked()) {
+            CloudLink.INSTANCE.send(msg);
+            sent++;
+        }
+    }
+
+    /** HELLO only to the plugin route (used to probe it after a world change). */
+    private void sendPluginOnly(byte[] msg) {
         if (channel == null || !take()) return;
         try {
             channel.sendToServer(new FMLProxyPacket(new PacketBuffer(Unpooled.wrappedBuffer(msg)), LinkProtocol.CHANNEL));
@@ -143,14 +178,14 @@ public final class SocialLink {
     public void localEmote(int id) {
         myEmote = id;
         myEmoteStart = System.nanoTime();
-        if (linked && mod() != null && mod().shareEmotes()) send(LinkProtocol.emote(++seq, id, 0));
+        if (linked() && mod() != null && mod().shareEmotes()) send(LinkProtocol.emote(++seq, id, 0));
         stateDirty = true;
     }
 
     public void localStop() {
         if (myEmote < 0) return;
         myEmote = -1;
-        if (linked && mod() != null && mod().shareEmotes()) send(LinkProtocol.stop(++seq));
+        if (linked() && mod() != null && mod().shareEmotes()) send(LinkProtocol.stop(++seq));
         stateDirty = true;
     }
 
@@ -206,28 +241,34 @@ public final class SocialLink {
         if (e.phase != TickEvent.Phase.END) return;
         Minecraft mc = Minecraft.getMinecraft();
         long now = System.nanoTime();
+        net.m1227.module.SocialModule m = mod();
+        // the online relay (no server plugin needed): connect / switch room / disconnect
+        CloudLink.INSTANCE.update(mc, m != null && m.isEnabled() && m.cloudOn(), m == null ? "" : m.relayUrl());
         if (mc.theWorld != lastWorld) {
             // new world (respawn, dimension or a proxy moving you to another server): forget the
-            // players of the old one, register again, and if we were linked ask the relay again
+            // players of the old one, register again, and if we were linked ask again for states
             lastWorld = mc.theWorld;
             remotes.clear();
             registeredThisWorld = false;
-            if (linked) {
-                linked = false;
+            if (pluginLinked) {
+                pluginLinked = false;
                 probeUntil = now + 5_000_000_000L;
             }
+            if (CloudLink.INSTANCE.linked()) CloudLink.INSTANCE.send(LinkProtocol.hello(Mod1227.VERSION, 1));
         }
         if (mc.theWorld == null || mc.thePlayer == null || mc.getNetHandler() == null || mc.isSingleplayer()) return;
-        net.m1227.module.SocialModule m = mod();
         if (m == null || !m.isEnabled()) return;
         if (!registeredThisWorld) {
             registeredThisWorld = true;
-            register(mc);
-            if (probeUntil > now) send(LinkProtocol.hello(Mod1227.VERSION, 1)); // only after a WELCOME on this connection
+            if (m.pluginOn()) {
+                register(mc);
+                if (probeUntil > now) sendPluginOnly(LinkProtocol.hello(Mod1227.VERSION, 1)); // only after a WELCOME on this connection
+            }
         }
         byte[] data;
-        while ((data = inbox.poll()) != null) handle(mc, data, now);
-        if (!linked) return;
+        while ((data = inbox.poll()) != null) handle(mc, data, now, false);
+        while ((data = CloudLink.INSTANCE.inbox.poll()) != null) handle(mc, data, now, true);
+        if (!linked()) return;
         LinkProtocol.State s = myState();
         boolean changed = !same(s, lastSent);
         if (now > nextRefresh || ((changed || stateDirty) && now - lastStateSent > 250_000_000L)) {
@@ -245,7 +286,7 @@ public final class SocialLink {
         }
     }
 
-    private void handle(Minecraft mc, byte[] data, long now) {
+    private void handle(Minecraft mc, byte[] data, long now, boolean cloud) {
         LinkProtocol.Message msg = LinkProtocol.decode(data);
         if (msg == null) {
             dropped++;
@@ -253,20 +294,26 @@ public final class SocialLink {
         }
         received++;
         if (msg.type == LinkProtocol.WELCOME) {
-            boolean first = !linked;
-            linked = true;
-            probeUntil = 0L;
-            relayName = msg.text;
+            if (cloud) {
+                CloudLink.INSTANCE.markLinked();
+            } else {
+                boolean first = !pluginLinked;
+                pluginLinked = true;
+                probeUntil = 0L;
+                relayName = msg.text;
+                if (first) sendPluginOnly(LinkProtocol.hello(Mod1227.VERSION, 1));
+            }
             nextRefresh = 0L; // send our state now
             lastSent = null;
-            if (first) send(LinkProtocol.hello(Mod1227.VERSION, 1));
             return;
         }
-        if (!linked) return;
+        if (cloud ? !CloudLink.INSTANCE.linked() : !pluginLinked) return;
         UUID id = new UUID(msg.msb, msg.lsb);
         if (mc.thePlayer != null && id.equals(mc.thePlayer.getUniqueID())) return;
         if (msg.type == LinkProtocol.LEAVE) {
-            remotes.remove(id);
+            // with both routes on, a player is gone only when neither still has them; LEAVE from
+            // one route just waits for the other to confirm through silence (2 min) or a LEAVE
+            if (!(pluginLinked && CloudLink.INSTANCE.linked())) remotes.remove(id);
             return;
         }
         Remote r = remotes.get(id);
@@ -275,6 +322,8 @@ public final class SocialLink {
             r = new Remote();
             remotes.put(id, r);
         }
+        // the same message can come through both routes: keep only the first copy
+        if (msg.innerType != LinkProtocol.HELLO && r.seen(msg.seq, now)) return;
         r.lastSeen = now;
         if (msg.innerType == LinkProtocol.STATE) {
             r.state = msg.state;
