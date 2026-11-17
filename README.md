@@ -1,24 +1,3 @@
-# 1227 — v1.27.1 (Minecraft 1.8.9 · Forge 11.15.1.2318 · Java 8)
-
-Mod client-side, quase todo visual. Não desenha através de paredes e não muda alcance, timing de
-ataque, hitbox ou pacotes do jogo. Três coisas vão além do visual e estão descritas em
-`docs/PRIVACY.md`:
-- **Toggle Sprint** (desligado por padrão) segura a tecla de correr por você, com as regras de sprint
-  do próprio Minecraft;
-- **1227 Link** (ligado por padrão) avisa o servidor que você usa o canal `1227|fx` e, se você
-  configurar um relay, envia seus cosméticos e emotes para ele;
-- **Latency Monitor**, **Floating Lyrics**, **Music** e **Discord Presence** (todos desligados por
-  padrão) falam com serviços de fora quando você os liga.
-
-## O que tem neste repositório
-| Pasta | O que é |
-|---|---|
-| raiz (`build.gradle`, `src/`) | O mod Forge |
-| `docs/` | `AUDIT.md` (auditoria), `PROGRESS.md` (progresso, testes e próximas etapas), `RELEASE.md` (como publicar) |
-
-## Compilar
-Envie esta pasta para um repositório no GitHub. Aba **Actions** > "Build mod jar" > baixe o artefato `1227-jar`.
-O `.jar` vai em `.minecraft/mods` com Forge 1.8.9.
 
 ## Abrir o menu
 - Tecla padrão: **Right Control** (configurável em Settings > Client > Menu key; Esc/Backspace = nenhuma).
