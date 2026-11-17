@@ -18,15 +18,17 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 /**
- * 1227: a client-side, purely visual mod. It never sends packets,
- * never draws through walls and never changes how the game plays.
+ * 1227: a client-side, mostly visual mod. It never draws through walls and never changes reach,
+ * attack timing, hitboxes or the game's own packets. Beyond drawing: Toggle Sprint holds the
+ * sprint key, 1227 Link registers a plugin channel (and talks to a relay you configure), and a
+ * few opt-in modules use outside services. docs/PRIVACY.md lists each one.
  */
 @Mod(modid = Mod1227.MODID, name = Mod1227.NAME, version = Mod1227.VERSION,
         clientSideOnly = true, acceptedMinecraftVersions = "[1.8.9]")
 public class Mod1227 {
     public static final String MODID = "m1227";
     public static final String NAME = "1227";
-    public static final String VERSION = "1.26.0";
+    public static final String VERSION = "1.27.1";
     public static final Logger LOGGER = LogManager.getLogger(NAME);
 
     /** Forge's config folder (set in preInit, before modules are created). */

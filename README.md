@@ -1,7 +1,14 @@
-# 1227 — v1.18.0 (Minecraft 1.8.9 · Forge 11.15.1.2318 · Java 8)
+# 1227 — v1.27.1 (Minecraft 1.8.9 · Forge 11.15.1.2318 · Java 8)
 
-Mod client-side e puramente visual. Não envia pacotes, não desenha através de paredes e não muda alcance,
-timing de ataque ou outras mecânicas do servidor.
+Mod client-side, quase todo visual. Não desenha através de paredes e não muda alcance, timing de
+ataque, hitbox ou pacotes do jogo. Três coisas vão além do visual e estão descritas em
+`docs/PRIVACY.md`:
+- **Toggle Sprint** (desligado por padrão) segura a tecla de correr por você, com as regras de sprint
+  do próprio Minecraft;
+- **1227 Link** (ligado por padrão) avisa o servidor que você usa o canal `1227|fx` e, se você
+  configurar um relay, envia seus cosméticos e emotes para ele;
+- **Latency Monitor**, **Floating Lyrics**, **Music** e **Discord Presence** (todos desligados por
+  padrão) falam com serviços de fora quando você os liga.
 
 ## O que tem neste repositório
 | Pasta | O que é |
@@ -182,6 +189,42 @@ nada depende de Lunar ou de outro launcher.
 ### Licença dos modelos enviados
 O modelo do Tung Sahur (ZAHUR.fbx + textura) e a butterfly knife (.blend) foram enviados pelo usuário. Antes de
 publicar o 1227, confira a licença de cada um (por exemplo, se exigem crédito ao autor) e coloque o crédito aqui.
+
+## Mudanças na v1.27.1
+
+Correção do Item Glow nas espadas normais do jogo (a "espada de luz" embaixo da espada).
+
+- **Causa encontrada:** o Minecraft dobra o tamanho do item na mão só para modelos tipo bloco
+  (`shouldRenderItemIn3D`). O 1227 fazia o contrário: dobrava as cópias do brilho justamente para itens
+  planos (espadas, ferramentas). As cópias saíam com o dobro do tamanho em relação ao ponto da mão, e
+  apareciam como uma segunda espada, maior e deslocada. As tentativas das versões 1.25 e 1.26 mexeram em
+  outras partes (passe da mão, transformação do Forge) e por isso não resolveram.
+- A mesma conta era usada pela aura da lâmina e pelos raios do Weapon Effects na espada normal; também
+  foi corrigida.
+- O brilho agora usa o mesmo modelo que o jogo desenha (arco puxado, vara lançada, modelo por item do Forge).
+- As espadas 3D do Weapon Models não mudaram.
+- Não testado em jogo por mim: confira o item 71 de `docs/TEST-REPORT-1.20.md`.
+
+## Mudanças na v1.27.0
+
+Auditoria e correções. A tabela completa de achados está em `docs/AUDIT-1.27.md`.
+
+- **Item Physics:** blocos soltos apareciam com o dobro do tamanho com o módulo ligado. O Minecraft
+  desenha blocos no chão em meia escala e o renderizador do 1227 não fazia isso. Corrigido.
+- **Instalador (Java):**
+  - copia o jar novo com nome temporário, confere a cópia (tamanho, abre como jar, é o cliente) e
+    só então move as versões antigas e troca o arquivo;
+  - se algo falhar (disco cheio, permissão), devolve as versões antigas e remove o temporário;
+  - só arquiva jars do cliente (`1227.jar`, `1227-<versão>.jar`), nunca o `1227-relay-*.jar`;
+  - recusa instalar um arquivo que não seja o cliente.
+- **Instalador (.bat):** só escolhe `1227.jar` ou `1227-<número>*.jar`. Antes, o padrão `1227*.jar`
+  podia pegar o plugin de servidor, e sem ele qualquer `.jar` da pasta. Com mais de um cliente na
+  pasta, lista os arquivos e para.
+- **Descrições:** o README dizia v1.18.0 e "puramente visual, não envia pacotes". Corrigido aqui, no
+  `mcmod.info` e no código. Novo `docs/PRIVACY.md` lista o que sai do computador e quando.
+- **Matriz de módulos:** `docs/MODULE-MATRIX.md`, uma linha para cada um dos 103 registros, todos
+  ainda "não testado" no jogo.
+- **Testes:** `InstallerTest` (4, novos).
 
 ## Mudanças na v1.26.0
 

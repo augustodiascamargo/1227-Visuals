@@ -2,7 +2,7 @@
   {
     "modid": "m1227",
     "name": "1227",
-    "description": "Client-side visual mod for Minecraft 1.8.9: effects, skies, motion blur, classic animations and a dynamic HUD. Purely visual.",
+    "description": "Client-side visual mod for Minecraft 1.8.9: effects, skies, motion blur, classic animations and a dynamic HUD. Mostly visual; see docs/PRIVACY.md for Toggle Sprint and the network features.",
     "version": "${version}",
     "mcversion": "${mcversion}",
     "authorList": []

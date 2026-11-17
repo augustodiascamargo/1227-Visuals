@@ -8,10 +8,22 @@ rem  Deixe este arquivo na mesma pasta do 1227-x.y.z.jar e de dois cliques.
 rem ------------------------------------------------------------------
 cd /d "%~dp0"
 
+rem Somente o jar do cliente: 1227.jar ou 1227-<versao>.jar (ex.: 1227-1.26.0.jar).
+rem O plugin de servidor (1227-relay-*.jar) e outros jars da pasta nunca sao escolhidos.
 set "JAR="
-for %%f in ("%~dp01227*.jar") do set "JAR=%%~ff"
-if not defined JAR for %%f in ("%~dp0*.jar") do set "JAR=%%~ff"
+set /a COUNT=0
+if exist "%~dp01227.jar" (
+  set "JAR=%~dp01227.jar"
+  set /a COUNT+=1
+)
+for %%f in ("%~dp01227-0*.jar" "%~dp01227-1*.jar" "%~dp01227-2*.jar" "%~dp01227-3*.jar" "%~dp01227-4*.jar" "%~dp01227-5*.jar" "%~dp01227-6*.jar" "%~dp01227-7*.jar" "%~dp01227-8*.jar" "%~dp01227-9*.jar") do (
+  set "JAR=%%~ff"
+  set /a COUNT+=1
+)
 if not defined JAR goto nojar
+if %COUNT% GTR 1 goto many
+echo Arquivo do mod: %JAR%
+echo O instalador mostra a versao e a pasta de destino antes de copiar.
 
 set "JAVAW="
 for /f "delims=" %%j in ('where javaw 2^>nul') do if not defined JAVAW set "JAVAW=%%j"
@@ -35,9 +47,20 @@ if not exist "%~1" exit /b 0
 for /f "delims=" %%j in ('dir /b /s "%~1\javaw.exe" 2^>nul') do if not defined JAVAW set "JAVAW=%%j"
 exit /b 0
 
+:many
+echo.
+echo Achei mais de um arquivo do cliente 1227 nesta pasta:
+dir /b "%~dp01227.jar" "%~dp01227-0*.jar" "%~dp01227-1*.jar" "%~dp01227-2*.jar" "%~dp01227-3*.jar" "%~dp01227-4*.jar" "%~dp01227-5*.jar" "%~dp01227-6*.jar" "%~dp01227-7*.jar" "%~dp01227-8*.jar" "%~dp01227-9*.jar" 2>nul
+echo.
+echo Deixe aqui so a versao que voce quer instalar e abra este arquivo de novo.
+echo.
+pause
+exit /b 1
+
 :nojar
 echo.
-echo Nao achei o arquivo do mod (1227-x.y.z.jar) nesta pasta.
+echo Nao achei o arquivo do cliente (1227-x.y.z.jar) nesta pasta.
+echo (o 1227-relay-*.jar e o plugin de servidor, nao o mod)
 echo Coloque este .bat na mesma pasta do jar e tente de novo.
 echo.
 pause

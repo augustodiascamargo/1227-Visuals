@@ -368,3 +368,29 @@ conferidos por leitura.
     - golpeie.
 67. **Target Aura e Player Aura:** cada um dos 15 estilos novos.
     - Atrás de uma parede, a aura não deve aparecer.
+
+## v1.27.0
+
+- `InstallerTest` (4, novos): nomes de artefato, instalação normal, arquivo errado recusado, falha
+  devolvendo a versão antiga. Todos passam.
+- Os 13 testes de armas e movimento continuam passando.
+
+**Não testado:** nada rodado dentro do Minecraft; o `.bat` não foi executado (não há Windows aqui).
+
+### Para testar
+68. **Item Physics:** solte pedra, terra e uma espada com o módulo desligado e ligado.
+    - O bloco deve ter o mesmo tamanho nos dois casos.
+    - Conferir no chão, caindo, em pilha (2, 17, 33 e 49 itens) e na água.
+69. **Instalador:** numa pasta de teste (não a sua `.minecraft` real) com `1227-1.27.0.jar` e
+    `1227-relay-1.0.0.jar`:
+    - o `.bat` deve abrir o cliente;
+    - com dois clientes na pasta, deve listar e parar;
+    - `java -jar 1227-1.27.0.jar --install <pasta>` com uma versão antiga em `mods`: a antiga vai
+      para `mods/1227-old` e a nova fica em `mods`.
+70. Preencher `docs/MODULE-MATRIX.md` conforme for testando.
+71. **Item Glow na espada normal (1.27.1):** com o Weapon Models desligado (ou em uma espada sem modelo 3D),
+    ligar o Item Glow com Glow e Outline:
+    - o brilho deve ficar colado na espada, do mesmo tamanho, parado, andando, batendo e defendendo;
+    - não deve existir uma segunda espada maior embaixo;
+    - conferir também com espada encantada, arco puxando, vara de pesca e um bloco na mão;
+    - com o Weapon Effects ligado, a aura da lâmina e os raios devem ficar sobre a lâmina.

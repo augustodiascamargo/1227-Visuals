@@ -73,6 +73,9 @@ public final class PhysicsItemRender extends RenderEntityItem {
                 if (block) GlStateManager.translate(ox, 0f, oz);
                 else GlStateManager.translate(ox, oz, -0.03f * i); // after the flat rotation, -Z points up
             }
+            // vanilla draws dropped BLOCKS at half size (RenderEntityItem scales 3D models by 0.5
+            // before the ground transform); without it they were twice as big with the module on
+            if (block) GlStateManager.scale(0.5F, 0.5F, 0.5F);
             IBakedModel tm = ForgeHooksClient.handleCameraTransforms(model, ItemCameraTransforms.TransformType.GROUND);
             items.renderItem(st, tm);
             GlStateManager.popMatrix();

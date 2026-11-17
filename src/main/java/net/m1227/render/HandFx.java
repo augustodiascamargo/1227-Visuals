@@ -96,14 +96,16 @@ public final class HandFx {
             return;
         }
         if (!weapon && !glow) return;
-        IBakedModel model = mc.getRenderItem().getItemModelMesher().getItemModel(stack);
+        IBakedModel model = heldModel(mc, p, stack);
         if (model == null) return;
         GlStateManager.pushMatrix();
-        // same chain RenderItem applies: 2x for flat items, the model's first-person transform,
-        // then 0.5x and a -0.5 offset into the model's 0..1 space. The transform goes through
-        // Forge like the real item does: Forge wraps the vanilla item models and positions them
-        // with its own matrix, so the old vanilla call put the copies beside the real sword.
-        if (!model.isGui3d()) GlStateManager.scale(2.0F, 2.0F, 2.0F);
+        // the same chain ItemRenderer.renderItem + RenderItem apply to the real item: 2x ONLY for
+        // block-like models (isGui3d), the model's first-person transform through Forge, then
+        // 0.5x and a -0.5 offset into the model's 0..1 space.
+        // 1.27.1: up to 1.27.0 the 2x was applied to FLAT items (swords, tools) instead, so every
+        // copy was twice the size of the real sword around the hand's origin: the "sword of light"
+        // under the real one.
+        if (model.isGui3d()) GlStateManager.scale(2.0F, 2.0F, 2.0F);
         model = cameraTransform(model);
         // the copies are drawn without the enchantment shine: its pass resets blending and turns
         // depth writes back on, which made later copies show as a second sword under the real one
@@ -131,10 +133,10 @@ public final class HandFx {
         weaponThisFrame = weapon;
         boolean arcs = (weapon && w.lightningArcs()) || (wm != null && wm.lightning() && wm.replaces(stack));
         if (!weapon && !arcs) return;
-        IBakedModel model = mc.getRenderItem().getItemModelMesher().getItemModel(stack);
+        IBakedModel model = heldModel(mc, p, stack);
         if (model == null) return;
         GlStateManager.pushMatrix();
-        if (!model.isGui3d()) GlStateManager.scale(2.0F, 2.0F, 2.0F);
+        if (model.isGui3d()) GlStateManager.scale(2.0F, 2.0F, 2.0F); // as ItemRenderer.renderItem does
         model = cameraTransform(model);
         GlStateManager.scale(0.5F, 0.5F, 0.5F);
         GlStateManager.translate(-0.5F, -0.5F, -0.5F);
@@ -151,6 +153,36 @@ public final class HandFx {
         }
         if (weapon) record(w, w.bladeStart(), w.bladeEnd(), p.getSwingProgress(0f));
         GlStateManager.popMatrix();
+    }
+
+    /**
+     * The model the game draws for this held stack: the mesher's model, or the pulled-bow /
+     * cast-rod / Forge per-item model, chosen the way RenderItem.renderItemModelForEntity does.
+     */
+    static IBakedModel heldModel(Minecraft mc, EntityPlayerSP p, ItemStack stack) {
+        net.minecraft.client.renderer.ItemModelMesher mesher = mc.getRenderItem().getItemModelMesher();
+        IBakedModel model = mesher.getItemModel(stack);
+        try {
+            net.minecraft.item.Item item = stack.getItem();
+            net.minecraft.client.resources.model.ModelResourceLocation loc = null;
+            if (item == net.minecraft.init.Items.fishing_rod && p.fishEntity != null) {
+                loc = new net.minecraft.client.resources.model.ModelResourceLocation("fishing_rod_cast", "inventory");
+            } else if (item == net.minecraft.init.Items.bow && p.getItemInUse() != null) {
+                int i = stack.getMaxItemUseDuration() - p.getItemInUseCount();
+                if (i >= 18) loc = new net.minecraft.client.resources.model.ModelResourceLocation("bow_pulling_2", "inventory");
+                else if (i > 13) loc = new net.minecraft.client.resources.model.ModelResourceLocation("bow_pulling_1", "inventory");
+                else if (i > 0) loc = new net.minecraft.client.resources.model.ModelResourceLocation("bow_pulling_0", "inventory");
+            } else {
+                loc = item.getModel(stack, p, p.getItemInUseCount());
+            }
+            if (loc != null) {
+                IBakedModel m = mesher.getModelManager().getModel(loc);
+                if (m != null) model = m;
+            }
+        } catch (Throwable t) {
+            // a mod's item threw: keep the mesher's model
+        }
+        return model;
     }
 
     /** The first-person transform exactly as RenderItem applies it (through Forge); returns the model to draw. */

@@ -27,8 +27,9 @@ import javax.swing.UIManager;
 
 /**
  * The 1227 installer: what opens when you double-click 1227.jar. It finds your Minecraft folder,
- * checks that Forge 1.8.9 is installed, copies this jar into mods (older 1227 jars are moved to
- * mods/1227-old, never deleted) and tells you to start Minecraft with the Forge 1.8.9 profile.
+ * checks that Forge 1.8.9 is installed, copies this jar into mods (copy first, check it, and only
+ * then move older 1227 client jars to mods/1227-old, never deleted; a failure puts them back) and
+ * tells you to start Minecraft with the Forge 1.8.9 profile.
  * Nothing is downloaded and no launcher is changed. Plain Java: no Minecraft classes here.
  */
 public final class InstallerMain {
@@ -98,29 +99,69 @@ public final class InstallerMain {
         File jar = self();
         if (jar == null) return "Run this from the 1227 jar file.";
         if (!mc.isDirectory()) return "Minecraft folder not found: " + mc;
-        File mods = new File(mc, "mods");
+        return install(jar, new File(mc, "mods"), version());
+    }
+
+    /** True for a 1227 client jar name ("1227.jar", "1227-1.26.0.jar"), never the relay plugin's. */
+    static boolean isClientJarName(String n) {
+        return n.toLowerCase().matches("1227(-\\d[\\w.]*)?\\.jar");
+    }
+
+    /** A readable jar that is the 1227 client: it must hold mcmod.info and the mod's main class. */
+    static boolean looksLikeClient(File f) {
+        try (java.util.zip.ZipFile z = new java.util.zip.ZipFile(f)) {
+            return z.getEntry("mcmod.info") != null && z.getEntry("net/m1227/Mod1227.class") != null;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    /**
+     * Safe install: the new jar is first copied next to its destination under a temporary name
+     * and checked (same size, opens as a jar, is the 1227 client). Only then are older 1227
+     * client jars moved to mods/1227-old and the temporary file renamed into place. If anything
+     * fails (no space, no permission) the older jars are put back, the temporary file is removed
+     * and the previous installation keeps working.
+     */
+    static String install(File jar, File mods, String version) {
         if (!mods.isDirectory() && !mods.mkdirs()) return "Could not create " + mods;
-        String name = "1227-" + version() + ".jar";
+        if (!looksLikeClient(jar)) return "This file is not the 1227 client jar: " + jar.getName();
+        String name = "1227-" + version + ".jar";
+        File dest = new File(mods, name), tmp = new File(mods, name + ".installing");
+        java.util.List<File[]> moved = new java.util.ArrayList<>();
         try {
-            File[] old = mods.listFiles((d, n) -> n.toLowerCase().matches("1227(-.*)?\\.jar"));
-            int moved = 0;
+            if (dest.getCanonicalPath().equals(jar.getCanonicalPath())) return "Installed " + name + " (already in the mods folder). Start Minecraft with the Forge 1.8.9 profile.";
+            Files.copy(jar.toPath(), tmp.toPath(), StandardCopyOption.REPLACE_EXISTING);
+            if (tmp.length() != jar.length() || !looksLikeClient(tmp)) throw new java.io.IOException("the copy is incomplete (disk full?)");
+            File[] old = mods.listFiles((d, n) -> isClientJarName(n) && new File(d, n).isFile());
             if (old != null) {
                 File keep = new File(mods, "1227-old/" + new SimpleDateFormat("yyyyMMdd-HHmmss").format(new Date()));
                 for (File o : old) {
-                    if (o.getCanonicalPath().equals(jar.getCanonicalPath()) || o.getName().equals(name)) continue; // same version: replaced below
-                    keep.mkdirs();
-                    Files.move(o.toPath(), new File(keep, o.getName()).toPath(), StandardCopyOption.REPLACE_EXISTING);
-                    moved++;
+                    if (o.getCanonicalPath().equals(jar.getCanonicalPath())) continue; // the installer itself, run from mods
+                    if (!keep.isDirectory() && !keep.mkdirs()) throw new java.io.IOException("could not create " + keep);
+                    File to = new File(keep, o.getName());
+                    Files.move(o.toPath(), to.toPath(), StandardCopyOption.REPLACE_EXISTING);
+                    moved.add(new File[]{o, to});
                 }
             }
-            File dest = new File(mods, name);
-            if (!dest.getCanonicalPath().equals(jar.getCanonicalPath())) {
-                Files.copy(jar.toPath(), dest.toPath(), StandardCopyOption.REPLACE_EXISTING);
-            }
-            return "Installed " + name + (moved > 0 ? " (" + moved + " older 1227 jar(s) moved to mods/1227-old)" : "")
+            Files.move(tmp.toPath(), dest.toPath(), StandardCopyOption.REPLACE_EXISTING);
+            return "Installed " + name + (moved.isEmpty() ? "" : " (" + moved.size() + " older 1227 jar(s) moved to mods/1227-old)")
                     + ". Start Minecraft with the Forge 1.8.9 profile.";
         } catch (Exception e) {
-            return "Could not install: " + e.getMessage();
+            // put everything back: the previous version must keep working
+            int back = 0;
+            for (File[] m : moved) {
+                try {
+                    Files.move(m[1].toPath(), m[0].toPath(), StandardCopyOption.REPLACE_EXISTING);
+                    back++;
+                } catch (Exception ignored) {
+                    // reported below
+                }
+            }
+            tmp.delete();
+            String msg = "Could not install: " + e.getMessage() + ". Nothing was changed";
+            if (back != moved.size()) msg += ", but " + (moved.size() - back) + " older jar(s) stayed in mods/1227-old: copy them back to mods";
+            return msg + ".";
         }
     }
 
