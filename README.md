@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # 1227 — v1.27.2 (Minecraft 1.8.9 · Forge 11.15.1.2318 · Java 8)
 
 Mod client-side, quase todo visual. Não desenha através de paredes e não muda alcance, timing de
@@ -19,6 +20,8 @@ ataque, hitbox ou pacotes do jogo. Três coisas vão além do visual e estão de
 ## Compilar
 Envie esta pasta para um repositório no GitHub. Aba **Actions** > "Build mod jar" > baixe o artefato `1227-jar`.
 O `.jar` vai em `.minecraft/mods` com Forge 1.8.9.
+=======
+>>>>>>> 4944b6f6e211be32045721d1dda7ce73e71b2d92
 
 ## Abrir o menu
 - Tecla padrão: **Right Control** (configurável em Settings > Client > Menu key; Esc/Backspace = nenhuma).
