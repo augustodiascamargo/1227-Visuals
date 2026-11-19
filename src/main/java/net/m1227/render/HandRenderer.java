@@ -255,13 +255,13 @@ public final class HandRenderer {
                 GlStateManager.rotate(180.0F, 0.0F, 1.0F, 0.0F);
                 if (full) ir.renderItem(p, item, ItemCameraTransforms.TransformType.NONE);
             } else {
-                HandFx.INSTANCE.beforeItem(mc, p, item); // glow behind the item: the item drawn next covers its middle
+                HandFx.INSTANCE.beforeItem(mc, p, item, full); // glow behind the item: the item drawn next covers its middle
                 if (full) {
                     net.m1227.module.WeaponModelsModule wm = net.m1227.module.WeaponModelsModule.INSTANCE;
                     if (wm != null && wm.replaces(item)) wm.renderFirstPerson(mc, item);
                     else ir.renderItem(p, item, ItemCameraTransforms.TransformType.FIRST_PERSON);
                 }
-                HandFx.INSTANCE.afterItem(mc, p, item);
+                HandFx.INSTANCE.afterItem(mc, p, item, full);
             }
         } else if (full && !p.isInvisible()) {
             arm(mc, p, equip, swingP);

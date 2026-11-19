@@ -26,7 +26,7 @@ public final class ItemGlowModule extends Module {
         super("Item Glow", "Coloured glow that follows the shape of the held item.", Category.WEAPONS, false);
         INSTANCE = this;
         items = add(new Setting.Mode("Items", "Swords", "Swords", "Weapons and tools", "Any item"));
-        style = add(new Setting.Mode("Style", "Glow", "Glow", "Outline", "Glow + Outline"));
+        style = add(new Setting.Mode("Style", "Glow", "Glow", "Outline", "Glow + Outline", "Aura", "Aura + Outline"));
         outline = add(new Setting.Num("Outline thickness", 1.0, 0.4, 3.0, 0.1, "x")).showIf(() -> !style.is("Glow"));
         colorMode = add(new Setting.Mode("Color mode", "Gradient", "Single", "Gradient", "Rainbow", "Weapon effect"));
         color1 = add(new Setting.Col("Color", 0x8B5CFF));
@@ -41,12 +41,18 @@ public final class ItemGlowModule extends Module {
     private final Setting.Mode style;
     private final Setting.Num outline;
 
+    /** Soft halo hugging the item (Glow and Aura styles). */
     public boolean glowOn() {
         return !style.is("Outline");
     }
 
+    /** Glow that moves: flickers and rises along the blade like energy (Aura styles). */
+    public boolean auraOn() {
+        return style.is("Aura") || style.is("Aura + Outline");
+    }
+
     public boolean outlineOn() {
-        return !style.is("Glow");
+        return style.is("Outline") || style.is("Glow + Outline") || style.is("Aura + Outline");
     }
 
     public float outlineWidth() {

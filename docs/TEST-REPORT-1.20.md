@@ -388,9 +388,11 @@ conferidos por leitura.
     - `java -jar 1227-1.27.0.jar --install <pasta>` com uma versão antiga em `mods`: a antiga vai
       para `mods/1227-old` e a nova fica em `mods`.
 70. Preencher `docs/MODULE-MATRIX.md` conforme for testando.
-71. **Item Glow na espada normal (1.27.1):** com o Weapon Models desligado (ou em uma espada sem modelo 3D),
+71. **Item Glow na espada normal (1.27.2):** testar os estilos Glow, Outline, Glow + Outline, Aura e Aura + Outline; com o Weapon Models desligado (ou em uma espada sem modelo 3D),
     ligar o Item Glow com Glow e Outline:
     - o brilho deve ficar colado na espada, do mesmo tamanho, parado, andando, batendo e defendendo;
     - não deve existir uma segunda espada maior embaixo;
     - conferir também com espada encantada, arco puxando, vara de pesca e um bloco na mão;
     - com o Weapon Effects ligado, a aura da lâmina e os raios devem ficar sobre a lâmina.
+    - com a mão em "Compatibility" (Client), o brilho não deve aparecer em lugar nenhum (nem ao lado da espada);
+    - conferir no escuro (à noite, caverna): o brilho deve ter a mesma força que de dia.

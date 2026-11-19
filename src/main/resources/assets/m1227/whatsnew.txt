@@ -1,4 +1,4 @@
-Item glow on normal swords fixed for real: the glow copies were drawn at twice the size
+Item glow redrawn with the real sword itself: no more second sword of light; new Aura style
 15 new aura styles; item glow on normal swords fixed (Forge transform); no flying arm while blocking
 9 new hit effects and 11 new kill effects (soul, black hole, pixel disintegration...); item glow fix
 New weapon motion: slashes, combos, critical swing, inertia, jump and landing, smooth block, presets

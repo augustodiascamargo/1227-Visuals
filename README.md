@@ -1,4 +1,4 @@
-# 1227 — v1.27.1 (Minecraft 1.8.9 · Forge 11.15.1.2318 · Java 8)
+# 1227 — v1.27.2 (Minecraft 1.8.9 · Forge 11.15.1.2318 · Java 8)
 
 Mod client-side, quase todo visual. Não desenha através de paredes e não muda alcance, timing de
 ataque, hitbox ou pacotes do jogo. Três coisas vão além do visual e estão descritas em
@@ -190,11 +190,34 @@ nada depende de Lunar ou de outro launcher.
 O modelo do Tung Sahur (ZAHUR.fbx + textura) e a butterfly knife (.blend) foram enviados pelo usuário. Antes de
 publicar o 1227, confira a licença de cada um (por exemplo, se exigem crédito ao autor) e coloque o crédito aqui.
 
+## Mudanças na v1.27.2
+
+Item Glow na espada normal refeito (a "segunda espada de luz" continuava na 1.27.1).
+
+- **A correção da 1.27.1 estava errada.** O Minecraft dobra o tamanho de todo item na mão: os blocos em
+  `ItemRenderer.renderItem` e os itens planos (espadas) em `RenderItem.preTransform`. A 1.27.1 tirou essa
+  dobra dos itens planos e as cópias do brilho passaram a sair com metade do tamanho.
+- **Nova forma de desenhar:** o brilho não recalcula mais a posição da espada. Cada cópia é desenhada pela
+  mesma chamada que desenha a espada de verdade (`ItemRenderer.renderItem(..., FIRST_PERSON)`), como
+  silhueta de cor lisa, deslocada alguns pixels na tela e sem gravar profundidade. A espada real, desenhada
+  logo depois, cobre o meio: só sobra a borda. Assim o brilho fica com o mesmo modelo, tamanho e pose da
+  espada, mesmo que outro mod ou o OptiFine mexa nessa chamada.
+- **Glow aditivo de verdade:** o brilho soma luz (não escurece) e ignora a luz do ambiente, então aparece
+  igual no escuro.
+- **Novo estilo "Aura" e "Aura + Outline"** no Item Glow: a aura acompanha o contorno da espada, tremula
+  e sobe como energia; cada camada usa um tom do gradiente.
+- **Modo de mão "Compatibility":** nesse modo é o Minecraft que desenha a espada, depois do 1227 e com a
+  própria pose; brilho, aura, contorno, aura da lâmina e raios presos à espada normal ficam desligados nele
+  (antes eles flutuavam ao lado da espada). As espadas 3D já não funcionavam nesse modo.
+- Aura da lâmina e raios do Weapon Effects voltaram ao tamanho certo.
+- Não testado em jogo por mim: confira o item 71 de `docs/TEST-REPORT-1.20.md`.
+
 ## Mudanças na v1.27.1
 
 Correção do Item Glow nas espadas normais do jogo (a "espada de luz" embaixo da espada).
 
-- **Causa encontrada:** o Minecraft dobra o tamanho do item na mão só para modelos tipo bloco
+- **(Errado — corrigido na 1.27.2, ver acima.)** O texto abaixo partiu de uma leitura incompleta do código do jogo.
+- **Causa suposta:** o Minecraft dobra o tamanho do item na mão só para modelos tipo bloco
   (`shouldRenderItemIn3D`). O 1227 fazia o contrário: dobrava as cópias do brilho justamente para itens
   planos (espadas, ferramentas). As cópias saíam com o dobro do tamanho em relação ao ponto da mão, e
   apareciam como uma segunda espada, maior e deslocada. As tentativas das versões 1.25 e 1.26 mexeram em
@@ -761,7 +784,7 @@ Instalação: Minecraft 1.8.9, depois Forge 1.8.9, depois `1227.jar` na pasta `m
 - **Block Wave** saiu do Shockwave e virou um estilo de **Jump Effects** (pulo e/ou aterrissagem): os blocos do chão sobem como cópias translúcidas numa onda.
 - **Afterimage (novo):** cópias-fantasma do jogador deixadas nas últimas posições, cada uma com a pose que ele tinha ali, sumindo aos poucos. Cor única, degradê ou arco-íris; quantidade, espaçamento, duração e opacidade ajustáveis. Funciona em você e, se quiser, no alvo ou em todos.
 - **Player Glow:** estilo "Outline" (contorno nítido em volta do jogador) ou "Glow + Outline", com espessura ajustável. O contorno respeita paredes.
-- **Item Glow:** estilo "Outline" (contorno que segue o formato do item segurado) ou "Glow + Outline".
+- **Item Glow:** estilo "Outline" (contorno que segue o formato do item segurado), "Glow + Outline", "Aura" ou "Aura + Outline" (desde a 1.27.2).
 - **Ambient Particles:** luzes voando com rastro: Shooting Stars (retas), Wisps (curvas suaves), Darting Sparks (viradas bruscas) e Flyers Mix.
 - **Hit Color (novo):** tinge o jogador ou mob atingido com a sua cor durante o piscar de dano (por cima do vermelho do vanilla).
 - **Halo:** estilo China Hat (chapéu cônico translúcido que acompanha a cabeça, com cores girando).

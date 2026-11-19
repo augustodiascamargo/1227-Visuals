@@ -82,7 +82,7 @@ public final class HandFx {
      * and blade aura go here: they write no depth, so the real item drawn afterwards covers them
      * and they only show around its edges, never on top of the blade.
      */
-    void beforeItem(Minecraft mc, EntityPlayerSP p, ItemStack stack) {
+    void beforeItem(Minecraft mc, EntityPlayerSP p, ItemStack stack, boolean full) {
         WeaponEffectsModule w = WeaponEffectsModule.INSTANCE;
         ItemGlowModule g = ItemGlowModule.INSTANCE;
         boolean weapon = w != null && w.firstPersonActive(p) && w.bladeGlow();
@@ -95,48 +95,39 @@ public final class HandFx {
             if (glow) modelCopies(mc, stack, wm, g);
             return;
         }
-        if (!weapon && !glow) return;
+        // 1.28.0: effects drawn ON the item need the item drawn by this same pass. In the
+        // effects-only pass (hand Compatibility mode) Minecraft draws the item afterwards with its
+        // own pose, so a copy drawn here would float beside it: the "second sword of light".
+        if (!full) return;
+        if (glow) itemCopies(mc, p, stack, g);
+        if (!weapon) return;
         IBakedModel model = heldModel(mc, p, stack);
         if (model == null) return;
         GlStateManager.pushMatrix();
-        // the same chain ItemRenderer.renderItem + RenderItem apply to the real item: 2x ONLY for
-        // block-like models (isGui3d), the model's first-person transform through Forge, then
-        // 0.5x and a -0.5 offset into the model's 0..1 space.
-        // 1.27.1: up to 1.27.0 the 2x was applied to FLAT items (swords, tools) instead, so every
-        // copy was twice the size of the real sword around the hand's origin: the "sword of light"
-        // under the real one.
-        if (model.isGui3d()) GlStateManager.scale(2.0F, 2.0F, 2.0F);
-        model = cameraTransform(model);
-        // the copies are drawn without the enchantment shine: its pass resets blending and turns
-        // depth writes back on, which made later copies show as a second sword under the real one
-        ItemStack plain = stack;
-        if (glow && stack.hasEffect()) {
-            plain = stack.copy();
-            if (plain.hasTagCompound()) plain.getTagCompound().removeTag("ench");
-            if (plain.hasEffect()) plain = stack; // shine built into the item (blending is set again per copy)
-        }
-        if (glow && g.glowOn()) glowCopies(mc, plain, model, g);
-        if (glow && g.outlineOn()) outlineCopies(mc, plain, model, g);
-        if (weapon && !custom) {
-            GlStateManager.scale(0.5F, 0.5F, 0.5F);
-            GlStateManager.translate(-0.5F, -0.5F, -0.5F);
-            bladeAura(w, w.bladeStart(), w.bladeEnd());
-        }
+        // the chain RenderItem applies to every held item: ItemRenderer.renderItem doubles block
+        // models, RenderItem.preTransform doubles flat ones, so the item is always 2x; then the
+        // first-person transform (through Forge), 0.5x and the -0.5 offset into 0..1 model space.
+        GlStateManager.scale(2.0F, 2.0F, 2.0F);
+        cameraTransform(model);
+        GlStateManager.scale(0.5F, 0.5F, 0.5F);
+        GlStateManager.translate(-0.5F, -0.5F, -0.5F);
+        bladeAura(w, w.bladeStart(), w.bladeEnd());
         GlStateManager.popMatrix();
     }
 
     /** Called right after the held item is drawn, with the hand transform still applied. */
-    void afterItem(Minecraft mc, EntityPlayerSP p, ItemStack stack) {
+    void afterItem(Minecraft mc, EntityPlayerSP p, ItemStack stack, boolean full) {
         WeaponEffectsModule w = WeaponEffectsModule.INSTANCE;
         boolean weapon = w != null && w.firstPersonActive(p);
         net.m1227.module.WeaponModelsModule wm = net.m1227.module.WeaponModelsModule.INSTANCE;
         weaponThisFrame = weapon;
         boolean arcs = (weapon && w.lightningArcs()) || (wm != null && wm.lightning() && wm.replaces(stack));
+        if (!full) arcs = false; // the item is drawn later by Minecraft, with its own pose
         if (!weapon && !arcs) return;
         IBakedModel model = heldModel(mc, p, stack);
         if (model == null) return;
         GlStateManager.pushMatrix();
-        if (model.isGui3d()) GlStateManager.scale(2.0F, 2.0F, 2.0F); // as ItemRenderer.renderItem does
+        GlStateManager.scale(2.0F, 2.0F, 2.0F); // ItemRenderer (blocks) or RenderItem.preTransform (flat items)
         model = cameraTransform(model);
         GlStateManager.scale(0.5F, 0.5F, 0.5F);
         GlStateManager.translate(-0.5F, -0.5F, -0.5F);
@@ -233,97 +224,115 @@ public final class HandFx {
         }
     }
 
-    /** Blending and depth for one copy (set again every copy, in case the item changed them). */
-    private static void copyState(boolean glow) {
-        if (glow) GlStateManager.blendFunc(0x8001 /* GL_CONSTANT_COLOR */, GL11.GL_ONE);
-        else GlStateManager.tryBlendFuncSeparate(770, 771, 1, 0);
-        GlStateManager.depthMask(false);
-        GlStateManager.depthFunc(GL11.GL_LEQUAL);
-    }
-
     /** Screen pixels per "1x": 2 px at 1080p, more on bigger screens, never under 1. */
     private static float pxScale(Minecraft mc) {
         return Math.max(1f, mc.displayHeight / 540f);
     }
 
     /**
-     * Contour around the held item: flat-colour copies of the item moved a few SCREEN pixels in
-     * 8 directions (16 for thick lines), so the line has the same width all around the blade as
-     * you see it. Drawn before the real item, which then covers the middle: only the rim shows.
+     * Glow, aura and outline around a normal (non-3D) held item.
+     *
+     * Every copy is drawn by the very call that draws the real item next,
+     * ItemRenderer.renderItem(player, stack, FIRST_PERSON), so it gets exactly the same model,
+     * size and pose, whatever another mod or OptiFine does to that call. Up to 1.27.1 the copies
+     * rebuilt that transform by hand, and any difference showed as a second sword.
+     *
+     * Each copy is a flat-colour silhouette (Silhouette: colour from the texture environment,
+     * alpha from the item texture, so the pixel cut-outs stay) moved a few SCREEN pixels by
+     * ScreenOffset, with no depth writes. The real item drawn afterwards covers the middle: only
+     * the rim shows, the same thickness all round.
+     *
+     * RenderItem sets blending to (SRC_ALPHA, ONE_MINUS_SRC_ALPHA) and the alpha test to 0.1 on
+     * every call through GlStateManager, which skips GL calls whose value it already holds. So the
+     * cache is set to those exact values and the real GL state is then changed directly
+     * (additive blending, a lower alpha test): RenderItem's calls are then skipped and the copies
+     * keep the glow's state. Both are put back afterwards, in GL and in the cache.
      */
-    private void outlineCopies(Minecraft mc, ItemStack stack, IBakedModel model, ItemGlowModule g) {
-        int c = g.color(time);
-        float a = Math.min(1f, 0.4f + g.intensity()) * g.pulse(time);
-        float w = g.outlineWidth() / 0.03f * pxScale(mc); // "1.0x" = 2 px at 1080p
-        mc.getTextureManager().bindTexture(TextureMap.locationBlocksTexture);
-        GlStateManager.disableLighting();
-        GlStateManager.enableBlend();
-        GlStateManager.tryBlendFuncSeparate(770, 771, 1, 0);
-        GlStateManager.depthMask(false);
-        Silhouette.begin(c, a);
+    private void itemCopies(Minecraft mc, EntityPlayerSP p, ItemStack stack, ItemGlowModule g) {
+        // without the enchantment shine: its pass turns depth writes on and resets blending
+        ItemStack plain = stack;
+        if (stack.hasEffect() && stack.hasTagCompound()) {
+            plain = stack.copy();
+            plain.getTagCompound().removeTag("ench");
+        }
+        net.minecraft.client.renderer.ItemRenderer ir = mc.getItemRenderer();
+        float pulse = g.pulse(time);
+        float px = pxScale(mc);
+        mc.entityRenderer.disableLightmap(); // full-bright colour, also in the dark
         ScreenOffset.begin();
         try {
-            int n = w > 2.5f ? 16 : 8;
-            for (int i = 0; i < n; i++) {
-                double ang = Math.PI * 2 * i / n;
-                ScreenOffset.shift((float) Math.cos(ang) * w, (float) Math.sin(ang) * w, 0f);
-                copyState(false);
-                mc.getRenderItem().renderItem(stack, model);
+            if (g.glowOn()) {
+                boolean aura = g.auraOn();
+                int layers = g.layers();
+                float reach = (1.5f + g.spread() * 40f) * px; // default spread 0.12 ~ 6 px at 1080p
+                int n = aura ? 10 : 8;
+                for (int k = layers; k >= 1; k--) {
+                    float f = k / (float) layers; // 1 = outermost layer
+                    float rad = reach * f;
+                    float a = Math.min(1f, g.intensity() * pulse * (1.15f - f * 0.75f) * (aura ? 0.42f : 0.36f));
+                    int c = g.color(time + f * 0.9f);
+                    for (int i = 0; i < n; i++) {
+                        double ang = Math.PI * 2 * (i + (k & 1) * 0.5) / n;
+                        float dx = (float) Math.cos(ang) * rad, dy = (float) Math.sin(ang) * rad;
+                        if (aura) {
+                            // energy: each tongue flickers on its own rhythm and leans upwards
+                            float ph = time * 5.0f + i * 2.399f + k * 1.3f;
+                            float flick = 0.55f + 0.45f * (float) Math.sin(ph);
+                            dx = dx * (0.75f + 0.25f * flick) + (float) Math.sin(ph * 0.7f) * rad * 0.18f;
+                            dy = dy * (0.75f + 0.25f * flick) + rad * (0.35f + 0.45f * flick);
+                            copy(mc, ir, p, plain, true, c, a * (0.6f + 0.4f * flick), dx, dy);
+                        } else {
+                            copy(mc, ir, p, plain, true, c, a, dx, dy);
+                        }
+                    }
+                }
             }
-            if (w > 1.5f) { // fill the inside of thick lines
-                for (int i = 0; i < 8; i++) {
-                    double ang = Math.PI * 2 * (i + 0.5) / 8;
-                    ScreenOffset.shift((float) Math.cos(ang) * w * 0.55f, (float) Math.sin(ang) * w * 0.55f, 0f);
-                    copyState(false);
-                    mc.getRenderItem().renderItem(stack, model);
+            if (g.outlineOn()) {
+                int c = g.color(time);
+                float a = Math.min(1f, 0.45f + g.intensity()) * pulse;
+                float w = g.outlineWidth() / 0.03f * px; // "1.0x" = 2 px at 1080p
+                int n = w > 2.5f ? 16 : 8;
+                for (int i = 0; i < n; i++) {
+                    double ang = Math.PI * 2 * i / n;
+                    copy(mc, ir, p, plain, false, c, a, (float) Math.cos(ang) * w, (float) Math.sin(ang) * w);
+                }
+                if (w > 1.5f) { // fill the inside of thick lines
+                    for (int i = 0; i < 8; i++) {
+                        double ang = Math.PI * 2 * (i + 0.5) / 8;
+                        copy(mc, ir, p, plain, false, c, a, (float) Math.cos(ang) * w * 0.55f, (float) Math.sin(ang) * w * 0.55f);
+                    }
                 }
             }
         } finally {
             ScreenOffset.end();
             Silhouette.end();
+            // back to what RenderItem and the rest of the hand pass expect, in GL and in the cache
+            GL11.glAlphaFunc(GL11.GL_GREATER, 0.1f);
+            GlStateManager.alphaFunc(GL11.GL_GREATER, 0.1f);
+            GL14.glBlendFuncSeparate(770, 771, 1, 0);
+            GlStateManager.tryBlendFuncSeparate(770, 771, 1, 0);
+            GlStateManager.depthMask(true);
+            GlStateManager.color(1f, 1f, 1f, 1f);
+            mc.entityRenderer.enableLightmap();
         }
-        GlStateManager.depthMask(true);
-        GlStateManager.enableLighting();
-        GlStateManager.color(1f, 1f, 1f, 1f);
     }
 
-    /**
-     * Soft glow around the item: rings of tinted copies moved outwards in SCREEN pixels
-     * (8 directions per ring, fainter the further out), added on top of what is behind the
-     * hand. Drawn before the real item, so the glow only shows around the blade's edges and
-     * spreads evenly on every side of it.
-     */
-    private void glowCopies(Minecraft mc, ItemStack stack, IBakedModel model, ItemGlowModule g) {
-        int layers = g.layers();
-        float pulse = g.pulse(time);
-        int c = g.color(time);
-        float r = ((c >> 16) & 255) / 255f, gr = ((c >> 8) & 255) / 255f, b = (c & 255) / 255f;
-        mc.getTextureManager().bindTexture(TextureMap.locationBlocksTexture);
-        GlStateManager.disableLighting();
+    /** One silhouette copy of the held item, shifted (dx, dy) screen pixels. */
+    private static void copy(Minecraft mc, net.minecraft.client.renderer.ItemRenderer ir, EntityPlayerSP p, ItemStack stack,
+                             boolean additive, int rgb, float alpha, float dx, float dy) {
+        if (alpha <= 0.004f) return;
+        ScreenOffset.shift(dx, dy, 0f);
+        // the cache holds RenderItem's values, so its own calls change nothing (see itemCopies)
         GlStateManager.enableBlend();
+        GlStateManager.tryBlendFuncSeparate(770, 771, 1, 0);
+        GlStateManager.alphaFunc(GL11.GL_GREATER, 0.1f);
+        if (additive) GL14.glBlendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE, 0, 1);
+        else GL14.glBlendFuncSeparate(770, 771, 0, 1);
+        GL11.glAlphaFunc(GL11.GL_GREATER, 0.003f);
         GlStateManager.depthMask(false);
-        GlStateManager.blendFunc(0x8001 /* GL_CONSTANT_COLOR */, GL11.GL_ONE);
-        float reach = (1.5f + g.spread() * 40f) * pxScale(mc); // default spread 0.12 ~ 6 px at 1080p
-        ScreenOffset.begin();
-        try {
-            for (int k = layers; k >= 1; k--) {
-                float rad = reach * k / layers;
-                float a = g.intensity() * pulse * (1.1f - k / (float) (layers + 1)) * 0.3f;
-                GL14.glBlendColor(r * a, gr * a, b * a, 1f);
-                for (int i = 0; i < 8; i++) {
-                    double ang = Math.PI * 2 * (i + (k & 1) * 0.5) / 8;
-                    ScreenOffset.shift((float) Math.cos(ang) * rad, (float) Math.sin(ang) * rad, 0f);
-                    copyState(true);
-                    mc.getRenderItem().renderItem(stack, model);
-                }
-            }
-        } finally {
-            ScreenOffset.end();
-        }
-        GL14.glBlendColor(0f, 0f, 0f, 0f);
-        GlStateManager.blendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
-        GlStateManager.depthMask(true);
-        GlStateManager.enableLighting();
+        GlStateManager.depthFunc(GL11.GL_LEQUAL);
+        Silhouette.begin(rgb, Math.min(1f, alpha));
+        ir.renderItem(p, stack, ItemCameraTransforms.TransformType.FIRST_PERSON);
     }
 
     // ------------------------------------------------- blade (model space)
