@@ -82,6 +82,9 @@ final class MenuCharacter {
             float hx = x, hy = feetY - size * 1.65f;
             float wantYaw = (float) Math.toDegrees(Math.atan((mx - hx) / (size * 1.6f))) * 0.9f * k;
             float wantPitch = (float) -Math.toDegrees(Math.atan((my - hy) / (size * 1.6f))) * 0.6f * k;
+            // a neck turns about 50 degrees each way and tilts about 30: past that the head looked broken
+            wantYaw = Math.max(-50f, Math.min(50f, wantYaw));
+            wantPitch = Math.max(-30f, Math.min(30f, wantPitch));
             float e = 1f - (float) Math.exp(-10f * dt);
             headYaw += (wantYaw - headYaw) * e;
             headPitch += (wantPitch - headPitch) * e;
@@ -94,6 +97,8 @@ final class MenuCharacter {
         GlStateManager.pushMatrix();
         GlStateManager.translate(x, feetY, 200f);
         GlStateManager.scale(size, -size, size);
+        // depth writes on BEFORE clearing: glClear leaves the depth buffer alone while they are off
+        GlStateManager.depthMask(true);
         GlStateManager.clear(GL11.GL_DEPTH_BUFFER_BIT);
         GlStateManager.enableDepth();
         GlStateManager.depthFunc(GL11.GL_LEQUAL);
@@ -101,6 +106,7 @@ final class MenuCharacter {
         String cos = HaloModule.menuStyle();
         if (cos != null && !cos.equals("Comet")) crown(t, bodyYaw - headYaw * (t > WALK ? 1f : 0f), pose.lift);
         // forget the model's depth so 2D drawn afterwards (comet, intro, tooltips) is never hidden by it
+        GlStateManager.depthMask(true);
         GlStateManager.clear(GL11.GL_DEPTH_BUFFER_BIT);
         GlStateManager.popMatrix();
         GlStateManager.enableTexture2D();

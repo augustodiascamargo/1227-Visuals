@@ -17,13 +17,14 @@ public final class Stage3D {
         GlStateManager.scale(scale, -scale, scale);
         GlStateManager.rotate(pitchDeg, 1f, 0f, 0f);
         GlStateManager.rotate(yawDeg, 0f, 1f, 0f);
+        GlStateManager.depthMask(true); // before the clear: glClear skips depth while writes are off
         GlStateManager.clear(GL11.GL_DEPTH_BUFFER_BIT);
         GlStateManager.enableDepth();
         GlStateManager.depthFunc(GL11.GL_LEQUAL);
-        GlStateManager.depthMask(true);
     }
 
     public static void end() {
+        GlStateManager.depthMask(true);
         GlStateManager.clear(GL11.GL_DEPTH_BUFFER_BIT);
         GlStateManager.popMatrix();
         GlStateManager.enableTexture2D();

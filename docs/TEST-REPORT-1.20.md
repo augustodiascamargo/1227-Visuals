@@ -396,3 +396,13 @@ conferidos por leitura.
     - com o Weapon Effects ligado, a aura da lâmina e os raios devem ficar sobre a lâmina.
     - com a mão em "Compatibility" (Client), o brilho não deve aparecer em lugar nenhum (nem ao lado da espada);
     - conferir no escuro (à noite, caverna): o brilho deve ter a mesma força que de dia.
+72. **Personagem do menu (1.27.3):** abrir o menu principal com a sua skin:
+    - o boneco deve aparecer inteiro e certo (cabeça, rosto, corpo, braços, pernas), andando e depois parado;
+    - mover o mouse por toda a tela: a cabeça vira no máximo uns 50° e nunca mostra o lado de dentro;
+    - repetir com uma skin slim (Alex) e conferir os braços finos;
+    - repetir depois de entrar num mundo e voltar ao menu (efeitos com recorte, como Player Glow "Hologram");
+    - abrir Cosmetics e conferir o mesmo boneco no preview;
+    - se puder, testar uma skin antiga 64x32 num resource pack (steve.png).
+73. **HUD Editor (1.27.3):** aplicar cada layout pronto (Minimal PvP, Competitive, Streaming, Cinematic, Clean)
+    em duas resoluções diferentes; arrastar, redimensionar e usar Undo / Ctrl+Z; apertar P para o preview e P
+    de novo para voltar.

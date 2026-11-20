@@ -49,6 +49,34 @@ public final class HudEditorScreen extends GuiScreen {
         return 0xFF000000 | ClientModule.accent();
     }
 
+    // ------------------------------------------------------------- undo and preview (1.27.3)
+
+    /** Layouts before each change (newest last), for Ctrl+Z. */
+    private final java.util.ArrayDeque<com.google.gson.JsonObject> undo = new java.util.ArrayDeque<com.google.gson.JsonObject>();
+    private long lastUndoPush;
+    /** Preview: the HUD as it looks in game, without grid, frames and bars (P toggles). */
+    private boolean preview;
+    private com.google.gson.JsonObject dragStart;
+
+    /** Remembers the layout before a change; repeated small changes (scroll, nudges) share one step. */
+    private void pushUndo(boolean merge) {
+        long now = System.currentTimeMillis();
+        if (merge && now - lastUndoPush < 700 && !undo.isEmpty()) {
+            lastUndoPush = now;
+            return;
+        }
+        lastUndoPush = merge ? now : 0L;
+        undo.addLast(HudLayouts.capture());
+        while (undo.size() > 30) undo.removeFirst();
+    }
+
+    private void undoLast() {
+        if (undo.isEmpty()) return;
+        HudLayouts.apply(undo.removeLast());
+        lastUndoPush = 0L;
+        selected = null;
+    }
+
     private ScaledResolution sr() {
         return new ScaledResolution(mc);
     }
@@ -100,6 +128,15 @@ public final class HudEditorScreen extends GuiScreen {
     public void drawScreen(int mx, int my, float pt) {
         ScaledResolution sr = sr();
         float in = Math.min(1f, (System.currentTimeMillis() - opened) / 200f);
+        if (preview) {
+            for (HudModule h : huds) if (h.isEnabled()) h.render(sr, true);
+            String t = "Preview  \u00b7  P to edit again";
+            float tw = Gfx.textWidth(t);
+            Gfx.roundedRect((width - tw) / 2f - 8, 6, tw + 16, 14, 7, Gfx.alpha(0xFF0B0C11, 0.7f));
+            Gfx.text(t, (width - tw) / 2f, 9.5f, 0xFFA9ADBA);
+            super.drawScreen(mx, my, pt);
+            return;
+        }
         Gfx.rect(0, 0, width, height, Gfx.alpha(0xFF05060A, 0.35f * in));
         // dot grid + centre lines
         int dot = Gfx.alpha(0xFFFFFFFF, 0.06f * in);
@@ -142,7 +179,8 @@ public final class HudEditorScreen extends GuiScreen {
             Gfx.text(h.name, r[0] + 8, r[1] + 3.5f, h.isEnabled() ? 0xFFFFFFFF : 0xFFA9ADBA);
         }
         drawLayoutBar(mx, my);
-        String help = "Drag to move  ·  Arrows nudge (Shift x10)  ·  C centre  ·  H hide  ·  Scroll resize  ·  Right-click reset  ·  Middle-click lock  ·  Esc save";
+        drawPresetBar(mx, my);
+        String help = "Drag to move  ·  Arrows nudge (Shift x10)  ·  C centre  ·  H hide  ·  Scroll resize  ·  Right-click reset  ·  Middle-click lock  ·  Ctrl+Z undo  ·  P preview  ·  Esc save";
         float hw = Gfx.textWidth(help);
         Gfx.roundedRect((width - hw) / 2f - 8, height - 20, hw + 16, 14, 7, Gfx.alpha(0xFF0B0C11, 0.85f));
         Gfx.text(help, (width - hw) / 2f, height - 16.5f, 0xFFA9ADBA);
@@ -151,10 +189,13 @@ public final class HudEditorScreen extends GuiScreen {
 
     @Override
     protected void mouseClicked(int mx, int my, int button) throws IOException {
+        if (preview) return;
+        if (button == 0 && clickPresetBar(mx, my)) return;
         float[][] cr = chipRects();
         for (int i = 0; i < chips.size(); i++) {
             float[] r = cr[i];
             if (mx >= r[0] && mx <= r[0] + r[2] && my >= r[1] && my <= r[1] + 14) {
+                pushUndo(false);
                 chips.get(i).toggle();
                 return;
             }
@@ -162,6 +203,9 @@ public final class HudEditorScreen extends GuiScreen {
         if (button == 0 && clickLayoutBar(mx, my)) return;
         HudModule h = at(mx, my);
         if (h == null) return;
+        if (button == 2 || (button == 1 && !h.locked.on())) pushUndo(false);
+        // a drag only becomes an undo step once the element actually moves
+        if (button == 0 && !h.locked.on()) dragStart = HudLayouts.capture();
         if (button == 2) {
             h.locked.set(!h.locked.on());
             ConfigManager.markDirty();
@@ -187,6 +231,12 @@ public final class HudEditorScreen extends GuiScreen {
     @Override
     protected void mouseClickMove(int mx, int my, int button, long time) {
         if (dragging == null) return;
+        if (dragStart != null) {
+            undo.addLast(dragStart);
+            while (undo.size() > 30) undo.removeFirst();
+            dragStart = null;
+            lastUndoPush = 0L;
+        }
         float w = dragging.width() * dragging.scale.f(), h = dragging.height() * dragging.scale.f();
         float x = mx - offX, y = my - offY;
         guideX = guideY = -1;
@@ -259,7 +309,8 @@ public final class HudEditorScreen extends GuiScreen {
         int my = height - Mouse.getEventY() * height / mc.displayHeight - 1;
         HudModule h = at(mx, my);
         if (h == null) return;
-        if (h.locked.on()) return;
+        if (h.locked.on() || preview) return;
+        pushUndo(true);
         h.scale.setClamped(h.scale.f() + (d > 0 ? 0.05 : -0.05));
         ConfigManager.markDirty();
     }
@@ -270,6 +321,14 @@ public final class HudEditorScreen extends GuiScreen {
      */
     @Override
     protected void keyTyped(char c, int key) throws IOException {
+        if (key == org.lwjgl.input.Keyboard.KEY_P) {
+            preview = !preview;
+            return;
+        }
+        if (key == org.lwjgl.input.Keyboard.KEY_Z && GuiScreen.isCtrlKeyDown()) {
+            undoLast();
+            return;
+        }
         HudModule h = selected;
         if (h != null && h.isEnabled() && !h.locked.on()) {
             ScaledResolution sr = sr();
@@ -283,11 +342,13 @@ public final class HudEditorScreen extends GuiScreen {
             else if (key == org.lwjgl.input.Keyboard.KEY_DOWN) y += step;
             else if (key == org.lwjgl.input.Keyboard.KEY_C) x = (width - w) / 2f;
             else if (key == org.lwjgl.input.Keyboard.KEY_H && h.toggleable()) {
+                pushUndo(false);
                 h.setEnabled(false);
                 selected = null;
                 moved = false;
             } else moved = false;
             if (moved) {
+                pushUndo(true);
                 x = Math.max(0, Math.min(width - w, x));
                 y = Math.max(0, Math.min(height - hh, y));
                 h.posX.set((double) (x / width));
@@ -332,10 +393,60 @@ public final class HudEditorScreen extends GuiScreen {
         for (int i = 0; i < LAYOUT_BTNS.length; i++) {
             float[] r = layoutRect(i);
             if (mx < r[0] || mx > r[0] + r[2] || my < r[1] || my > r[1] + 14) continue;
+            if (i >= 3 && i != 6) pushUndo(false); // loading or pasting replaces the layout
             if (i < 3) net.m1227.hud.HudLayouts.save(i + 1);
             else if (i < 6) net.m1227.hud.HudLayouts.load(i - 2);
             else if (i == 6) net.m1227.hud.HudLayouts.copy();
             else net.m1227.hud.HudLayouts.paste();
+            return true;
+        }
+        return false;
+    }
+
+    // ------------------------------------------------------------- ready layouts
+
+    private float[] presetRect(int i) {
+        int n = HudLayouts.PRESETS.length + 1; // + Undo
+        float gap = 4f, total = 0f;
+        for (int k = 0; k < n; k++) total += presetW(k) + gap;
+        total -= gap;
+        float x = (width - total) / 2f;
+        for (int k = 0; k < i; k++) x += presetW(k) + gap;
+        return new float[]{x, height - 58, presetW(i)};
+    }
+
+    private float presetW(int i) {
+        String t = i < HudLayouts.PRESETS.length ? HudLayouts.PRESETS[i] : "Undo";
+        return Gfx.textWidth(t) + 14;
+    }
+
+    private void drawPresetBar(int mx, int my) {
+        int n = HudLayouts.PRESETS.length + 1;
+        float[] first = presetRect(0);
+        Gfx.text("Ready layouts", first[0] - Gfx.textWidth("Ready layouts") - 8, first[1] + 3.5f, 0xFF7A7F8D);
+        for (int i = 0; i < n; i++) {
+            float[] r = presetRect(i);
+            boolean isUndo = i == n - 1;
+            boolean off = isUndo && undo.isEmpty();
+            boolean over = !off && mx >= r[0] && mx <= r[0] + r[2] && my >= r[1] && my <= r[1] + 14;
+            Gfx.roundedRect(r[0], r[1], r[2], 14, 7, Gfx.alpha(over ? accent() : 0xFF15171F, over ? 0.9f : 0.85f));
+            String t = isUndo ? "Undo" : HudLayouts.PRESETS[i];
+            Gfx.text(t, r[0] + 7, r[1] + 3.5f, off ? 0xFF5A5E6A : (over ? 0xFFFFFFFF : 0xFFA9ADBA));
+        }
+    }
+
+    private boolean clickPresetBar(int mx, int my) {
+        int n = HudLayouts.PRESETS.length + 1;
+        for (int i = 0; i < n; i++) {
+            float[] r = presetRect(i);
+            if (mx < r[0] || mx > r[0] + r[2] || my < r[1] || my > r[1] + 14) continue;
+            if (i == n - 1) {
+                undoLast();
+            } else {
+                pushUndo(false); // a ready layout can always be undone
+                HudLayouts.applyPreset(HudLayouts.PRESETS[i]);
+                selected = null;
+            }
             return true;
         }
         return false;

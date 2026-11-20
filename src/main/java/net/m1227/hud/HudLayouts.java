@@ -134,4 +134,85 @@ public final class HudLayouts {
         Notifier.post(Notifier.Kind.SYSTEM, "HUD layout", ok ? "Pasted from clipboard" : "Clipboard has no HUD layout",
                 ok ? Notifier.GOOD : Notifier.BAD, 1800);
     }
+
+    // ------------------------------------------------------------- ready layouts (1.27.3)
+
+    /** Names of the ready layouts, in the order the editor shows them. */
+    public static final String[] PRESETS = {"Minimal PvP", "Competitive", "Streaming", "Cinematic", "Clean"};
+
+    /**
+     * One element of a ready layout: the point (x, y) as a fraction of the screen and which point
+     * of the element sits there (ax, ay: 0 = left/top, 0.5 = centre, 1 = right/bottom), so the
+     * layout fits any resolution and any element size.
+     */
+    private static Object[] at(String name, double ax, double ay, double x, double y, double scale) {
+        return new Object[]{name, ax, ay, x, y, scale};
+    }
+
+    private static Object[][] preset(String name) {
+        if (name.equals("Minimal PvP")) return new Object[][]{
+                at("Info Bar", 0, 0, 0.006, 0.01, 1.0),
+                at("Keystrokes", 0, 1, 0.006, 0.985, 0.9),
+                at("Armor", 1, 1, 0.994, 0.985, 1.0),
+                at("Potions", 1, 0.5, 0.994, 0.5, 0.9),
+                at("Combo Counter", 0.5, 0, 0.5, 0.56, 0.8)};
+        if (name.equals("Competitive")) return new Object[][]{
+                at("Info Bar", 0, 0, 0.006, 0.01, 1.0),
+                at("Keystrokes", 0, 1, 0.006, 0.985, 0.9),
+                at("Armor", 1, 1, 0.994, 0.985, 1.0),
+                at("Potions", 1, 0.5, 0.994, 0.45, 0.9),
+                at("Combo Counter", 0.5, 0, 0.5, 0.56, 0.8),
+                at("Target HUD", 0, 0.5, 0.56, 0.5, 0.9),
+                at("Reach Display", 0.5, 0, 0.5, 0.6, 0.8),
+                at("Hit Delay", 0.5, 0, 0.5, 0.64, 0.8),
+                at("Server Info", 1, 0, 0.994, 0.01, 0.9)};
+        if (name.equals("Streaming")) return new Object[][]{
+                at("Watermark", 0, 0, 0.006, 0.01, 1.0),
+                at("Info Bar", 0, 0, 0.006, 0.07, 1.0),
+                at("Keystrokes", 0, 1, 0.006, 0.985, 1.0),
+                at("Session Stats", 1, 0, 0.994, 0.01, 1.0),
+                at("Now Playing", 1, 1, 0.994, 0.985, 1.0),
+                at("Target HUD", 0, 0.5, 0.56, 0.5, 1.0),
+                at("Armor", 1, 1, 0.994, 0.86, 1.0),
+                at("Potions", 1, 0.5, 0.994, 0.5, 0.9)};
+        if (name.equals("Cinematic")) return new Object[][]{
+                at("Now Playing", 0, 1, 0.012, 0.975, 0.9)};
+        if (name.equals("Clean")) return new Object[][]{
+                at("Armor", 1, 1, 0.994, 0.985, 1.0),
+                at("Potions", 1, 0.5, 0.994, 0.5, 0.9)};
+        return null;
+    }
+
+    /**
+     * Applies a ready layout: the elements it lists are turned on and placed, every other movable
+     * element is turned off. Elements that are always on (not toggleable) keep their place.
+     */
+    public static boolean applyPreset(String name) {
+        Object[][] p = preset(name);
+        if (p == null) return false;
+        net.minecraft.client.gui.ScaledResolution sr = new net.minecraft.client.gui.ScaledResolution(net.minecraft.client.Minecraft.getMinecraft());
+        float sw = sr.getScaledWidth(), sh = sr.getScaledHeight();
+        java.util.Map<String, Object[]> want = new java.util.HashMap<String, Object[]>();
+        for (Object[] e : p) want.put((String) e[0], e);
+        for (Module m : ModuleManager.inCategory(Category.HUD)) {
+            if (!(m instanceof HudModule)) continue;
+            HudModule h = (HudModule) m;
+            Object[] e = want.get(h.name);
+            if (e == null) {
+                if (h.toggleable()) h.setEnabled(false);
+                continue;
+            }
+            double scale = (Double) e[5];
+            h.scale.set(clamp(scale, 0.5, 2.5));
+            float w = h.width() * h.scale.f(), hh = h.height() * h.scale.f();
+            double x = (Double) e[3] * sw - (Double) e[1] * w;
+            double y = (Double) e[4] * sh - (Double) e[2] * hh;
+            h.posX.set(clamp(x / sw, 0, 1));
+            h.posY.set(clamp(y / sh, 0, 1));
+            if (h.toggleable()) h.setEnabled(true);
+        }
+        ConfigManager.markDirty();
+        Notifier.post(Notifier.Kind.SYSTEM, "HUD layout", name, Notifier.GOOD, 1600);
+        return true;
+    }
 }

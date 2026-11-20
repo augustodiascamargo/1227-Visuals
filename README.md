@@ -1,5 +1,4 @@
-<<<<<<< HEAD
-# 1227 — v1.27.2 (Minecraft 1.8.9 · Forge 11.15.1.2318 · Java 8)
+# 1227 — v1.27.3 (Minecraft 1.8.9 · Forge 11.15.1.2318 · Java 8)
 
 Mod client-side, quase todo visual. Não desenha através de paredes e não muda alcance, timing de
 ataque, hitbox ou pacotes do jogo. Três coisas vão além do visual e estão descritas em
@@ -20,8 +19,6 @@ ataque, hitbox ou pacotes do jogo. Três coisas vão além do visual e estão de
 ## Compilar
 Envie esta pasta para um repositório no GitHub. Aba **Actions** > "Build mod jar" > baixe o artefato `1227-jar`.
 O `.jar` vai em `.minecraft/mods` com Forge 1.8.9.
-=======
->>>>>>> 4944b6f6e211be32045721d1dda7ce73e71b2d92
 
 ## Abrir o menu
 - Tecla padrão: **Right Control** (configurável em Settings > Client > Menu key; Esc/Backspace = nenhuma).
@@ -192,6 +189,32 @@ nada depende de Lunar ou de outro launcher.
 ### Licença dos modelos enviados
 O modelo do Tung Sahur (ZAHUR.fbx + textura) e a butterfly knife (.blend) foram enviados pelo usuário. Antes de
 publicar o 1227, confira a licença de cada um (por exemplo, se exigem crédito ao autor) e coloque o crédito aqui.
+
+## Mudanças na v1.27.3
+
+**Personagem do menu (skin quebrada)**
+- O boneco do menu e o preview de cosméticos agora escolhem, pela posição de quem olha, quais faces desenhar
+  e desenham as partes de trás para a frente. Antes dependiam só do buffer de profundidade; quando ele não
+  era limpo (a limpeza era feita com a gravação de profundidade possivelmente desligada) ou quando um plano
+  de recorte de outro efeito ficava ligado, aparecia o lado de dentro da cabeça e do corpo.
+- A limpeza da profundidade no menu e no preview liga a gravação antes de limpar.
+- Skins antigas no formato 64x32 (sem braço e perna esquerdos próprios) são reconhecidas: o lado esquerdo
+  usa o direito espelhado, como no jogo. Antes o corpo mostrava pedaços da cabeça.
+- Skins slim (Alex): braços de 3 pixels e meio pixel mais baixos, como no modelo do jogo. O tipo slim vem do
+  perfil (metadado "model") ou, sem skin, do UUID, como no Minecraft.
+- A cabeça do personagem segue o mouse até 50° para os lados e 30° para cima e para baixo (antes podia
+  girar quase de lado quando o mouse estava nos botões da esquerda).
+- Os emotes no mundo usam o mesmo desenho.
+
+**HUD Editor**
+- **Layouts prontos:** Minimal PvP, Competitive, Streaming, Cinematic e Clean. Cada um liga e posiciona os
+  elementos dele e desliga os outros; a posição é calculada pelo tamanho de cada elemento, então serve em
+  qualquer resolução.
+- **Desfazer:** botão Undo e Ctrl+Z (até 30 passos) para arrastar, redimensionar, mover pelas setas,
+  esconder, travar, resetar, ligar/desligar pelos chips, carregar slot, colar e aplicar layout pronto.
+- **Preview:** tecla P mostra o HUD como fica no jogo, sem grade, molduras e barras.
+
+Não testado em jogo por mim: itens 72 e 73 de `docs/TEST-REPORT-1.20.md`.
 
 ## Mudanças na v1.27.2
 

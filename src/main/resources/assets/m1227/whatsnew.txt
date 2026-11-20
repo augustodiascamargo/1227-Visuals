@@ -1,3 +1,4 @@
+Menu character fixed (slim and old skins too); HUD editor: ready layouts, undo, preview
 Item glow redrawn with the real sword itself: no more second sword of light; new Aura style
 15 new aura styles; item glow on normal swords fixed (Forge transform); no flying arm while blocking
 9 new hit effects and 11 new kill effects (soul, black hole, pixel disintegration...); item glow fix

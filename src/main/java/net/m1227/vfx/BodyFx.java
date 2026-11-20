@@ -656,6 +656,14 @@ public final class BodyFx {
         face(c, 1, 0, 4, 5, u + d + w, v, w, d, tex, b, 3, g, light, fade);
     }
 
+    /**
+     * Height of the skin texture in pixels: 64, or 32 for an old-format (64x32) skin. Set by
+     * Puppet for one draw and put back to 64; only touched on the render thread.
+     */
+    static float texH = 64f;
+    /** Mirror the texture left-right (old-format skins: the left limbs reuse the right ones). */
+    static boolean mirrorU;
+
     /** Quad with corners top-left, top-right, bottom-right, bottom-left of the texture rect. */
     static void face(float[][] c, int tl, int tr, int br, int bl, int u, int v, int w, int h, boolean tex,
                              Box b, int side, Group g, float light, float fade) {
@@ -667,13 +675,19 @@ public final class BodyFx {
             GL11.glColor4f(((col >> 16) & 255) / 255f * sh * g.tintR, ((col >> 8) & 255) / 255f * sh * g.tintG,
                     Math.min(1f, (col & 255) / 255f * sh * g.tintB), fade);
         }
-        float u0 = u / 64f, v0 = v / 64f, u1 = (u + w) / 64f, v1 = (v + h) / 64f;
+        float th = texH;
+        float u0 = u / 64f, v0 = v / th, u1 = (u + w) / 64f, v1 = (v + h) / th;
         if (b.uvs != null && b.uvs[side] != null) {
             float[] q = b.uvs[side];
             u0 = q[0] / 64f;
-            v0 = q[1] / 64f;
+            v0 = q[1] / th;
             u1 = q[2] / 64f;
-            v1 = q[3] / 64f;
+            v1 = q[3] / th;
+        }
+        if (mirrorU) {
+            float tmp = u0;
+            u0 = u1;
+            u1 = tmp;
         }
         GL11.glTexCoord2f(u0, v0);
         GL11.glVertex3f(c[tl][0], c[tl][1], c[tl][2]);
